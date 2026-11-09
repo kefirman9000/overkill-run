@@ -382,6 +382,7 @@ const ET={
   sniper:{hue:0,sat:20,hp:22,spd:18,r:4,dmg:10,gem:1,ai:'sniper',fixedHue:true,rows:['....eee.','..aae...','.aaaaaa.','aacaacaa','aadaadaa','.aaaaaa.','..b..b..','.bb..bb.']},
   jugg:{hue:15,sat:30,hp:260,spd:11,r:7,dmg:22,gem:3,ai:'jugg',res:{kinetic:.6},fixedHue:true,rows:['....bbbbbb....','..bbaaaaaabb..','.baaaaaaaaaab.','baaccaaaaccaab','baacdaaaacdaab','baaaaaaaaaaaab','bbaaeeeeeeaabb','baaaaaaaaaaaab','baabbaaaabbaab','.baab....baab.','.bbbb....bbbb.','..............']},
   boss:{hue:350,sat:60,hp:420,spd:15,r:8,dmg:24,gem:4,ai:'boss',rows:['....b......b....','...bab....bab...','...baab..baab...','..baaaabbaaaab..','.baaaaaaaaaaaab.','baaccaaaaaaccaab','baacddaaaaddcaab','baaaaaaaaaaaaaab','baaaabbbbbbaaaab','baaabeeeeeebaaab','baaaabbbbbbaaaab','.baaaaaaaaaaaab.','..baaaaaaaaaab..','.bab.baaaab.bab.','.b....bbbb....b.','................']},
+  thief:{hue:45,sat:80,hp:40,spd:62,r:4,dmg:0,gem:3,ai:'thief',fixedHue:true,rows:['...bb...','..beeb..','.bbbbbb.','baaaaaab','bacaacab','badaadab','baaaaaab','.bb..bb.']},
   pylon:{hue:190,sat:70,hp:45,spd:0,r:5,dmg:0,gem:2,ai:'pylon',fixedHue:true,rows:['...ee...','..eaae..','..eaae..','.eaacae.','.eaacae.','.eaaaae.','.eaaaae.','..eaae..','.bbbbbb.','bddddddb']},
   /* land boss looks (spawned as type 'boss' with e.spr set) */
   b_fire:{hue:12,sat:85,r:8,fixedHue:true,rows:['..e..e....e..e..', '..ee.ee..ee.ee..', '..beebeeeebeeb..', '..bbbbbbbbbbbb..', '.baaaaaaaaaaaab.', 'baaccaaaaaaccaab', 'baacddaaaaddcaab', 'baaaaaaaaaaaaaab', 'baaaabeeeebaaaab', 'baaabeddddebaaab', 'baaaabeeeebaaaab', '.baaaaaaaaaaaab.', '.bbaaaaaaaaaabb.', 'bab.baaaaaab.bab', 'b....bb..bb....b', '................']},
@@ -390,7 +391,7 @@ const ET={
   b_crys:{hue:190,sat:70,r:8,fixedHue:true,rows:['.......ee.......', '..e...beeb...e..', '.beb.baeeab.beb.', '.baebaaeeaabeab.', '..baaaaaaaaaab..', '.baaccaaaaccaab.', 'baacddaaaaddcaab', 'baaaaaaeeaaaaaab', 'baaaaaeeeeaaaaab', 'baaaaaaeeaaaaaab', '.baaaaaaaaaaaab.', '..baaaaaaaaaab..', '.baab.baab.baab.', '.bab..bab..bab..', '.bb...bb...bb...', '................']},
   b_void:{hue:268,sat:50,r:8,fixedHue:true,rows:['................', '....bbbbbbbb....', '..bbaaaaaaaabb..', '.baaaaaaaaaaaab.', '.baaabbbbbbaaab.', 'baaabccccccbaaab', 'baabccddddccbaab', 'baabcdddeddcbaab', 'baabccddddccbaab', 'baaabccccccbaaab', '.baaabbbbbbaaab.', '.baaaaaaaaaaaab.', '..bab.baab.bab..', '.ba..ba..ab..ab.', '.b...b....b...b.', '................']},
 };
-const NAMES={pylon:'Crystal Pylon',chaser:'Chaser',swarmer:'Swarmer',tank:'Tank',shooter:'Spitter',exploder:'Exploder',shaman:'Shaman',brood:'Broodmother',mini:'Crawler',ember:'Ember',frostling:'Frostling',bloater:'Bloater',golem:'Crystal Golem',stalker:'Stalker',wraith:'Wraith',lancer:'Lancer',mortar:'Mortar',splitter:'Splitter',shard:'Shard',sniper:'Sniper',jugg:'Juggernaut',boss:'Warden',crate:'Supply Crate'};
+const NAMES={thief:'Soul Thief',pylon:'Crystal Pylon',chaser:'Chaser',swarmer:'Swarmer',tank:'Tank',shooter:'Spitter',exploder:'Exploder',shaman:'Shaman',brood:'Broodmother',mini:'Crawler',ember:'Ember',frostling:'Frostling',bloater:'Bloater',golem:'Crystal Golem',stalker:'Stalker',wraith:'Wraith',lancer:'Lancer',mortar:'Mortar',splitter:'Splitter',shard:'Shard',sniper:'Sniper',jugg:'Juggernaut',boss:'Warden',crate:'Supply Crate'};
 const sprCache=new Map();
 function enemySprite(type,shift,white,outline){
   const T=ET[type],sh=T.fixedHue?0:shift;
@@ -613,7 +614,7 @@ function reset(opts){
   G={state:'play',daily,seedStr,startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,lvCD:0,surges:0,cashedOut:0,autoPicked:0,
     threat:0,tp:0,biomeI:0,biomePrev:0,morph:1,streak:0,streakT:0,bestStreak:0,stop:0,shake:0,flash:0,hurt:0,spawnAcc:0,packT:12,hazT:6,
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
-    taken:{},hurtBy:{},arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
+    taken:{},hurtBy:{},fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
   P={armorT:0,guardT:0,shield:0,shieldT:0,frenzy:0,bubble:0,x:0,y:0,vx:0,vy:0,hp:100,max:100,inv:0,face:1,moving:false,dashes:1,dashCd:0,dashT:0,ddx:1,ddy:0,chill:0,lx:0,ly:0};
   S={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,regen:0,multi:0,pierce:0,bounce:0,rear:0,circle:0,split:0,grow:0,burn:0,freeze:0,frostKill:0,chainKill:0,
     trail:0,dashMax:1,dashShock:0,orbitShots:0,nuke:0,pulse:0,hole:0,momentum:0,scorch:0,double:0,stasis:0,killNeedle:0,horizonDash:0,
@@ -739,7 +740,7 @@ function chooseType(){
 }
 function spawnEnemy(type,x,y,o={}){
   type=type||chooseType();
-  if(x===undefined){const a=R()*TAU,d=Math.hypot(LW,LH)/2+14;x=P.x+Math.cos(a)*d;y=P.y+Math.sin(a)*d}
+  if(x===undefined){[x,y]=frontPos()}
   const T=ET[type];
   const eliteCh=Math.min(G.threat>15?Math.min(.45,.3+(G.threat-15)*.02):.3,Math.max(0,(G.threat-1)*.025)+Math.min(.05,G.streak/2000));
   const elite=o.elite??(type!=='boss'&&type!=='mini'&&R()<eliteCh);
@@ -753,6 +754,82 @@ function spawnEnemy(type,x,y,o={}){
   if(EHINT[type]&&!G.hinted['e:'+type]){G.hinted['e:'+type]=1;toast(2,'New enemy: '+NAMES[type]+' '+EHINT[type])}
   return e;
 }
+/* ================= waves & movement pressure =================
+   Enemies come in squads from one to three directions at a time (fronts). The fronts shift every ~10 s,
+   sometimes as a pincer from opposite sides, and arrows at the screen edge warn where the next wave comes from. */
+function squadSize(){return Math.min(10,3+Math.floor(G.threat/3))}
+function updateFronts(dt){
+  G.frontT-=dt;
+  if(G.frontT<=0||!G.fronts.length){
+    const n=G.threat<3?1:G.threat<8?(R()<.5?1:2):G.threat<14?2:(R()<.45?2:3),base=R()*TAU;
+    const pincer=n===2&&R()<.45;G.fronts=[];
+    for(let i=0;i<n;i++)G.fronts.push(pincer?base+i*Math.PI+rnd(-.2,.2):base+i*TAU/n+rnd(-.5,.5));
+    G.frontT=rnd(9,13);
+    for(const a of G.fronts)G.warn.push({a,t:1.8});
+    if(pincer&&!G.hinted.pincer){G.hinted.pincer=1;toast(1,'Pincer: they are coming from both sides.')}
+  }
+  for(let i=0;i<G.fronts.length;i++)G.fronts[i]+=dt*(i%2?-.04:.04);  // fronts creep around you so a wall can flank
+  for(const w of G.warn)w.t-=dt;G.warn=G.warn.filter(w=>w.t>0);
+}
+function frontPos(){
+  const a=(G.fronts.length?pick(G.fronts):R()*TAU)+rnd(-.28,.28),d=Math.hypot(LW,LH)/2+14+rnd(0,22);
+  return [P.x+Math.cos(a)*d,P.y+Math.sin(a)*d];
+}
+function spawnSquad(n){
+  const [x,y]=frontPos(),type=chooseType();
+  for(let i=0;i<n;i++)spawnEnemy(R()<.75?type:null,x+rnd(-14,14),y+rnd(-14,14));   // mostly one kind, a few stragglers
+}
+/* regular spawning, in squads: rate is unchanged, it just arrives in groups */
+function spawnTick(dt,mult,cap){
+  if(isMode('timestop'))return;
+  const sq=squadSize();G.spawnAcc=Math.min(sq+2,G.spawnAcc+dt*spawnRate()*mult);
+  while(G.spawnAcc>=sq&&E.length<cap){G.spawnAcc-=sq;spawnSquad(sq)}
+}
+function drawWaveWarnings(){
+  for(const w of G.warn){
+    if(Math.floor(w.t*6)%2===0)continue;
+    const x=clamp(LW/2+Math.cos(w.a)*(LW/2-12),10,LW-10),y=clamp(LH/2+Math.sin(w.a)*(LH/2-12),10,LH-10);
+    ctx.fillStyle='#ff4d6d';
+    for(let k=0;k<2;k++){const bx=x-Math.cos(w.a)*k*4,by=y-Math.sin(w.a)*k*4;
+      for(let i=0;i<4;i++){ctx.fillRect(RK(bx-Math.cos(w.a)*i-Math.sin(w.a)*i),RK(by-Math.sin(w.a)*i+Math.cos(w.a)*i),1,1);ctx.fillRect(RK(bx-Math.cos(w.a)*i+Math.sin(w.a)*i),RK(by-Math.sin(w.a)*i-Math.cos(w.a)*i),1,1)}}
+  }
+}
+/* standing still too long draws telegraphed strikes onto you (not inside walled boss fights) */
+const CAMP_R=40,CAMP_T=4;
+function updateCamp(dt){
+  if(G.arena&&G.arena.wall>0){G.campT=0;return}
+  const dx=P.x-G.campX,dy=P.y-G.campY;
+  if(dx*dx+dy*dy>CAMP_R*CAMP_R){G.campX=P.x;G.campY=P.y;G.campT=0;G.campCd=0;return}
+  G.campT+=dt;if(G.campT<CAMP_T)return;
+  G.campCd-=dt;if(G.campCd>0)return;
+  const n=1+Math.min(3,Math.floor((G.campT-CAMP_T)/4));G.campCd=1.3;
+  for(let i=0;i<n;i++){const a=R()*TAU,r=i?rnd(12,28):0;
+    addZone('shell',P.x+P.vx*.4+Math.cos(a)*r,P.y+P.vy*.4+Math.sin(a)*r,18,1.15,{boom:{r:18,dmg:0,pd:14*eDmgScale(),col:'#ff3b5c',src:'camp',hostile:true,cause:'standing still'}})}
+  if(!G.hinted.camp){G.hinted.camp=1;toast(2,'Standing still draws fire. Keep moving.')}
+}
+/* Soul Thief: shows up now and then, runs from you dropping souls, and pays out big if you catch it */
+function updateThief(dt){
+  if(G.arena)return;
+  G.thiefT-=dt;if(G.thiefT>0)return;
+  G.thiefT=rnd(65,95);
+  const a=R()*TAU,t=spawnEnemy('thief',P.x+Math.cos(a)*70,P.y+Math.sin(a)*70,{elite:false});t.life=14;t.cd=.45;
+  G.thiefSeen=(G.thiefSeen||0)+1;banner('SOUL THIEF','Catch it before it gets away');snd('pick',3);
+}
+function thiefDown(e){
+  G.thieves=(G.thieves||0)+1;
+  const tier=Math.min(4,1+Math.floor(G.threat/6));
+  for(let i=0;i<12;i++){const a=i/12*TAU;PU.push({kind:'gem',tier,x:e.x,y:e.y,t:0,vx:Math.cos(a)*80,vy:Math.sin(a)*80})}
+  PU.push({kind:R()<.5?'maxhp':pick(['armor','guard','bubble','frenzy']),x:e.x,y:e.y,t:0,vx:0,vy:-30});
+  banner('CAUGHT IT','Souls everywhere');G.flash=Math.max(G.flash,.3);
+}
+function drawThiefPointer(ox,oy){
+  for(const e of E){if(e.type!=='thief'||e.dead)continue;const bx=e.x-ox,by=e.y-oy;if(bx>=0&&by>=0&&bx<=LW&&by<=LH)continue;
+    const a=Math.atan2(e.y-P.y,e.x-P.x),x=clamp(LW/2+Math.cos(a)*(LW/2-8),6,LW-6),y=clamp(LH/2+Math.sin(a)*(LH/2-8),6,LH-6);
+    ctx.fillStyle=Math.floor(G.time*6)%2?'#ffd84a':'#fff';ctx.fillRect(RK(x)-1,RK(y)-1,3,3);ctx.fillRect(RK(x),RK(y)-2,1,5);ctx.fillRect(RK(x)-2,RK(y),5,1)}
+}
+/* souls and pickups left on the ground fade: hearts and power-ups after 25 s, souls after 16 s (rare ones 28 s) */
+function puLife(p){return p.kind==='gem'?(p.tier>=2?28:16):p.kind==='maxhp'?45:25}
+
 /* ================= boss fights =================
    Every 5 threat levels a boss fight starts. Each land's boss has its own kind of fight:
      arena    walls rise around you, the horde dissolves, just you and the boss (the Warden)
@@ -872,7 +949,7 @@ function updateArena(dt){
     if(A.t>=2.4){arenaEnd();return}
   }
   // the open-field fights keep a thinner horde coming
-  if(F.horde&&A.phase==='fight'&&!isMode('timestop')){G.spawnAcc+=dt*spawnRate()*F.horde;if(G.spawnAcc>4)G.spawnAcc=4;while(G.spawnAcc>=1&&E.length<maxAlive()*.7){G.spawnAcc--;spawnEnemy()}}
+  if(F.horde&&A.phase==='fight')spawnTick(dt,F.horde,maxAlive()*.7);
   // ice floe: the edge cracks away, and touching the water chills you
   if(A.fmt==='floe'&&A.phase==='fight'){
     const nr=Math.max(FLOE_R1,FLOE_R0-(G.time-A.fightStart)*1.5);
@@ -1151,6 +1228,7 @@ function kill(e,src){
   if(e.elite&&e.ex==='split'&&e.type!=='boss'){for(let i=0;i<2;i++){const c=spawnEnemy(e.type,e.x+rnd(-5,5),e.y+rnd(-5,5),{elite:false,hpMul:.5});c.vx=rnd(-60,60);c.vy=rnd(-60,60)}}
   if(e.type==='boss'){buzz(90);G.boss=null;G.bossKills++;G.stop=.3;G.shake=4;G.flash=.7;snd('boom');if(G.arena)arenaWon(e);else banner(bossOf(e).name.toUpperCase()+' DOWN','The threat climbs anyway')}
   else if(e.type==='pylon')pylonDown(e);
+  else if(e.type==='thief')thiefDown(e);
   else if(e.elite){G.stop=Math.max(G.stop,.05)}
   // mutations on kill
   if(S.frostKill){query(e.x,e.y,26,o=>{o.slow=Math.max(o.slow,1.6)});if(R()<.3)RINGS.push({x:e.x,y:e.y,r:0,max:24,life:.2,t:0,c:'#a6f0ff',noFill:1})}
@@ -1524,12 +1602,12 @@ function update(dt){
   }
 
   // ---- threat, hazards, spawns
+  updateFronts(dt);updateCamp(dt);updateThief(dt);
   if(G.arena)updateArena(dt);                                       // boss arena: no horde, no land hazards, no threat climb
   else{
   updateThreat();
   G.hazT-=dt;if(G.hazT<=0)G.hazT=spawnHazard();
-  if(!isMode('timestop'))G.spawnAcc+=dt*spawnRate();if(G.spawnAcc>4)G.spawnAcc=4;
-  while(G.spawnAcc>=1&&E.length<maxAlive()){G.spawnAcc--;spawnEnemy()}
+  spawnTick(dt,1,maxAlive());
   G.packT-=dt;
   }
   if(!G.arena&&G.packT<=0&&G.threat>=1){
@@ -1606,6 +1684,11 @@ function update(dt){
         break;
       case 'boss':{const o=bossThink(e,dt,dx,dy,d);if(o){tx=o[0];ty=o[1];s=o[2]}}
         break;
+      case 'thief':{tx=-tx;ty=-ty;if(d>190)s*=.45;else if(d<60)s*=1.15;
+        e.life-=dt;e.cd-=dt;if(e.cd<=0){e.cd=.45;PU.push({kind:'gem',tier:Math.min(3,Math.floor(G.threat/8)),x:e.x,y:e.y,t:0,vx:rnd(-20,20),vy:rnd(-20,20)})}
+        if(R()<.3)PT.push({x:e.x+rnd(-3,3),y:e.y,vx:0,vy:-10,life:.4,max:.4,c:'#ffd84a',s:1});
+        if(e.life<=0){e.dead=true;burst(e.x,e.y,'#ffd84a',14,50,.4);toast(0,'The Soul Thief got away.');continue}
+        break}
       case 'pylon':s=0;e.vx=e.vy=0;if(R()<.08)PT.push({x:e.x+rnd(-3,3),y:e.y-4,vx:0,vy:-16,life:.4,max:.4,c:'#a6f0ff',s:1});
         break;
     }
@@ -1622,7 +1705,7 @@ function update(dt){
     if(e.thornCd>0)e.thornCd-=dt;
     if(e.dead)continue;
     if(d<e.r+3&&e.dmg>0&&!(e.phase>0))hurtPlayer(e.dmg,e.type==='boss'?bossOf(e).name:(e.elite?'an elite ':'a ')+NAMES[e.type]);
-    if(d>Math.hypot(LW,LH)*1.4&&e.type!=='boss'&&e.type!=='pylon')e.dead=true;
+    if(d>Math.hypot(LW,LH)*1.4&&e.type!=='boss'&&e.type!=='pylon'&&e.type!=='thief')e.dead=true;
   }
   buildGrid();
   G.sepFlip=!G.sepFlip;
@@ -1774,6 +1857,7 @@ function update(dt){
   // ---- pickups
   for(const p of PU){
     p.t+=dt;
+    if(!p.vac&&p.t>puLife(p)){p.got=true;if(PT.length<500)burst(p.x,p.y,'#8a8aa0',3,20,.3);continue}
     const dx=P.x-p.x,dy=P.y-p.y,d=Math.hypot(dx,dy)||1;
     if(p.vac||d<S.magnet){const s=170+(p.vac?120:(S.magnet-d)*3);p.vx+=(dx/d*s-p.vx)*Math.min(1,dt*9);p.vy+=(dy/d*s-p.vy)*Math.min(1,dt*9)}
     else{const k=Math.pow(.03,dt);p.vx*=k;p.vy*=k}
@@ -1966,6 +2050,7 @@ function render(){
   for(const p of PU){
     const x=RK(p.x-ox),y=RK(p.y-oy+Math.sin(p.t*4)*1.2);
     if(x<-10||y<-30||x>LW+10||y>LH+10)continue;
+    if(!p.vac&&p.t>puLife(p)-3&&Math.floor(p.t*8)%2)continue;           // about to fade: blink
     if(p.kind==='mode'&&R()<.5)PT.push({x:p.x+rnd(-5,5),y:p.y+rnd(-5,5),vx:0,vy:-16,life:.4,max:.4,c:MODES[p.mode].col,s:1});
     if(p.kind==='gem'){
       const tr=p.tier,c=tr===4?(Math.floor(p.t*10)%2?'#ff3b5c':'#3ff0ff'):RC[tr],s=[1,2,2,3,3][tr];
@@ -2053,6 +2138,7 @@ function render(){
     for(let i=0;i<5;i++){ctx.fillRect(RK(x-Math.cos(a)*i-Math.sin(a)*i),RK(y-Math.sin(a)*i+Math.cos(a)*i),1,1);ctx.fillRect(RK(x-Math.cos(a)*i+Math.sin(a)*i),RK(y-Math.sin(a)*i-Math.cos(a)*i),1,1)}}}
   if(isMode('timestop')){ctx.fillStyle='rgba(166,240,255,.14)';ctx.fillRect(0,0,LW,LH)}
   if(G.mode){const c=MODES[G.mode.id].col;ctx.globalAlpha=.5+.3*Math.sin(G.time*8);ctx.fillStyle=c;ctx.fillRect(0,0,LW,1);ctx.fillRect(0,LH-1,LW,1);ctx.fillRect(0,0,1,LH);ctx.fillRect(LW-1,0,1,LH);ctx.globalAlpha=1}
+  drawWaveWarnings();drawThiefPointer(ox,oy);
   // shrine pointer when off screen
   for(const sh of SHRINES){const bx=sh.x-ox,by=sh.y-oy;if(bx<0||by<0||bx>LW||by>LH){const a=Math.atan2(sh.y-P.y,sh.x-P.x);const x=clamp(LW/2+Math.cos(a)*(LW/2-8),6,LW-6),y=clamp(LH/2+Math.sin(a)*(LH/2-8),6,LH-6);ctx.fillStyle='#ffe066';ctx.fillRect(RK(x)-1,RK(y)-1,3,3)}}
   if(G.state==='play'&&P.hp<P.max*.3){const k=.25+.2*Math.sin(G.time*7);ctx.fillStyle=`rgba(255,40,70,${k})`;ctx.fillRect(0,0,LW,3);ctx.fillRect(0,LH-3,LW,3);ctx.fillRect(0,0,3,LH);ctx.fillRect(LW-3,0,3,LH);
@@ -2103,7 +2189,7 @@ function buildReport(){
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
     mode:G.daily?'daily '+G.seedStr:'normal',startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
-      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
+      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
     damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
