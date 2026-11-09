@@ -254,7 +254,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.1.0';
+const VERSION='1.2.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -386,7 +386,7 @@ function landName(threat){const {b,lap}=biomeOf(threat);return b.name+(lap?' '+(
 /* ================= weapons & cards ================= */
 const WDEF={
   pea:{name:'Pea Shooter',col:'#ffe066',desc:'Fires at the nearest enemy.',up:l=>l%3===0?'+1 projectile, +20% damage':'+20% damage, fires faster'},
-  fire:{name:'Fireball',col:'#ff7a2a',desc:'Slow fireball that leaves a burning line and explodes on contact.',up:l=>l%4===0?'+1 fireball':'+20% damage, bigger blast, longer flames'},
+  fire:{name:'Fireball',col:'#ff7a2a',desc:'Slow fireball that leaves a burning line and explodes on contact.',up:l=>l%3===0?'+1 fireball':'+20% damage, bigger blast, faster casting'},
   bolt:{name:'Chain Lightning',col:'#7df9ff',desc:'Lightning that arcs from enemy to enemy.',up:()=>'+1 chain jump, +20% damage'},
   needle:{name:'Homing Needles',col:'#e6e6ff',desc:'A fan of needles that seek their own targets.',up:()=>'+1 needle, +20% damage'},
   blade:{name:'Orbit Blades',col:'#9be15d',desc:'Blades that circle you. Get close to use them.',up:()=>'+1 blade, wider orbit, +20% damage'},
@@ -399,7 +399,7 @@ const CARDS=[
   {id:'rate',r:0,name:'Hair Trigger',icon:'rate',desc:'Weapons recharge 10% faster',apply:()=>S.rate+=.10},
   {id:'move',r:0,name:'Light Feet',icon:'move',desc:'+8% move speed',max:8,apply:()=>S.move+=.08},
   {id:'area',r:0,name:'Wide Load',icon:'area',desc:'+15% area, orbit and blast size',apply:()=>S.area+=.15},
-  {id:'magnet',r:0,name:'Lodestone',icon:'magnet',desc:'+40% soul pickup reach',apply:()=>S.magnet*=1.4},
+  {id:'magnet',r:0,name:'Lodestone',icon:'magnet',desc:'+40% soul pickup reach',max:4,apply:()=>S.magnet*=1.4},
   {id:'hp',r:0,name:'Thick Skin',icon:'maxhp',desc:'+20 max HP and heal 20',apply:()=>{P.max+=20;P.hp+=20}},
   {id:'pspd',r:0,name:'Hot Barrels',icon:'rate',desc:'+15% projectile speed and range',max:6,apply:()=>S.pspeed+=.15},
   {id:'regen',r:0,name:'Mending',icon:'regen',desc:'+0.6 HP per second',apply:()=>S.regen+=.6},
@@ -474,7 +474,7 @@ function reset(opts){
   cam={x:0,y:0};
   if(G.relics.includes('magnet'))S.magnet*=2;
   if(G.relics.includes('wind')){S.dashMax=2;P.dashes=2}
-  if(G.relics.includes('mutagen')){const pool=CARDS.filter(c=>c.r===2&&c.id!=='dash');const c=pool[Math.floor(cardRand()*pool.length)];takeCard(c,[c.name],true)}
+  if(G.relics.includes('mutagen')){const pool=CARDS.filter(c=>c.r===2&&c.id!=='dash'&&cardRelevant(c));const c=pool[Math.floor(cardRand()*pool.length)];takeCard(c,[c.name],true)}
   $('toasts').innerHTML='';
 }
 const xpNeed=l=>Math.round(5+l*4+Math.pow(l,1.6));
@@ -567,7 +567,7 @@ function spawnEnemy(type,x,y,o={}){
   const shift=biomeOf(G.threat).b.eh;
   const h=(T.hue+(T.fixedHue?0:shift)+720)%360;
   const e={type,x,y,vx:0,vy:0,hp,max:hp,r:T.r,spd:T.spd*(1+Math.min(.5,G.threat*.035))*(elite?1.1:1),dmg:T.dmg*eDmgScale()*(elite?1.4:1),
-    elite,ex:elite?pick(ELITE_EX):null,exT:rnd(1,3),rush:0,shift,flash:0,burn:0,burnD:0,burnTick:0,slow:0,buff:0,t:R()*10,cd:rnd(.8,2.5),fuse:0,oc:0,dead:false,
+    elite,ex:elite?pick(T.spd>=34?ELITE_EX.filter(x=>x!=='haste'):ELITE_EX):null,exT:rnd(1,3),rush:0,shift,flash:0,burn:0,burnD:0,burnTick:0,slow:0,buff:0,t:R()*10,cd:rnd(.8,2.5),fuse:0,oc:0,dead:false,
     ai:T.ai||'chase',col:elite?'#ffe066':`hsl(${h},${T.sat}%,58%)`,sum:4,pat:0};
   E.push(e);return e;
 }
@@ -628,8 +628,9 @@ function hurt(e,dmg,o={}){
     if(S.freeze>0&&R()<S.freeze)e.slow=2;
   }
   if(o.ignite){e.burn=Math.max(e.burn,2);e.burnD=Math.max(e.burnD,dmg*.4)}
+  const dealt=Math.min(d,Math.max(0,e.hp));
   e.hp-=d;e.flash=.06;
-  const src=o.src||'other';G.dmgBy[src]=(G.dmgBy[src]||0)+d;
+  const src=o.src||'other';G.dmgBy[src]=(G.dmgBy[src]||0)+dealt;
   if(m<.5&&R()<.25){burst(e.x,e.y,'#8a8aa0',2,30,.2);if(!G.golemHint&&e.type==='golem'){G.golemHint=true;toast(1,'Golems resist that. Lightning and blasts crack them.')}}
   if(o.kx!==undefined){const kb=(o.kb||30)/(e.r*.5)*(e.type==='boss'?.08:1);e.vx+=o.kx*kb;e.vy+=o.ky*kb}
   if(!o.silent){burst(e.x,e.y,o.col||'#fff',2,40,.2);snd('hit')}
@@ -728,7 +729,7 @@ function fireWeapon(w){
     case 'pea':{const t=nearest(P.x,P.y,range);if(!t)return 0;const a=Math.atan2(t.y-P.y,t.x-P.x);
       volley(a,1+Math.floor(l/3)+S.multi,.12,200,{dmg:9*lm,size:3,col:'#ffe066',life:1,src:'pea'});snd('shoot');return .5*(1-.05*Math.min(l,7))}
     case 'fire':{const t=nearest(P.x,P.y,range*.8);if(!t)return 0;const a=Math.atan2(t.y-P.y,t.x-P.x);
-      volley(a,1+Math.floor(l/4)+Math.floor(S.multi/2),.3,95,{kind:'fire',dmg:16*lm,size:4,col:'#ff7a2a',life:1.6,rad:(16+l*2)*S.area,patchLife:1.4+l*.15,elem:'fire',src:'fire',pierce:0,bounce:0,split:false});snd('shoot');return 1.7}
+      volley(a,1+Math.floor(l/3)+Math.floor(S.multi/2),.3,105,{kind:'fire',dmg:20*lm,size:4,col:'#ff7a2a',life:1.6,rad:(18+l*2)*S.area,patchLife:1.6+l*.15,elem:'fire',src:'fire',pierce:0,bounce:0,split:false});snd('shoot');return Math.max(.8,1.25-.04*l)}
     case 'bolt':{const t=nearest(P.x,P.y,130);if(!t)return 0;chainZap(t,P,3+l+S.multi,12*lm,'bolt');return Math.max(.5,1.25-.05*l)}
     case 'needle':{const t=nearest(P.x,P.y,range);if(!t)return 0;const a=Math.atan2(t.y-P.y,t.x-P.x);
       volley(a,2+l+S.multi,.32,170,{kind:'needle',dmg:7*lm,size:2,col:'#e6e6ff',life:1.4,src:'needle',target:t});snd('shoot');return .95}
@@ -746,7 +747,16 @@ function weaponCards(){
   }
   return out;
 }
-function cardAvail(c){return !c.max||(G.taken[c.id]||0)<c.max}
+/* only offer cards that do something for the weapons you hold */
+const BULLET_W=['pea','needle'],VOLLEY_W=['pea','needle','fire'];
+const NEEDS={pierce:'bullet',bounce:'bullet',split:'bullet',grow:'bullet',rear:'volley',circle:'volley',nuke:'volley',orbit:'volley',pspd:'volley',double:'volley',multi:'multi'};
+function cardRelevant(c){
+  const n=NEEDS[c.id];if(!n)return true;
+  if(n==='bullet')return W.some(w=>BULLET_W.includes(w.id));
+  if(n==='volley')return W.some(w=>VOLLEY_W.includes(w.id));
+  return W.some(w=>w.id!=='oil');
+}
+function cardAvail(c){return (!c.max||(G.taken[c.id]||0)<c.max)&&cardRelevant(c)}
 function rollRarity(L){const w=[Math.max(15,100-L*7),30+L*4,6+L*2.5,Math.max(0,L-2)*1.6,Math.max(0,L-6)];let t=0;for(const x of w)t+=x;let r=cardRand()*t;for(let i=0;i<5;i++){r-=w[i];if(r<=0)return i}return 0}
 function makeOffers(){
   const L=luck(),all=CARDS.filter(cardAvail).concat(weaponCards()),out=[],used=new Set();
@@ -757,6 +767,8 @@ function makeOffers(){
     }
   }
   while(out.length<3){const pool=all.filter(c=>!used.has(c.id));if(!pool.length)break;const c=pool[Math.floor(cardRand()*pool.length)];used.add(c.id);out.push(c)}
+  // every level-up includes at least one weapon card while any are left
+  if(!out.some(c=>c.weapon)){const wc=weaponCards();if(wc.length){const lowest=out.reduce((m,c,i)=>c.r<out[m].r?i:m,0);out[lowest]=wc[Math.floor(cardRand()*wc.length)]}}
   return out;
 }
 let offers=[];
