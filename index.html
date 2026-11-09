@@ -278,6 +278,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
     <div class="btns"><button id="optPlace">MOVE CONTROLS</button><button id="optSwap">SWAP SIDES</button><button id="optReset">RESET CONTROLS</button></div>
     <h3>FEEL</h3>
     <div class="pickrow" id="optShake"><button data-v="1">SHAKE: FULL</button><button data-v="0.4">SHAKE: LOW</button><button data-v="0">SHAKE: OFF</button></div>
+    <div class="pickrow" id="optColors"><button data-v="clear">COLORS: CLEAR</button><button data-v="vivid">COLORS: VIVID</button></div>
     <div class="pickrow" id="optFx"><button data-v="1">EFFECTS: ON</button><button data-v="0">EFFECTS: OFF</button></div>
     <div class="pickrow" id="optDetail"><button data-v="0">SIMPLE GROUND</button><button data-v="1">DETAILED GROUND</button></div>
     <div class="pickrow" id="optMusic"><button data-v="1">MUSIC ON</button><button data-v="0">MUSIC OFF</button></div>
@@ -305,7 +306,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.15.0';
+const VERSION='1.16.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -460,6 +461,7 @@ function iconURL(key,col){
   const u=c.toDataURL();iconCache.set(k,u);return u;
 }
 const ICON_SPR={};for(const k in ICONS)ICON_SPR[k]=makeSprite(ICONS[k],{a:'#fff'});
+const ICON_COL=new Map();function iconSprite(k,c){const key=k+c;let s=ICON_COL.get(key);if(!s){s=makeSprite(ICONS[k],{a:c});ICON_COL.set(key,s)}return s}
 
 /* ================= world ================= */
 const BIOMES=[
@@ -591,7 +593,7 @@ const RELICS={
 let chosenW='pea';const chosenR=new Set();
 
 /* ================= control settings ================= */
-const CFG_DEF={fx:1,autoPick:0,mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:.4,autoZoom:1,music:1,haptics:1,detail:0};
+const CFG_DEF={colors:'clear',fx:1,autoPick:0,mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:.4,autoZoom:1,music:1,haptics:1,detail:0};
 let CFG=Object.assign({},CFG_DEF);
 try{const c=JSON.parse(localStorage.getItem('overkill-run-controls')||'null');if(c)CFG=Object.assign(CFG,c)}catch(e){}
 function saveCfg(){try{localStorage.setItem('overkill-run-controls',JSON.stringify(CFG))}catch(e){}}
@@ -780,6 +782,14 @@ function spawnEnemy(type,x,y,o={}){
   if(EHINT[type]&&!G.hinted['e:'+type]){G.hinted['e:'+type]=1;toast(2,'New enemy: '+NAMES[type]+' '+EHINT[type])}
   return e;
 }
+/* ================= colour language (Options: COLORS CLEAR / VIVID) =================
+   Clear: red/pink = it can hurt you, pale gold = yours, gold frame = pick it up. Your shots share one colour,
+   your ground effects and loose particles are dimmed, and every hazard that can hurt you gets a red outline. */
+const CLEAR=()=>CFG.colors!=='vivid';
+const MINE_HOT='#ffd166';
+/* your shots: a family of warm golds and creams, a different shade per weapon so they're still told apart */
+const MINE_SHADES={pea:'#fff0b8',needle:'#fffbe6',drone:'#ffe9a0',rang:'#ffd98a',shotgun:'#ffe27a',turret:'#f6f0c8',reflect:'#fff6d0',vengeance:'#ffcf70',dashvolley:'#ffe27a'};
+const pcol=b=>CLEAR()?(MINE_SHADES[b.src]||'#fff0b8'):b.col;
 /* ================= extra pickups, card effects and super modes (1.14) ================= */
 const PICKUPS=['bubble','frenzy','freezeAll','armor','guard','decoy','boots','thunder'];
 function randomPickup(){return pick(PICKUPS)}
@@ -2317,7 +2327,10 @@ function render(){
   for(const d of DECALS){if(d.x-ox<-6||d.y-oy<-6||d.x-ox>LW+6||d.y-oy>LH+6)continue;ctx.globalAlpha=Math.min(.5,d.life/4);ctx.fillStyle=d.c;ctx.fillRect(RK(d.x-ox)-d.w/2,RK(d.y-oy)+2,d.w,1);ctx.fillRect(RK(d.x-ox)-1,RK(d.y-oy)+1,2,1)}
   ctx.globalAlpha=1;
   drawArena(ox,oy);
-  for(const z of Z)if(z.kind!=='hole'&&z.kind!=='fhole')drawZone(z,ox,oy);
+  {const cl=CLEAR();for(const z of Z){if(z.kind==='hole'||z.kind==='fhole')continue;const K2=ZK[z.kind]||{};
+    if(cl&&K2.friendly&&!K2.hostile){ctx.save();ctx.globalAlpha=.5;drawZone(z,ox,oy);ctx.restore();ctx.globalAlpha=1;continue}
+    drawZone(z,ox,oy);
+    if(cl&&K2.hostile&&z.r>=10&&z.kind!=='spike'&&z.kind!=='ftrail'){ctx.globalAlpha=.3+.15*Math.sin(G.time*5);ring(z.x-ox,z.y-oy,z.kind==='pit'?z.r+2:z.r,'#ff3b5c');ctx.globalAlpha=1}}}
   drawBossMarks(ox,oy);drawCampGround(ox,oy);drawDecoy(ox,oy);
   for(const sh of SHRINES){const x=RK(sh.x-ox),y=RK(sh.y-oy),c=`hsl(${(G.time*120)%360},90%,62%)`;
     ctx.globalAlpha=Math.min(1,sh.t/2);ctx.fillStyle='#3a3150';ctx.fillRect(x-6,y-3,13,7);ctx.fillStyle='#5a4f78';ctx.fillRect(x-6,y-3,13,1);
@@ -2337,7 +2350,8 @@ function render(){
       if(tr===4&&Math.random()<.3){ctx.fillStyle='#3ff0ff';ctx.fillRect(x+rnd(-4,4)|0,y+rnd(-4,4)|0,2,1)}
     }else{
       const [c,ic]=p.kind==='mode'?[MODES[p.mode].col,'crit']:{decoy:['#6be0ff','multi'],boots:['#e6e6ff','move'],thunder:['#7df9ff','chain'],maxhp:['#ffd84a','heal'],armor:['#c9c9d6','shield'],guard:['#9be15d','multi'],heart:['#ff4d6d','heal'],vac:['#6be0ff','vac'],bomb:['#ffb627','nuke'],bubble:['#6be0ff','shield'],frenzy:['#ffe066','rate'],freezeAll:['#a6f0ff','freeze']}[p.kind];
-      ctx.fillStyle=c;ctx.fillRect(x-4,y-3,9,7);ctx.fillRect(x-3,y-4,7,9);ctx.fillStyle='#0d0b14';ctx.fillRect(x-3,y-3,7,7);ctx.drawImage(ICON_SPR[ic],x-2,y-2);
+      if(CLEAR()){ctx.fillStyle='#ffd84a';ctx.fillRect(x-4,y-3,9,7);ctx.fillRect(x-3,y-4,7,9);ctx.fillStyle='#0d0b14';ctx.fillRect(x-3,y-3,7,7);ctx.drawImage(iconSprite(ic,c),x-2,y-2)}
+      else{ctx.fillStyle=c;ctx.fillRect(x-4,y-3,9,7);ctx.fillRect(x-3,y-4,7,9);ctx.fillStyle='#0d0b14';ctx.fillRect(x-3,y-3,7,7);ctx.drawImage(ICON_SPR[ic],x-2,y-2);}
     }
   }
   // enemies
@@ -2389,17 +2403,17 @@ function render(){
   for(const b of PB){
     const x=b.x-ox,y=b.y-oy;
     if(x<-12||y<-12||x>LW+12||y>LH+12)continue;                       // off screen: nothing to draw
-    if(b.kind==='needle'){const v=Math.hypot(b.vx,b.vy)||1;line(x-b.vx/v*4,y-b.vy/v*4,x,y,b.col);continue}
-    if(b.kind==='missile'){const v=Math.hypot(b.vx,b.vy)||1,ux=b.vx/v,uy=b.vy/v;line(x-ux*4,y-uy*4,x,y,'#ff5e5b');ctx.fillStyle='#fff';ctx.fillRect(RK(x),RK(y),1,1);ctx.fillStyle='#ffd166';ctx.fillRect(RK(x-ux*5),RK(y-uy*5),1,1);continue}
+    if(b.kind==='needle'){const v=Math.hypot(b.vx,b.vy)||1;line(x-b.vx/v*4,y-b.vy/v*4,x,y,pcol(b));continue}
+    if(b.kind==='missile'){const v=Math.hypot(b.vx,b.vy)||1,ux=b.vx/v,uy=b.vy/v;line(x-ux*4,y-uy*4,x,y,CLEAR()?MINE_HOT:'#ff5e5b');ctx.fillStyle='#fff';ctx.fillRect(RK(x),RK(y),1,1);ctx.fillStyle='#ffd166';ctx.fillRect(RK(x-ux*5),RK(y-uy*5),1,1);continue}
     const g=S.grow&&!b.orb?1+Math.min(2.5,b.dist/90*S.grow*.5):1,s=RK(b.size*g);
-    if(b.kind==='fire'){disc(x,y,s*.6+1,'#ff5e5b');disc(x,y,s*.4,'#ffd166');continue}
+    if(b.kind==='fire'){disc(x,y,s*.6+1,CLEAR()?MINE_HOT:'#ff5e5b');disc(x,y,s*.4,CLEAR()?'#fff':'#ffd166');continue}
     if(b.kind==='nuke'){disc(x,y,3.5,Math.floor(G.time*12)%2?'#ff3b5c':'#fff');continue}
-    if(b.kind==='rang'){const r=b.size*.8+1,c=Math.cos(b.spin||0)*r,sn=Math.sin(b.spin||0)*r;line(x-c,y-sn,x+c,y+sn,b.col);line(x+sn,y-c,x-sn,y+c,'#fff');continue}
-    ctx.fillStyle=b.col;ctx.fillRect(RK(x-s/2),RK(y-s/2),s,s);
+    if(b.kind==='rang'){const r=b.size*.8+1,c=Math.cos(b.spin||0)*r,sn=Math.sin(b.spin||0)*r;line(x-c,y-sn,x+c,y+sn,pcol(b));line(x+sn,y-c,x-sn,y+c,'#fff');continue}
+    ctx.fillStyle=pcol(b);ctx.fillRect(RK(x-s/2),RK(y-s/2),s,s);
     ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(RK(x-s/2),RK(y-s/2),1,1);
   }
   // enemy bullets: drawn above almost everything so they stay readable
-  for(const b of EB){const x=RK(b.x-ox),y=RK(b.y-oy);if(x<-4||y<-4||x>LW+4||y>LH+4)continue;const c=b.col||(b.chill?'#a6f0ff':'#ff3fa4');ctx.fillStyle='#14101c';ctx.fillRect(x-2,y-2,5,5);ctx.fillStyle=c;ctx.fillRect(x-1,y-1,3,3);ctx.fillStyle='#fff';ctx.fillRect(x,y,1,1)}
+  for(const b of EB){const x=RK(b.x-ox),y=RK(b.y-oy);if(x<-4||y<-4||x>LW+4||y>LH+4)continue;const cl=CLEAR(),c=cl?(b.chill?'#ff6fb8':'#ff3b6b'):(b.col||(b.chill?'#a6f0ff':'#ff3fa4'));ctx.fillStyle='#14101c';ctx.fillRect(x-2,y-2,5,5);ctx.fillStyle=c;ctx.fillRect(x-1,y-1,3,3);ctx.fillStyle=cl&&b.chill?'#a6f0ff':'#fff';ctx.fillRect(x,y,1,1)}
   for(const r of RINGS){const a=1-r.t/r.life;if(!r.noFill){ctx.globalAlpha=a*.3;disc(r.x-ox,r.y-oy,r.r,r.c)}ctx.globalAlpha=Math.max(0,a);ring(r.x-ox,r.y-oy,r.r,r.noFill?r.c:'#fff');ctx.globalAlpha=1}
   for(const bm of BEAMS){const k=bm.life/.16;ctx.globalAlpha=Math.min(1,k*1.5);ctx.strokeStyle='#ffd6f5';ctx.lineWidth=Math.max(1,bm.w*k*1.6);ctx.beginPath();ctx.moveTo(bm.x1-ox,bm.y1-oy);ctx.lineTo(bm.x2-ox,bm.y2-oy);ctx.stroke();
     ctx.strokeStyle='#ffffff';ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1}
@@ -2407,7 +2421,7 @@ function render(){
     let x=a.x1-ox,y=a.y1-oy;const sx=x,sy=y,ex=a.x2-ox,ey=a.y2-oy;
     for(let i=1;i<=4;i++){const t=i/4,nx=sx+(ex-sx)*t+(i<4?rnd(-3,3):0),ny=sy+(ey-sy)*t+(i<4?rnd(-3,3):0);line(x,y,nx,ny,i%2?'#7df9ff':'#fff');x=nx;y=ny}
   }
-  for(const p of PT){const x=RK(p.x-ox),y=RK(p.y-oy);if(x<-3||y<-3||x>LW||y>LH)continue;ctx.globalAlpha=Math.min(1,p.life/p.max*1.5);ctx.fillStyle=p.c;ctx.fillRect(x,y,p.s,p.s)}
+  for(const p of PT){const x=RK(p.x-ox),y=RK(p.y-oy);if(x<-3||y<-3||x>LW||y>LH)continue;ctx.globalAlpha=Math.min(1,p.life/p.max*1.5)*(CLEAR()?.55:1);ctx.fillStyle=p.c;ctx.fillRect(x,y,p.s,p.s)}
   for(const a of AMB){ctx.globalAlpha=a.tw?Math.abs(Math.sin(a.life*10)):Math.min(1,a.life);ctx.fillStyle=a.c;const x=RK(a.x-ox),y=RK(a.y-oy);if(a.ring){ctx.fillRect(x-1,y,1,1);ctx.fillRect(x+1,y,1,1);ctx.fillRect(x,y-1,1,1)}else ctx.fillRect(x,y,a.w,a.h)}
   ctx.globalAlpha=1;
   postFx(G.rdt||0);
@@ -2638,7 +2652,7 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 let optsFrom=null;
 function syncOpts(){
   const mark=(id,v)=>$(id).querySelectorAll('button').forEach(b=>b.classList.toggle('sel',b.dataset.v===String(v)));
-  mark('optMode',CFG.mode);mark('optUI',CFG.ui);mark('optTap',CFG.tapDash);mark('optShake',CFG.shake);mark('optDetail',CFG.detail);mark('optZoom',CFG.autoZoom);mark('optMusic',CFG.music);mark('optHap',CFG.haptics);mark('optAuto',CFG.autoPick);mark('optFx',CFG.fx);
+  mark('optMode',CFG.mode);mark('optUI',CFG.ui);mark('optTap',CFG.tapDash);mark('optShake',CFG.shake);mark('optDetail',CFG.detail);mark('optZoom',CFG.autoZoom);mark('optMusic',CFG.music);mark('optHap',CFG.haptics);mark('optAuto',CFG.autoPick);mark('optFx',CFG.fx);mark('optColors',CFG.colors);
   $('optJs').value=Math.round(CFG.jsize*100);$('optJsV').textContent=Math.round(CFG.jsize*100)+'%';
   $('optDead').value=Math.round(CFG.dead*100);$('optDeadV').textContent=Math.round(CFG.dead*100)+'%';
   $('optDs').value=Math.round(CFG.dsize*100);$('optDsV').textContent=Math.round(CFG.dsize*100)+'%';
@@ -2651,7 +2665,7 @@ function openOpts(){
 function closeOpts(){saveCfg();$('opts').hidden=true;$(optsFrom||'title').hidden=false;applyControls()}
 document.querySelectorAll('.optBtn').forEach(b=>b.onclick=openOpts);
 const pickHandler=(id,key,num)=>$(id).addEventListener('click',e=>{const b=e.target.closest('button[data-v]');if(!b)return;CFG[key]=num?+b.dataset.v:b.dataset.v;saveCfg();syncOpts();applyControls()});
-pickHandler('optMode','mode');pickHandler('optUI','ui');pickHandler('optTap','tapDash',1);pickHandler('optShake','shake',1);pickHandler('optDetail','detail',1);pickHandler('optZoom','autoZoom',1);pickHandler('optMusic','music',1);pickHandler('optHap','haptics',1);pickHandler('optAuto','autoPick',1);pickHandler('optFx','fx',1);
+pickHandler('optMode','mode');pickHandler('optUI','ui');pickHandler('optTap','tapDash',1);pickHandler('optShake','shake',1);pickHandler('optDetail','detail',1);pickHandler('optZoom','autoZoom',1);pickHandler('optMusic','music',1);pickHandler('optHap','haptics',1);pickHandler('optAuto','autoPick',1);pickHandler('optFx','fx',1);pickHandler('optColors','colors');
 const sliderHandler=(id,key)=>$(id).addEventListener('input',e=>{CFG[key]=+e.target.value/100;syncOpts();applyControls()});
 sliderHandler('optJs','jsize');sliderHandler('optDead','dead');sliderHandler('optDs','dsize');sliderHandler('optOp','op');
 $('optDone').onclick=closeOpts;
