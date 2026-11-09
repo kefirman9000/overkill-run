@@ -61,6 +61,10 @@ Rear guns, ricochet, shrapnel, snowball rounds that grow as they fly, halo volle
 
 Mutation cards show which of your weapons they evolve, and the pause screen lists your evolution plan.
 
+### Look and feel
+
+Each boss arrives with a cinematic intro card and a moment of slow motion. Changing land sweeps a stripe of the new land's colour across the screen, and the floating particles blend between lands. Screen effects add a soft glow to bright things, colour fringing during Overdrive and big moments, and heat shimmer near the Cinder King's fire wall. **Options → EFFECTS: OFF** turns them off, and they switch off on their own if the frame rate drops.
+
 ### Health and defense
 
 Heart Containers raise max HP (bosses always drop one, elites sometimes do). Cards: Thick Skin, Iron Heart (+50 max HP, full heal), Plating (less damage taken), Giant's Blood (max HP x1.5). Rare pickups: Iron Skin (half damage for 12 s) and Guardian Orbs (three orbs that block shots for 15 s), alongside the existing heal, shield bubble, frenzy, freeze and screen bomb.
