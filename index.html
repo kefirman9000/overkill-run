@@ -307,7 +307,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.16.1';
+const VERSION='1.16.2';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -749,7 +749,7 @@ function nearest(x,y,range,exclude){
 
 /* ================= scaling ================= */
 const hpScale=()=>1+G.threat*.32+G.threat*G.threat*.03+Math.pow(Math.max(0,G.threat-10),3)*.02;   // late threats keep up with maxed builds (x24 -> x68 at threat 23)
-const eDmgScale=()=>1+G.threat*.1;
+const eDmgScale=()=>1+G.threat*.12;
 const spawnRate=()=>1.1+G.threat*.85+Math.min(3,G.time/100);
 const maxAlive=()=>Math.min(420,55+G.threat*24);
 const TPK=45;const tpFor=n=>TPK*n*(n+1)/2;
@@ -943,7 +943,7 @@ function drawWaveWarnings(){
      storm    a storm cloud gathers over you and calls down telegraphed lightning strikes
      worm     a sandworm burrows toward you and erupts underneath you
    Nothing here can be shot; the answer is always to move. */
-const CAMP_R=40,CAMP_T=4,UFO_HOLD=1.6,UFO_BEAM_R=20;
+const CAMP_R=30,CAMP_T=4.5,UFO_HOLD=1.6,UFO_BEAM_R=20;
 const CAMP_KINDS=['ufo','quake','storm','worm'];
 function updateCamp(dt){
   P.abd=Math.max(0,(P.abd||0)-dt*.6);
@@ -997,11 +997,20 @@ function updateCampFx(dt){
     }else if(w.st==='rise'){
       if(w.t>=.6){w.st='erupt';w.t=0;G.shake=Math.max(G.shake,2.5);burst(w.x,w.y,'#8a6a42',26,90,.5,2);snd('boom');
         const dx=P.x-w.x,dy=P.y-w.y,d=Math.hypot(dx,dy);
-        if(d<16){const was=P.inv;P.inv=0;hurtPlayer(Math.round(P.max*.16+G.threat*1.5),'a sandworm');P.inv=Math.max(P.inv,was);const l=d||1;P.vx+=(dx/l||1)*260;P.vy+=(dy/l)*260}
+        if(d<16){const was=P.inv;P.inv=0;hurtPlayer(Math.round(P.max*.12+G.threat*1.2),'a sandworm');P.inv=Math.max(P.inv,was);const l=d||1;P.vx+=(dx/l||1)*260;P.vy+=(dy/l)*260}
         query(w.x,w.y,22,e=>hurt(e,60*eDmgScale(),{silent:true,src:'env',elem:'blast',kx:e.x-w.x,ky:e.y-w.y,kb:80}))}
     }else if(w.st==='erupt'){if(w.t>=.9)w.st='gone'}
   }
   G.worms=G.worms.filter(w=>w.st!=='gone');
+}
+/* warning: in the last 1.5 s before something comes for you, a red reticle closes in around you */
+function drawCampWarning(ox,oy){
+  if(G.campK||!(G.campT>CAMP_T-1.5)||(G.arena&&G.arena.wall>0))return;
+  const k=(G.campT-(CAMP_T-1.5))/1.5,r=26-k*14,x=P.x-ox,y=P.y-oy;
+  ctx.globalAlpha=.35+.5*k;ctx.fillStyle='#ff3b5c';
+  for(let i=0;i<4;i++){const a=i*Math.PI/2+G.time*2;const cx=x+Math.cos(a)*r,cy=y+Math.sin(a)*r;ctx.fillRect(RK(cx)-1,RK(cy)-1,3,3)}
+  ctx.globalAlpha=1;
+  if(!G.hinted.campwarn){G.hinted.campwarn=1;toast(1,'Red marks closing in: you have stood still too long. Move!')}
 }
 function drawCampGround(ox,oy){
   for(const w of G.worms){
@@ -1105,7 +1114,8 @@ function puLife(p){return p.kind==='gem'?(p.tier>=2?28:16):p.kind==='maxhp'?45:2
    Threat doesn't climb and land hazards stop during a fight. Win: heal 35% and a Power Surge (3 banked levels). */
 const ARENA_R=115;            // arena radius in world pixels
 const FLOE_R0=140,FLOE_R1=72; // the ice floe starts this big and cracks down to this
-const ARENA_HP=5;             // boss HP multiplier for boss fights (tune with the run report's bossFights)
+const ARENA_HP=8;                                                     // v1.16.2: 5 -> 8 (fights were 17-19 s)
+const BOSS_DMG=1.4;                                                   // boss shots and shells hit 40% harder             // boss HP multiplier for boss fights (tune with the run report's bossFights)
 const FMT={
   arena:   {walls:1,floor:1,horde:0,  zoom:2*ARENA_R,big:'BOSS ARENA',  sub:'Just you and it'},
   floe:    {walls:1,floor:1,horde:0,  zoom:2*FLOE_R0,big:'THIN ICE',    sub:'The floe is breaking up'},
@@ -1302,11 +1312,11 @@ function drawBossMarks(ox,oy){
 }
 
 /* ---- boss attacks ---- */
-function bShot(e,a,spd,dmgK,o){const B=bossOf(e);EB.push(Object.assign({x:e.x,y:e.y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:4,dmg:e.dmg*dmgK,from:B.name,col:B.bul},o||{}))}
+function bShot(e,a,spd,dmgK,o){dmgK*=BOSS_DMG;const B=bossOf(e);EB.push(Object.assign({x:e.x,y:e.y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:4,dmg:e.dmg*dmgK,from:B.name,col:B.bul},o||{}))}
 function bRing(e,n,spd,dmgK,o){const off=R();for(let i=0;i<n;i++)bShot(e,(i/n+off)*TAU,spd,dmgK,o)}
 function bLater(e,t,fn){e.q.push({t,fn})}
-function bShell(e,x,y,r,after){addZone('shell',x,y,r,1.1,{boom:{r,dmg:0,pd:e.dmg*1.1,col:bossOf(e).col,src:'boss',hostile:true,cause:bossOf(e).name,after}})}
-const bossFaster=e=>Math.max(.55,1-G.threat*.012)*Math.pow(.88,e.rage||0);   // quicker at higher threat, and when enraged
+function bShell(e,x,y,r,after){addZone('shell',x,y,r,1.1,{boom:{r,dmg:0,pd:e.dmg*1.1*BOSS_DMG,col:bossOf(e).col,src:'boss',hostile:true,cause:bossOf(e).name,after}})}
+const bossFaster=e=>Math.max(.5,.88-G.threat*.012)*Math.pow(.88,e.rage||0);   // quicker at higher threat, and when enraged
 /* how the boss moves between attacks, by fight type (null = walk toward you) */
 function bossMove(e,dx,dy,d){
   const A=G.arena;if(!A)return null;
@@ -1487,7 +1497,7 @@ function kill(e,src){
     else if(R()<.004*L)PU.push({kind:'vac',x:e.x,y:e.y,t:0,vx:0,vy:-20});
     else if(R()<(.003+G.threat*.0003)*L)PU.push({kind:'bomb',x:e.x,y:e.y,t:0,vx:0,vy:-20});
     else if(R()<.005*L)PU.push({kind:randomPickup(),x:e.x,y:e.y,t:0,vx:0,vy:-20});
-    else if(R()<(e.elite?.012:.0004))PU.push({kind:'maxhp',x:e.x,y:e.y,t:0,vx:0,vy:-20});
+    else if(R()<(e.elite?.007:.0003))PU.push({kind:'maxhp',x:e.x,y:e.y,t:0,vx:0,vy:-20});
   }
   // death behaviors
   if(e.type==='exploder')addZone('fuse',e.x,e.y,22,.45,{boom:{x:e.x,y:e.y,r:22,dmg:30*S.dmg,pd:e.dmg*1.4,col:'#ffb627',src:'exploder',hostile:true}});
@@ -2341,7 +2351,7 @@ function render(){
     if(cl&&K2.friendly&&!K2.hostile){ctx.save();ctx.globalAlpha=.5;drawZone(z,ox,oy);ctx.restore();ctx.globalAlpha=1;continue}
     drawZone(z,ox,oy);
     if(cl&&K2.hostile&&z.r>=10&&z.kind!=='spike'&&z.kind!=='ftrail'){ctx.globalAlpha=.3+.15*Math.sin(G.time*5);ring(z.x-ox,z.y-oy,z.kind==='pit'?z.r+2:z.r,'#ff3b5c');ctx.globalAlpha=1}}}
-  drawBossMarks(ox,oy);drawCampGround(ox,oy);drawDecoy(ox,oy);
+  drawBossMarks(ox,oy);drawCampGround(ox,oy);drawDecoy(ox,oy);drawCampWarning(ox,oy);
   for(const sh of SHRINES){const x=RK(sh.x-ox),y=RK(sh.y-oy),c=`hsl(${(G.time*120)%360},90%,62%)`;
     ctx.globalAlpha=Math.min(1,sh.t/2);ctx.fillStyle='#3a3150';ctx.fillRect(x-6,y-3,13,7);ctx.fillStyle='#5a4f78';ctx.fillRect(x-6,y-3,13,1);
     ctx.fillStyle=c;ctx.fillRect(x-2,y-1,5,3);ctx.globalAlpha=Math.min(1,sh.t/2)*(.25+.1*Math.sin(G.time*5));ctx.fillRect(x-1,y-30,3,28);ctx.globalAlpha=1;
