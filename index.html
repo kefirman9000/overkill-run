@@ -120,6 +120,15 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 .btns button.go{background:var(--threat);color:#0d0b14;font-weight:700}
 #lvlBtns{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 #rerollBtn{font-size:11px;padding:9px 12px}
+#cashBtn{font-size:11px;padding:9px 12px}
+#lvl.surge .up{min-height:0;padding:8px 9px;gap:5px;font-size:15px}
+#lvl.surge #cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#lvl.surge h2{order:-2;font-size:18px}
+#lvl.surge #lvlBtns{order:-1}
+#lvl.surge .up .ky{display:none}
+#lvl.surge .up.taken{opacity:.25;pointer-events:none}
+#lvl.surge .up[disabled]{opacity:.45;cursor:not-allowed}
+.up .cost{font-family:var(--font-d);font-size:9px;color:#0d0b14;background:#ffd84a;padding:2px 5px}
 .notes{display:flex;flex-direction:column;gap:6px;color:var(--dim)}
 .notes textarea{width:100%;background:#000;color:var(--ink);border:0;box-shadow:0 0 0 2px var(--edge);font-family:var(--font-b);font-size:17px;padding:8px;resize:vertical;user-select:text;-webkit-user-select:text}
 #installBtn{display:none}
@@ -214,7 +223,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
   <div class="card">
     <h2 id="lvlHead">LEVEL UP</h2>
     <div id="cards"></div>
-    <div id="lvlBtns"><span class="note" id="rrNote"></span><button id="rerollBtn">REROLL (R)</button></div>
+    <div id="lvlBtns"><span class="note" id="rrNote"></span><button id="cashBtn" hidden>CASH OUT (C)</button><button id="rerollBtn">REROLL (R)</button></div>
   </div>
 </div>
 
@@ -258,6 +267,8 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
     <div class="pickrow" id="optMusic"><button data-v="1">MUSIC ON</button><button data-v="0">MUSIC OFF</button></div>
     <div class="pickrow" id="optHap"><button data-v="1">VIBRATION ON</button><button data-v="0">VIBRATION OFF</button></div>
     <div class="pickrow" id="optZoom"><button data-v="1">AUTO ZOOM</button><button data-v="0">FIXED CAMERA</button></div>
+    <div class="pickrow" id="optAuto"><button data-v="0">AUTO-PICK OFF</button><button data-v="5">AUTO-PICK AT 5+ BANKED</button></div>
+    <p class="note">Level-ups that pile up are banked; 3 or more open one Power Surge screen. Auto-pick takes evolutions, then your weapons, then the rarest card.</p>
     <p class="note">Auto zoom starts close and pulls back as enemies crowd around you.</p>
     <div class="btns"><button class="go" id="optDone">DONE</button></div>
   </div>
@@ -278,7 +289,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.8.2';
+const VERSION='1.9.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -510,7 +521,7 @@ const RELICS={
 let chosenW='pea';const chosenR=new Set();
 
 /* ================= control settings ================= */
-const CFG_DEF={mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:.4,autoZoom:1,music:1,haptics:1,detail:0};
+const CFG_DEF={autoPick:0,mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:.4,autoZoom:1,music:1,haptics:1,detail:0};
 let CFG=Object.assign({},CFG_DEF);
 try{const c=JSON.parse(localStorage.getItem('overkill-run-controls')||'null');if(c)CFG=Object.assign(CFG,c)}catch(e){}
 function saveCfg(){try{localStorage.setItem('overkill-run-controls',JSON.stringify(CFG))}catch(e){}}
@@ -551,7 +562,7 @@ let isTouch=matchMedia('(pointer: coarse)').matches;
 function reset(opts){
   const daily=!!opts.daily,seedStr=daily?new Date().toLocaleDateString('en-CA'):'';
   cardRand=daily?mulberry32(strHash('overkill-'+seedStr)):Math.random;
-  G={state:'play',daily,seedStr,startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,
+  G={state:'play',daily,seedStr,startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,lvCD:0,surges:0,cashedOut:0,autoPicked:0,
     threat:0,tp:0,biomeI:0,biomePrev:0,morph:1,streak:0,streakT:0,bestStreak:0,stop:0,shake:0,flash:0,hurt:0,spawnAcc:0,packT:12,hazT:6,
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
     taken:{},hurtBy:{},log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
@@ -567,7 +578,7 @@ function reset(opts){
   if(G.relics.includes('mutagen')){const pool=CARDS.filter(c=>c.r===2&&c.id!=='dash'&&cardRelevant(c));const c=pool[Math.floor(cardRand()*pool.length)];takeCard(c,[c.name],true)}
   $('toasts').innerHTML='';
 }
-const xpNeed=l=>Math.round(5+l*4+Math.pow(l,1.6));
+const xpNeed=l=>Math.round(5+l*4+Math.pow(l,1.6)+(l>20?2*(l-20)*(l-20):0));   // steeper past 20 so late runs don't level every second
 
 /* ================= audio ================= */
 let AC=null,muted=false,noiseBuf=null;const lastSnd={};
@@ -924,36 +935,99 @@ function makeOffers(){
   if(evo.length&&!out.some(c=>c.evo)){const lowest=out.reduce((m,c,i)=>c.r<out[m].r?i:m,0);out[lowest]=evo[0]}
   return out;
 }
-let offers=[];
+let offers=[],surge=false;
+/* Level-ups that come faster than one per few seconds are banked (G.pendingLv). One bank opens the normal
+   pick-one screen; 3+ open a POWER SURGE: a hand of 6 cards (1 banked level each), surge cards that spend
+   2-3 at once, and CASH OUT to turn what's left into overkill meter + HP. */
+const SURGE_AT=3,LV_GAP=3;
+function surgeCards(){
+  const out=[];
+  for(const w of W){
+    if(w.lvl>=6&&!w.evo){
+      const mc=CARDS.find(c=>c.id===EVO[w.id].mut),have=(G.taken[EVO[w.id].mut]||0)>0;
+      if(!have&&mc)out.push({id:'sevo:'+w.id,r:3,cost:3,tag:'SURGE',name:'Fast Evolution: '+EVO[w.id].name,icon:'w:'+w.id,wcol:'#ffa31a',
+        desc:'Gain '+EVO[w.id].mutName+' and evolve '+WDEF[w.id].name+' now.',apply:()=>{takeCard(mc,['(surge)'],true);w.evo=1;banner('EVOLVED',EVO[w.id].name);G.flash=Math.max(G.flash,.5);buzz(60)}});
+    }else if(w.lvl<=4)out.push({id:'sovr:'+w.id,r:2,cost:2,tag:'SURGE',name:'Overcharge: '+WDEF[w.id].name,icon:'w:'+w.id,wcol:WDEF[w.id].col,
+      desc:WDEF[w.id].name+' gains 2 levels (to Lv '+(w.lvl+2)+').',apply:()=>{w.lvl=Math.min(6,w.lvl+2)}});
+  }
+  const big=CARDS.filter(c=>c.r>=3&&cardAvail(c));
+  if(big.length){const c=big[Math.floor(cardRand()*big.length)];
+    out.push({id:'sbig:'+c.id,r:c.r,cost:2,tag:'SURGE',name:c.name,icon:c.icon,desc:c.desc,apply:()=>{c.apply();G.taken[c.id]=(G.taken[c.id]||0)+1}});}
+  // two at most: evolutions first
+  out.sort((a,b)=>b.cost-a.cost||cardRand()-.5);
+  return out.slice(0,2);
+}
+function surgeHand(keep){
+  // keep unpicked cards that still make sense (weapon cards refreshed), fill up to 6 normal cards
+  const wc=weaponCards(),hand=[];
+  for(const c of keep||[]){
+    if(c.taken||c.cost)continue;
+    if(c.weapon){const n=wc.find(x=>x.id===c.id);if(n)hand.push(n)}
+    else if(cardAvail(c))hand.push(c);
+  }
+  for(let tries=0;hand.length<6&&tries<6;tries++)for(const c of makeOffers())if(hand.length<6&&!hand.some(h=>h.id===c.id))hand.push(c);
+  return surgeCards().concat(hand);                                   // surge cards first, where they're seen
+}
 function openLevelUp(){
-  G.state='levelup';offers=makeOffers();renderOffers();
+  if(CFG.autoPick&&G.pendingLv>=CFG.autoPick){autoPickAll();return}
+  surge=G.pendingLv>=SURGE_AT;
+  G.state='levelup';
+  if(surge){G.surges++;offers=surgeHand();snd('level');G.flash=Math.max(G.flash,.3)}else offers=makeOffers();
+  renderOffers();
 }
 function renderOffers(){
-  $('lvlHead').textContent='LEVEL '+G.level+(G.pendingLv>1?'  (+'+(G.pendingLv-1)+' more)':'')+' · PICK ONE';
+  $('lvl').classList.toggle('surge',surge);
+  $('lvlHead').textContent=surge?'POWER SURGE · '+G.pendingLv+' BANKED LEVEL'+(G.pendingLv>1?'S':'')+' · LV '+G.level:'LEVEL '+(G.level-G.pendingLv+1)+' · PICK ONE';
   $('cards').innerHTML=offers.map((c,i)=>{
-    const col=RC[c.r],ic=iconURL(c.icon,c.wcol||col);
-    return `<button class="up${c.r===4?' glitch':''}" data-i="${i}" style="--c:${col}"><span class="tag">${RN[c.r]}${c.tag?' · '+esc(c.tag):''}</span><img src="${ic}" alt=""><span class="nm">${esc(c.name)}</span><span class="ds">${esc(c.desc)}</span><span class="ky">PRESS ${i+1}</span></button>`;
+    const col=RC[c.r],ic=iconURL(c.icon,c.wcol||col),cost=c.cost||1,poor=surge&&cost>G.pendingLv;
+    return `<button class="up${c.r===4?' glitch':''}${c.taken?' taken':''}" data-i="${i}" style="--c:${col}"${poor?' disabled':''}><span class="tag">${c.cost?'SURGE':RN[c.r]}${c.tag&&!c.cost?' · '+esc(c.tag):''}</span>${surge&&c.cost?`<span class="cost">COSTS ${c.cost} LEVELS</span>`:''}<img src="${ic}" alt=""><span class="nm">${esc(c.name)}</span><span class="ds">${esc(c.desc)}</span><span class="ky">${i<9?'PRESS '+(i+1):''}</span></button>`;
   }).join('');
   $('lvl').hidden=false;
+  $('cashBtn').hidden=!surge;$('cashBtn').textContent='CASH OUT '+G.pendingLv+' (C)';
   $('rerollBtn').hidden=G.rerolls<=0;$('rerollBtn').textContent='REROLL · '+G.rerolls+' LEFT';
-  $('rrNote').textContent=G.rerolls>0?'':'Kill streaks of 100 earn rerolls.';
-  const first=$('cards').querySelector('button');if(first&&!isTouch)first.focus({preventScroll:true});
+  $('rrNote').textContent=surge?'Each card costs 1 banked level. Cash out turns the rest into overkill meter and HP.':G.rerolls>0?'':'Kill streaks of 100 earn rerolls.';
+  const first=$('cards').querySelector('button:not([disabled])');if(first&&!isTouch)first.focus({preventScroll:true});
 }
-function reroll(){if(G.state!=='levelup'||G.rerolls<=0)return;G.rerolls--;G.rerollsUsed++;offers=makeOffers();renderOffers();snd('pick',1)}
+function reroll(){if(G.state!=='levelup'||G.rerolls<=0)return;G.rerolls--;G.rerollsUsed++;offers=surge?surgeHand():makeOffers();renderOffers();snd('pick',1)}
 $('rerollBtn').onclick=reroll;
+$('cashBtn').onclick=()=>cashOut();
 $('cards').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(b)chooseCard(+b.dataset.i)});
 function takeCard(c,offerNames,silent){
-  c.apply();G.taken[c.id]=(G.taken[c.id]||0)+1;G.hudDirty=true;
-  G.log.push({t:Math.round(G.time),lv:G.level,pick:c.name,rarity:RN[c.r],offered:offerNames});
+  c.apply();if(!c.cost)G.taken[c.id]=(G.taken[c.id]||0)+1;G.hudDirty=true;
+  G.log.push({t:Math.round(G.time),lv:G.level-G.pendingLv+1,pick:c.name,rarity:c.cost?'SURGE':RN[c.r],offered:offerNames});
   if(!silent)toast(c.r,c.name);
 }
+function closeLevelUp(){$('lvl').hidden=true;$('lvl').classList.remove('surge');G.state='play';surge=false;G.lvCD=LV_GAP}
 function chooseCard(i){
-  if(G.state!=='levelup'||!offers[i])return;
-  const c=offers[i];takeCard(c,offers.map(o=>o.name+' ('+RN[o.r][0]+')'));
+  if(G.state!=='levelup'||!offers[i]||offers[i].taken)return;
+  const c=offers[i],cost=surge?(c.cost||1):1;
+  if(cost>G.pendingLv)return;
+  takeCard(c,surge?['(power surge)']:offers.map(o=>o.name+' ('+RN[o.r][0]+')'));
   snd('pick',c.r);burst(P.x,P.y,RC[c.r],14+c.r*6,60+c.r*20,.5);
   if(c.r>=3){G.flash=Math.max(G.flash,.3)}
-  G.pendingLv--;$('lvl').hidden=true;G.state='play';
-  if(G.pendingLv>0)openLevelUp();
+  G.pendingLv-=cost;
+  if(surge&&G.pendingLv>0){c.taken=1;offers=surgeHand(offers);renderOffers();return}
+  closeLevelUp();
+}
+function cashOut(){
+  if(G.state!=='levelup'||!surge||G.pendingLv<=0)return;
+  const n=G.pendingLv;G.cashedOut+=n;G.pendingLv=0;
+  G.okm+=n*60;const hp=Math.round(n*P.max*.05);P.hp=Math.min(P.max,P.hp+hp);
+  G.log.push({t:Math.round(G.time),lv:G.level,pick:'Cash out '+n+' levels',rarity:'SURGE',offered:[]});
+  toast(2,'Cashed out '+n+': overkill meter + '+hp+' HP');snd('pick',2);
+  closeLevelUp();
+}
+/* auto-pick (options): evolutions, then the weapons you hold, then a new weapon, then the rarest card */
+function autoScore(c){return c.evo?1000:c.weapon&&c.id.startsWith('lvl:')?500+c.r:c.weapon?300+c.r:c.r*10+cardRand()}
+function autoPickAll(){
+  const names=[];
+  while(G.pendingLv>0){
+    const o=makeOffers();if(!o.length)break;
+    const c=o.reduce((a,b)=>autoScore(b)>autoScore(a)?b:a);
+    takeCard(c,o.map(x=>x.name+' ('+RN[x.r][0]+')').concat(['(auto)']),true);G.pendingLv--;G.autoPicked++;names.push(c.name);
+  }
+  G.pendingLv=0;G.lvCD=LV_GAP;
+  toast(2,'Auto-picked '+names.length+': '+names.slice(0,4).join(', ')+(names.length>4?'…':''));snd('pick',2);
 }
 
 /* ================= threat & biome ================= */
@@ -1284,7 +1358,8 @@ function update(dt){
   G.peakE=Math.max(G.peakE,E.length);G.peakPB=Math.max(G.peakPB,PB.length);
   G.tlT-=dt;if(G.tlT<=0){G.tlT=30;G.timeline.push({t:Math.round(G.time),kills:G.kills,threat:G.threat,lv:G.level,alive:E.length,hp:Math.round(P.hp)+'/'+P.max,fps:G.fpsWin.length>=30?curFps():null})}
   // ---- level ups
-  if(G.pendingLv>0&&G.stop<=0&&G.state==='play')openLevelUp();
+  G.lvCD-=dt;
+  if(G.pendingLv>0&&G.stop<=0&&G.state==='play'&&G.lvCD<=0&&!G.mode)openLevelUp();
   G.hudT-=dt;if(G.hudT<=0){G.hudT=.1;updateHud()}
 }
 function hurtPlayerEnv(d,cause){
@@ -1534,7 +1609,7 @@ function updateHud(){
   $('killTxt').textContent=G.kills;$('timeTxt').textContent=fmtT(G.time);
   $('tierTxt').textContent='THREAT '+G.threat+' · '+landName(G.threat).toUpperCase();
   $('threatFill').style.width=clamp((G.tp-tpFor(G.threat))/(tpFor(G.threat+1)-tpFor(G.threat)),0,1)*100+'%';
-  $('xpFill').style.width=(G.xp/G.need*100)+'%';$('lvTxt').textContent='LV '+G.level;$('xpTxt').textContent=G.xp+'/'+G.need;
+  $('xpFill').style.width=(G.xp/G.need*100)+'%';$('lvTxt').textContent='LV '+G.level+(G.pendingLv>0&&G.state==='play'?' · +'+G.pendingLv+' BANKED':'');$('xpTxt').textContent=G.xp+'/'+G.need;
   $('streakTxt').textContent=G.streak>=10?'x'+G.streak+' STREAK':'';
   const okNeed=300+G.okUses*200;$('okFill').style.width=Math.min(100,G.okm/okNeed*100)+'%';
   const mw=$('modeWrap');if(G.mode){const M=MODES[G.mode.id];mw.hidden=false;mw.style.setProperty('--mc',M.col);$('modeName').textContent=M.name+' '+Math.ceil(G.mode.t)+'s';$('modeFill').style.width=(G.mode.t/G.mode.max*100)+'%'}else mw.hidden=true;
@@ -1559,7 +1634,7 @@ function buildReport(){
     mode:G.daily?'daily '+G.seedStr:'normal',startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
       bossesKilled:G.bossKills,bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
-    weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,notes:G.notes,
+    weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
     damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
     upgrades:G.log,superModes:G.modesUsed,timeline:G.timeline,
@@ -1723,7 +1798,7 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 let optsFrom=null;
 function syncOpts(){
   const mark=(id,v)=>$(id).querySelectorAll('button').forEach(b=>b.classList.toggle('sel',b.dataset.v===String(v)));
-  mark('optMode',CFG.mode);mark('optUI',CFG.ui);mark('optTap',CFG.tapDash);mark('optShake',CFG.shake);mark('optDetail',CFG.detail);mark('optZoom',CFG.autoZoom);mark('optMusic',CFG.music);mark('optHap',CFG.haptics);
+  mark('optMode',CFG.mode);mark('optUI',CFG.ui);mark('optTap',CFG.tapDash);mark('optShake',CFG.shake);mark('optDetail',CFG.detail);mark('optZoom',CFG.autoZoom);mark('optMusic',CFG.music);mark('optHap',CFG.haptics);mark('optAuto',CFG.autoPick);
   $('optJs').value=Math.round(CFG.jsize*100);$('optJsV').textContent=Math.round(CFG.jsize*100)+'%';
   $('optDead').value=Math.round(CFG.dead*100);$('optDeadV').textContent=Math.round(CFG.dead*100)+'%';
   $('optDs').value=Math.round(CFG.dsize*100);$('optDsV').textContent=Math.round(CFG.dsize*100)+'%';
@@ -1736,7 +1811,7 @@ function openOpts(){
 function closeOpts(){saveCfg();$('opts').hidden=true;$(optsFrom||'title').hidden=false;applyControls()}
 document.querySelectorAll('.optBtn').forEach(b=>b.onclick=openOpts);
 const pickHandler=(id,key,num)=>$(id).addEventListener('click',e=>{const b=e.target.closest('button[data-v]');if(!b)return;CFG[key]=num?+b.dataset.v:b.dataset.v;saveCfg();syncOpts();applyControls()});
-pickHandler('optMode','mode');pickHandler('optUI','ui');pickHandler('optTap','tapDash',1);pickHandler('optShake','shake',1);pickHandler('optDetail','detail',1);pickHandler('optZoom','autoZoom',1);pickHandler('optMusic','music',1);pickHandler('optHap','haptics',1);
+pickHandler('optMode','mode');pickHandler('optUI','ui');pickHandler('optTap','tapDash',1);pickHandler('optShake','shake',1);pickHandler('optDetail','detail',1);pickHandler('optZoom','autoZoom',1);pickHandler('optMusic','music',1);pickHandler('optHap','haptics',1);pickHandler('optAuto','autoPick',1);
 const sliderHandler=(id,key)=>$(id).addEventListener('input',e=>{CFG[key]=+e.target.value/100;syncOpts();applyControls()});
 sliderHandler('optJs','jsize');sliderHandler('optDead','dead');sliderHandler('optDs','dsize');sliderHandler('optOp','op');
 $('optDone').onclick=closeOpts;
@@ -1779,7 +1854,7 @@ const DASH_KEYS=['Space','ShiftLeft','ShiftRight','KeyK'];
 addEventListener('keydown',e=>{
   if(e.target&&e.target.tagName==='TEXTAREA')return;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
-  if(G.state==='levelup'){const n={Digit1:0,Digit2:1,Digit3:2,Numpad1:0,Numpad2:1,Numpad3:2}[e.code];if(n!==undefined){chooseCard(n);return}if(e.code==='KeyR'){reroll();return}}
+  if(G.state==='levelup'){const m=/^(?:Digit|Numpad)([1-9])$/.exec(e.code);if(m){chooseCard(+m[1]-1);return}if(e.code==='KeyR'){reroll();return}if(e.code==='KeyC'){cashOut();return}}
   if(G.state==='title'&&e.code==='Enter'&&!$('title').hidden&&document.activeElement===document.body){start(false);return}
   if(DASH_KEYS.includes(e.code)&&!e.repeat&&G.state==='play')dashQueued=true;
   keys[e.code]=true;
