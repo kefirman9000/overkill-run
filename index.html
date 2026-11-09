@@ -289,7 +289,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.9.0';
+const VERSION='1.9.1';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -662,7 +662,7 @@ function nearest(x,y,range,exclude){
 }
 
 /* ================= scaling ================= */
-const hpScale=()=>1+G.threat*.32+G.threat*G.threat*.03;
+const hpScale=()=>1+G.threat*.32+G.threat*G.threat*.03+Math.pow(Math.max(0,G.threat-10),3)*.02;   // late threats keep up with maxed builds (x24 -> x68 at threat 23)
 const eDmgScale=()=>1+G.threat*.1;
 const spawnRate=()=>1.1+G.threat*.85+Math.min(3,G.time/100);
 const maxAlive=()=>Math.min(420,55+G.threat*24);
@@ -689,7 +689,7 @@ function spawnEnemy(type,x,y,o={}){
   type=type||chooseType();
   if(x===undefined){const a=R()*TAU,d=Math.hypot(LW,LH)/2+14;x=P.x+Math.cos(a)*d;y=P.y+Math.sin(a)*d}
   const T=ET[type];
-  const eliteCh=Math.min(.3,Math.max(0,(G.threat-1)*.025)+Math.min(.05,G.streak/2000));
+  const eliteCh=Math.min(G.threat>15?Math.min(.45,.3+(G.threat-15)*.02):.3,Math.max(0,(G.threat-1)*.025)+Math.min(.05,G.streak/2000));
   const elite=o.elite??(type!=='boss'&&type!=='mini'&&R()<eliteCh);
   const hp=T.hp*hpScale()*(elite?3.5:1)*(o.hpMul||1);
   const shift=biomeOf(G.threat).b.eh;
