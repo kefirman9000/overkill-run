@@ -254,7 +254,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.2.0';
+const VERSION='1.3.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -465,7 +465,7 @@ function reset(opts){
   G={state:'play',daily,seedStr,startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,
     threat:0,tp:0,biomeI:0,biomePrev:0,morph:1,streak:0,streakT:0,bestStreak:0,stop:0,shake:0,flash:0,hurt:0,spawnAcc:0,packT:12,hazT:6,
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
-    taken:{},log:[],timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
+    taken:{},hurtBy:{},log:[],timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
   P={x:0,y:0,vx:0,vy:0,hp:100,max:100,inv:0,face:1,moving:false,dashes:1,dashCd:0,dashT:0,ddx:1,ddy:0,chill:0,lx:0,ly:0};
   S={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,regen:0,multi:0,pierce:0,bounce:0,rear:0,circle:0,split:0,grow:0,burn:0,freeze:0,frostKill:0,chainKill:0,
     trail:0,dashMax:1,dashShock:0,orbitShots:0,nuke:0,pulse:0,hole:0,momentum:0,scorch:0,double:0,stasis:0,killNeedle:0,horizonDash:0};
@@ -535,11 +535,11 @@ function nearest(x,y,range,exclude){
 }
 
 /* ================= scaling ================= */
-const hpScale=()=>1+G.threat*.42+G.threat*G.threat*.035;
+const hpScale=()=>1+G.threat*.32+G.threat*G.threat*.03;
 const eDmgScale=()=>1+G.threat*.1;
 const spawnRate=()=>1.1+G.threat*.85+Math.min(3,G.time/100);
-const maxAlive=()=>Math.min(520,50+G.threat*30);
-const tpFor=n=>30*n*(n+1)/2;
+const maxAlive=()=>Math.min(420,55+G.threat*24);
+const TPK=45;const tpFor=n=>TPK*n*(n+1)/2;
 function luck(){return G.threat*.7+Math.min(8,G.streak/30)}
 function dmgMul(){
   let m=S.dmg;
@@ -702,7 +702,7 @@ function explode(q){
 }
 function hurtPlayer(d,cause){
   if(P.inv>0||G.state!=='play')return;
-  P.hp-=d;P.inv=.6;G.hurt=.25;G.shake=Math.max(G.shake,2.5);snd('hurt');burst(P.x,P.y,'#ff4d6d',8,50,.4);G.lastHit=cause;
+  P.hp-=d;P.inv=.6;G.hurt=.25;G.hurtBy[cause||'unknown']=(G.hurtBy[cause||'unknown']||0)+d;G.shake=Math.max(G.shake,2.5);snd('hurt');burst(P.x,P.y,'#ff4d6d',8,50,.4);G.lastHit=cause;
   if(P.hp<=0){P.hp=0;gameOver()}
 }
 function spawnProj(x,y,a,spd,o){
@@ -799,8 +799,8 @@ function chooseCard(i){
 
 /* ================= threat & biome ================= */
 function updateThreat(){
-  G.tp=G.kills+G.time*1.2+G.bossKills*60;
-  const L=Math.floor((Math.sqrt(1+8*G.tp/30)-1)/2);
+  G.tp=G.kills*.8+G.time*1.2+G.bossKills*60;
+  const L=Math.floor((Math.sqrt(1+8*G.tp/TPK)-1)/2);
   while(G.threat<L){
     G.threat++;snd('threat');G.hudDirty=true;
     const bi=biomeOf(G.threat).i;
@@ -955,7 +955,7 @@ function update(dt){
   if(bw){
     G.oang+=dt*(3.4+bw.lvl*.1);const n=Math.min(14,2+bw.lvl+Math.floor(S.multi/2))*(S.double?2:1),Rr=(22+bw.lvl*2)*S.area,lm=(1+.2*(bw.lvl-1))*dmgMul();
     for(let i=0;i<n;i++){const a=G.oang+i*TAU/n,x=P.x+Math.cos(a)*Rr,y=P.y+Math.sin(a)*Rr;G.blades.push([x,y]);
-      query(x,y,10,e=>{if(e.oc>0)return;const dx=e.x-x,dy=e.y-y,d=Math.hypot(dx,dy)||1;if(d<e.r+3){e.oc=.3;hurt(e,8*lm,{proc:true,kx:dx/d,ky:dy/d,col:'#9be15d',src:'blade'})}})}
+      query(x,y,10,e=>{if(e.oc>0)return;const dx=e.x-x,dy=e.y-y,d=Math.hypot(dx,dy)||1;if(d<e.r+3){e.oc=.25;hurt(e,12*lm,{proc:true,kx:dx/d,ky:dy/d,col:'#9be15d',src:'blade'})}})}
   }
 
   // ---- projectiles
@@ -1046,7 +1046,7 @@ function update(dt){
 }
 function hurtPlayerEnv(d,cause){
   if(G.state!=='play')return;
-  P.hp-=d;G.hurt=Math.max(G.hurt,.12);G.lastHit=cause;
+  P.hp-=d;G.hurt=Math.max(G.hurt,.12);G.lastHit=cause;G.hurtBy[cause||'unknown']=(G.hurtBy[cause||'unknown']||0)+d;
   if(P.hp<=0){P.hp=0;gameOver()}
 }
 const GEMV=[1,3,8,20,50];
@@ -1277,7 +1277,7 @@ function buildReport(){
       bossesKilled:G.bossKills,bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl),
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
-    damageBySource:dmg,killsBySource:G.killsBy,killsByEnemy:G.killsByType,
+    damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
     upgrades:G.log,timeline:G.timeline,
     perf:{avgFps:G.frames?Math.round(G.frames/G.ftSum):0,worstFps:G.fpsMin===999?0:Math.round(G.fpsMin),peakEnemies:G.peakE,peakProjectiles:G.peakPB},
     device:{viewport:innerWidth+'x'+innerHeight,pixelScale:SC,touch:isTouch,ua:navigator.userAgent},
@@ -1289,6 +1289,7 @@ function buildReport(){
     `${r.result.status==='died'?'Died to '+(G.lastHit||'something'):'Run in progress'} at ${r.result.time}: ${G.kills} kills, level ${G.level}, threat ${G.threat} in ${landName(G.threat)}.`,
     `Start: ${r.startWeapon}${r.relics.length?' + '+r.relics.join(', '):''}. Weapons now: ${r.weapons.join(', ')}.`,
     `Damage: ${top||'none'}. Best streak ${G.bestStreak}. Avg ${r.perf.avgFps} fps, worst ${r.perf.worstFps}, peak ${G.peakE} enemies.`,
+    `Hurt by: ${Object.entries(r.damageTakenFrom).slice(0,4).map(([k,v])=>k+' '+v).join(', ')||'nothing'}.`,
     `Picks: ${G.log.map(l=>l.pick).join(' > ')||'none'}`,
     '',
     'My notes for Claude: (write what felt good, bad, too easy, too hard)',
