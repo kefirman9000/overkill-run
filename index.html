@@ -278,7 +278,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.8.1';
+const VERSION='1.8.2';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -540,7 +540,7 @@ function startMode(id,from){
   if(id==='turret')TURRETS.push({x:P.x,y:P.y,t:M.dur,cd:0});
   if(id==='titan')P.inv=Math.max(P.inv,.3);
   G.modesUsed.push({t:Math.round(G.time),mode:M.name,from});
-  banner(M.name,M.sub);G.flash=Math.max(G.flash,.45);G.stop=Math.max(G.stop,.12);G.shake=Math.max(G.shake,3);
+  banner(M.name,M.sub);G.flash=Math.max(G.flash,.45);G.stop=Math.max(G.stop,.12);
   RINGS.push({x:P.x,y:P.y,r:0,max:90,life:.45,t:0,c:M.col,noFill:1});burst(P.x,P.y,M.col,30,110,.6,2);
   snd('level');buzz(60);G.hudDirty=true;
 }
@@ -693,7 +693,7 @@ function spawnBoss(){
   const b=spawnEnemy('boss',P.x+Math.cos(a)*d,P.y+Math.sin(a)*d,{elite:false,hpMul:1+G.threat*.3});
   b.cd=2;b.sum=6;G.boss=b;
   $('bossName').textContent='WARDEN OF '+landName(G.threat).toUpperCase();
-  banner('WARDEN','A boss has entered the arena');snd('boss');G.shake=4;
+  banner('WARDEN','A boss has entered the arena');snd('boss');
 }
 
 /* ================= zones ================= */
@@ -786,8 +786,8 @@ function kill(e,src){
   if(e.type==='exploder')addZone('fuse',e.x,e.y,22,.45,{boom:{x:e.x,y:e.y,r:22,dmg:30*S.dmg,pd:e.dmg*1.4,col:'#ffb627',src:'exploder',hostile:true}});
   if(e.type==='bloater'){for(let i=0;i<3;i++){const m=spawnEnemy('mini',e.x+rnd(-4,4),e.y+rnd(-4,4),{elite:false});m.vx=rnd(-70,70);m.vy=rnd(-70,70)}addZone('ppuddle',e.x,e.y,10,5,{pd:7*(1+G.threat*.06)})}
   if(e.elite&&e.ex==='split'&&e.type!=='boss'){for(let i=0;i<2;i++){const c=spawnEnemy(e.type,e.x+rnd(-5,5),e.y+rnd(-5,5),{elite:false,hpMul:.5});c.vx=rnd(-60,60);c.vy=rnd(-60,60)}}
-  if(e.type==='boss'){buzz(90);G.boss=null;G.bossKills++;G.stop=.3;G.shake=7;G.flash=.7;snd('boom');banner('WARDEN DOWN','The threat climbs anyway')}
-  else if(e.elite){G.stop=Math.max(G.stop,.05);G.shake=Math.max(G.shake,2)}
+  if(e.type==='boss'){buzz(90);G.boss=null;G.bossKills++;G.stop=.3;G.shake=4;G.flash=.7;snd('boom');banner('WARDEN DOWN','The threat climbs anyway')}
+  else if(e.elite){G.stop=Math.max(G.stop,.05)}
   // mutations on kill
   if(S.frostKill){query(e.x,e.y,26,o=>{o.slow=Math.max(o.slow,1.6)});if(R()<.3)RINGS.push({x:e.x,y:e.y,r:0,max:24,life:.2,t:0,c:'#a6f0ff',noFill:1})}
   if(S.chainKill&&R()<S.chainKill)BOOMQ.push({x:e.x,y:e.y,r:18*S.area,dmg:18*dmgMul(),col:'#ff9f43',src:'chainkill'});
@@ -796,7 +796,7 @@ function kill(e,src){
   if(S.hole&&++G.okHole>=60){G.okHole=0;openHole()}
 }
 function pulse(){
-  G.flash=Math.max(G.flash,.4);G.shake=Math.max(G.shake,4);G.stop=Math.max(G.stop,.06);snd('boom');
+  G.flash=Math.max(G.flash,.4);G.shake=Math.max(G.shake,2);G.stop=Math.max(G.stop,.06);snd('boom');
   RINGS.push({x:P.x,y:P.y,r:0,max:Math.max(LW,LH),life:.45,t:0,c:'#ffb627',noFill:1});
   const hw=LW/2+10,hh=LH/2+10,d=30*dmgMul()*(1+G.level*.04);
   for(const e of E){if(e.dead)continue;if(Math.abs(e.x-P.x)<hw&&Math.abs(e.y-P.y)<hh){const dx=e.x-P.x,dy=e.y-P.y,l=Math.hypot(dx,dy)||1;hurt(e,d,{kx:dx/l,ky:dy/l,kb:90,silent:true,src:'pulse',elem:'blast'})}}
@@ -805,7 +805,7 @@ function openHole(){
   let best=null,bn=-1;
   for(let i=0;i<10&&E.length;i++){const e=E[Math.floor(R()*E.length)];if(e.dead)continue;if(Math.abs(e.x-P.x)>LW/2||Math.abs(e.y-P.y)>LH/2)continue;let n=0;query(e.x,e.y,30,()=>n++);if(n>bn){bn=n;best=e}}
   const x=best?best.x:P.x+rnd(-40,40),y=best?best.y:P.y+rnd(-40,40);
-  addZone('fhole',x,y,50*S.area,3.5,{ed:40*dmgMul(),src:'blackhole'});G.shake=Math.max(G.shake,2);
+  addZone('fhole',x,y,50*S.area,3.5,{ed:40*dmgMul(),src:'blackhole'});
 }
 function chainZap(first,from,count,dmg,src,frz){
   const hit=new Set([first]);let x=from.x,y=from.y,cur=first;
@@ -825,7 +825,7 @@ function explode(q){
   burst(x,y,col,10,r*3,.35);burst(x,y,'#fff',4,r*2,.2);
   query(x,y,r+10,e=>{const dx=e.x-x,dy=e.y-y,d=Math.hypot(dx,dy)||1;if(d<r+e.r)hurt(e,dmg,{kx:dx/d,ky:dy/d,kb:40,silent:true,col,src:q.src,elem:'blast'})});
   if(q.hostile&&Math.hypot(P.x-x,P.y-y)<r)hurtPlayer(q.pd||dmg,'an explosion');
-  G.shake=Math.max(G.shake,Math.min(3.5,r/10));snd('boom');
+  if(r>=34||q.hostile&&Math.hypot(P.x-x,P.y-y)<r+20)G.shake=Math.max(G.shake,Math.min(2.5,r/16));snd('boom');
 }
 function tryPhoenix(){
   if(!S.phoenix)return false;
@@ -837,7 +837,7 @@ function hurtPlayer(d,cause){
   buzz(35);P.hp-=d;P.inv=.75;
   // shove nearby enemies away so a surround has an exit
   query(P.x,P.y,24,o=>{if(o.type==='boss'||o.type==='crate')return;const dx=o.x-P.x,dy=o.y-P.y,l=Math.hypot(dx,dy)||1;o.vx+=dx/l*170;o.vy+=dy/l*170});
-  RINGS.push({x:P.x,y:P.y,r:0,max:22,life:.22,t:0,c:'#ff4d6d',noFill:1});G.hurt=.25;G.hurtBy[cause||'unknown']=(G.hurtBy[cause||'unknown']||0)+d;G.shake=Math.max(G.shake,2.5);snd('hurt');burst(P.x,P.y,'#ff4d6d',8,50,.4);G.lastHit=cause;
+  RINGS.push({x:P.x,y:P.y,r:0,max:22,life:.22,t:0,c:'#ff4d6d',noFill:1});G.hurt=.25;G.hurtBy[cause||'unknown']=(G.hurtBy[cause||'unknown']||0)+d;snd('hurt');burst(P.x,P.y,'#ff4d6d',8,50,.4);G.lastHit=cause;
   if(P.hp<=0){if(tryPhoenix())return;P.hp=0;gameOver()}
 }
 function spawnProj(x,y,a,spd,o){
@@ -951,7 +951,7 @@ function chooseCard(i){
   if(G.state!=='levelup'||!offers[i])return;
   const c=offers[i];takeCard(c,offers.map(o=>o.name+' ('+RN[o.r][0]+')'));
   snd('pick',c.r);burst(P.x,P.y,RC[c.r],14+c.r*6,60+c.r*20,.5);
-  if(c.r>=3){G.flash=Math.max(G.flash,.3);G.shake=Math.max(G.shake,2)}
+  if(c.r>=3){G.flash=Math.max(G.flash,.3)}
   G.pendingLv--;$('lvl').hidden=true;G.state='play';
   if(G.pendingLv>0)openLevelUp();
 }
@@ -985,7 +985,7 @@ function tryDash(){
   if(Math.hypot(dx,dy)<.2){const v=Math.hypot(P.vx,P.vy);if(v>5){dx=P.vx;dy=P.vy}else{dx=P.face;dy=0}}
   const l=Math.hypot(dx,dy)||1;P.ddx=dx/l;P.ddy=dy/l;
   P.dashes--;if(P.dashCd<=0)P.dashCd=1.4;P.dashT=.16;P.inv=Math.max(P.inv,.24);P.dashHit=new Set();
-  snd('dash');G.shake=Math.max(G.shake,1);G.hudDirty=true;
+  snd('dash');G.hudDirty=true;
   if(S.quickDraw)for(const w of W){if(w.id==='blade'||w.id==='oil'||w.id==='drone')continue;const c=fireWeapon(w);if(c)w.cd=c}
 }
 function update(dt){
@@ -1018,7 +1018,7 @@ function update(dt){
   G.leechWin-=dt;if(G.leechWin<=0){G.leechWin=1;G.leechUsed=0}
   P.inv-=dt;P.chill-=dt;if(S.regen>0)P.hp=Math.min(P.max,P.hp+S.regen*dt);
   cam.x+=(P.x-cam.x)*Math.min(1,dt*10);cam.y+=(P.y-cam.y)*Math.min(1,dt*10);
-  G.shake=Math.max(0,G.shake-dt*8);G.flash=Math.max(0,G.flash-dt*1.6);G.hurt=Math.max(0,G.hurt-dt);
+  G.shake=Math.max(0,Math.min(3,G.shake)-dt*10);G.flash=Math.max(0,G.flash-dt*1.6);G.hurt=Math.max(0,G.hurt-dt);
   G.morph=Math.min(1,G.morph+dt/5);G.needleCd-=dt;
   // camera zoom: pull back as the crowd near you grows, ease back in when it thins
   if(CFG.autoZoom){
@@ -1186,7 +1186,7 @@ function update(dt){
       const dx=e.x-b.x,dy=e.y-b.y;if(dx*dx+dy*dy>(e.r+rad)**2)return;
       const v=Math.hypot(b.vx,b.vy)||1;
       hurt(e,b.dmg*g,{proc:true,kx:b.vx/v,ky:b.vy/v,col:b.col,src:b.src,elem:b.elem});
-      if(b.kind==='nuke'){b.dead=true;BOOMQ.push({x:b.x,y:b.y,r:46*S.area,dmg:b.dmg*1.5,col:'#ff3b5c',src:'nuke'});G.shake=Math.max(G.shake,4);return}
+      if(b.kind==='nuke'){b.dead=true;BOOMQ.push({x:b.x,y:b.y,r:46*S.area,dmg:b.dmg*1.5,col:'#ff3b5c',src:'nuke'});G.shake=Math.max(G.shake,2.5);return}
       if(b.kind==='missile'){b.dead=true;BOOMQ.push({x:b.x,y:b.y,r:b.rad,dmg:b.dmg,col:'#ff5e5b',src:'missile'});return}
       if(b.kind==='fire'){b.dead=true;BOOMQ.push({x:b.x,y:b.y,r:b.rad,dmg:b.dmg*.8,col:'#ff7a2a',src:'fire',ring:b.napalm});return}
       if(!b.hit)b.hit=new Set();b.hit.add(e);
@@ -1202,7 +1202,7 @@ function update(dt){
   for(const z of Z){
     z.t+=dt;z.life-=dt;z.x+=z.vx*dt;z.y+=z.vy*dt;
     if(z.kind==='fuse'){if(z.life<=0&&!z.done){z.done=1;BOOMQ.push(z.boom)}continue}
-    if(z.kind==='drop'){if(z.life<=0&&!z.done){z.done=1;spawnEnemy('crate',z.x,z.y,{elite:false});burst(z.x,z.y,'#b8834a',10,50,.4);G.shake=Math.max(G.shake,1.5)}continue}
+    if(z.kind==='drop'){if(z.life<=0&&!z.done){z.done=1;spawnEnemy('crate',z.x,z.y,{elite:false});burst(z.x,z.y,'#b8834a',10,50,.4)}continue}
     if(z.kind==='shell'){if(z.life<=0&&!z.done){z.done=1;BOOMQ.push(Object.assign({x:z.x,y:z.y},z.boom));
       for(let i=0;i<z.bomblets;i++){const a=R()*TAU,d=rnd(14,30)*S.area;BOOMQ.push({x:z.x+Math.cos(a)*d,y:z.y+Math.sin(a)*d,r:z.boom.r*.55,dmg:z.boom.dmg*.5,col:'#ffd166',src:'bomb'})}}continue}
     const K=ZK[z.kind];
@@ -1297,7 +1297,7 @@ const GEMV=[1,3,8,20,50];
 function gainXp(v){
   G.xp+=v;
   while(G.xp>=G.need){G.xp-=G.need;G.level++;buzz(20);G.need=xpNeed(G.level);G.pendingLv++;
-    G.stop=Math.max(G.stop,.12);G.shake=Math.max(G.shake,2.5);G.flash=Math.max(G.flash,.25);snd('level');
+    G.stop=Math.max(G.stop,.12);G.flash=Math.max(G.flash,.25);snd('level');
     RINGS.push({x:P.x,y:P.y,r:0,max:60,life:.4,t:0,c:'#6be0ff',noFill:1});burst(P.x,P.y,'#6be0ff',24,90,.5)}
 }
 function collect(p){
@@ -1308,7 +1308,7 @@ function collect(p){
   if(p.kind==='bubble'){P.bubble=5;toast(1,'Invulnerable for 5s');snd('pick',2);return}
   if(p.kind==='frenzy'){P.frenzy=8;toast(1,'Frenzy: double fire rate for 8s');snd('pick',2);return}
   if(p.kind==='freezeAll'){const hw=LW/2+10,hh=LH/2+10;for(const e of E)if(Math.abs(e.x-P.x)<hw&&Math.abs(e.y-P.y)<hh)e.slow=3.5;G.flash=Math.max(G.flash,.3);toast(1,'Everything on screen frozen');snd('pick',2);return}
-  if(p.kind==='bomb'){G.flash=1;G.shake=6;G.stop=.08;snd('boom');const hw=LW/2+10,hh=LH/2+10;
+  if(p.kind==='bomb'){G.flash=1;G.shake=3.5;G.stop=.08;snd('boom');const hw=LW/2+10,hh=LH/2+10;
     for(const e of E){if(e.dead)continue;if(Math.abs(e.x-P.x)<hw&&Math.abs(e.y-P.y)<hh)hurt(e,(e.type==='boss'||e.elite)?150*dmgMul():1e9,{silent:true,src:'bomb',elem:'blast'})}
     EB.length=0;toast(3,'Screen wiped');}
 }
