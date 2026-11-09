@@ -278,7 +278,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.8.0';
+const VERSION='1.8.1';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -602,6 +602,7 @@ function snd(k,arg=0){
     case 'boom':noise(.32,.15);break;
     case 'zap':tone(1400,300,.08,'sawtooth',.022);break;
     case 'dash':tone(300,900,.1,'triangle',.06);break;
+    case 'beat':tone(70,40,.12,'sine',.12);tone(60,35,.12,'sine',.1,.16);break;
     case 'hurt':tone(170,50,.22,'sawtooth',.09);break;
     case 'level':[0,.07,.14,.21].forEach((d,i)=>tone(440*[1,1.25,1.5,2][i],440*[1,1.25,1.5,2][i]*1.02,.14,'square',.05,d));break;
     case 'pick':{const b=520+arg*140;tone(b,b*2,.12,'sine',.08);if(arg>=2)tone(b*1.5,b*3,.14,'sine',.06,.07);if(arg>=4)tone(b*2,b*4,.2,'square',.04,.14);break}
@@ -776,7 +777,7 @@ function kill(e,src){
   if(e.type==='boss'){for(let i=0;i<6;i++)dropGem(e.x+rnd(-12,12),e.y+rnd(-12,12),4);PU.push({kind:'heart',x:e.x,y:e.y,t:0,vx:0,vy:-20});PU.push({kind:'vac',x:e.x+8,y:e.y,t:0,vx:20,vy:0})}
   else{
     const lowHp=P.hp<P.max*.4;
-    if(R()<(lowHp?.025:.012))PU.push({kind:'heart',x:e.x,y:e.y,t:0,vx:0,vy:-20});
+    if(R()<(lowHp?.04:.012))PU.push({kind:'heart',x:e.x,y:e.y,t:0,vx:0,vy:-20});
     else if(R()<.004)PU.push({kind:'vac',x:e.x,y:e.y,t:0,vx:0,vy:-20});
     else if(R()<.003+G.threat*.0003)PU.push({kind:'bomb',x:e.x,y:e.y,t:0,vx:0,vy:-20});
     else if(R()<.004)PU.push({kind:pick(['bubble','frenzy','freezeAll']),x:e.x,y:e.y,t:0,vx:0,vy:-20});
@@ -833,7 +834,10 @@ function tryPhoenix(){
 function hurtPlayer(d,cause){
   if(P.inv>0||G.state!=='play'||P.bubble>0||isMode('titan'))return;
   if(P.shield>0){P.shield--;P.shieldT=Math.max(P.shieldT,8/Math.max(1,S.shieldMax));P.inv=.5;burst(P.x,P.y,'#6be0ff',12,60,.35);snd('zap');buzz(15);G.hudDirty=true;return}
-  buzz(35);P.hp-=d;P.inv=.6;G.hurt=.25;G.hurtBy[cause||'unknown']=(G.hurtBy[cause||'unknown']||0)+d;G.shake=Math.max(G.shake,2.5);snd('hurt');burst(P.x,P.y,'#ff4d6d',8,50,.4);G.lastHit=cause;
+  buzz(35);P.hp-=d;P.inv=.75;
+  // shove nearby enemies away so a surround has an exit
+  query(P.x,P.y,24,o=>{if(o.type==='boss'||o.type==='crate')return;const dx=o.x-P.x,dy=o.y-P.y,l=Math.hypot(dx,dy)||1;o.vx+=dx/l*170;o.vy+=dy/l*170});
+  RINGS.push({x:P.x,y:P.y,r:0,max:22,life:.22,t:0,c:'#ff4d6d',noFill:1});G.hurt=.25;G.hurtBy[cause||'unknown']=(G.hurtBy[cause||'unknown']||0)+d;G.shake=Math.max(G.shake,2.5);snd('hurt');burst(P.x,P.y,'#ff4d6d',8,50,.4);G.lastHit=cause;
   if(P.hp<=0){if(tryPhoenix())return;P.hp=0;gameOver()}
 }
 function spawnProj(x,y,a,spd,o){
@@ -1506,6 +1510,8 @@ function render(){
   if(G.mode){const c=MODES[G.mode.id].col;ctx.globalAlpha=.5+.3*Math.sin(G.time*8);ctx.fillStyle=c;ctx.fillRect(0,0,LW,1);ctx.fillRect(0,LH-1,LW,1);ctx.fillRect(0,0,1,LH);ctx.fillRect(LW-1,0,1,LH);ctx.globalAlpha=1}
   // shrine pointer when off screen
   for(const sh of SHRINES){const bx=sh.x-ox,by=sh.y-oy;if(bx<0||by<0||bx>LW||by>LH){const a=Math.atan2(sh.y-P.y,sh.x-P.x);const x=clamp(LW/2+Math.cos(a)*(LW/2-8),6,LW-6),y=clamp(LH/2+Math.sin(a)*(LH/2-8),6,LH-6);ctx.fillStyle='#ffe066';ctx.fillRect(Math.round(x)-1,Math.round(y)-1,3,3)}}
+  if(G.state==='play'&&P.hp<P.max*.3){const k=.25+.2*Math.sin(G.time*7);ctx.fillStyle=`rgba(255,40,70,${k})`;ctx.fillRect(0,0,LW,3);ctx.fillRect(0,LH-3,LW,3);ctx.fillRect(0,0,3,LH);ctx.fillRect(LW-3,0,3,LH);
+    if((G.beatT=(G.beatT||0)-1/60)<=0){G.beatT=1;snd('beat')}}
   if(G.hurt>0){ctx.fillStyle=`rgba(255,40,70,${Math.min(.9,G.hurt*.9)})`;ctx.fillRect(0,0,LW,2);ctx.fillRect(0,LH-2,LW,2);ctx.fillRect(0,0,2,LH);ctx.fillRect(LW-2,0,2,LH)}
   if(G.flash>0){ctx.fillStyle=`rgba(255,255,255,${G.flash*.55})`;ctx.fillRect(0,0,LW,LH)}
 }
