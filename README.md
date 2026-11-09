@@ -22,13 +22,30 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 
 Pea Shooter, Fireball, Chain Lightning, Homing Needles, Orbit Blades and Oil Slick. You start with one and unlock more starting choices as you play.
 
+### Evolutions
+
+Max a weapon (Lv 8) while holding its matching mutation and the next level-up offers an evolution:
+
+| Weapon | + Mutation | Evolves into |
+|---|---|---|
+| Pea Shooter | Ricochet | Pinball Cannon |
+| Fireball | Chain Reaction | Meteor Storm |
+| Chain Lightning | Cryo Coating | Storm Lattice |
+| Homing Needles | Shrapnel | Hornet Swarm |
+| Orbit Blades | Spike Trail | Saw Ring |
+| Oil Slick | Incendiary | Napalm Wake |
+
 ### Mutations
 
 Rear guns, ricochet, shrapnel, snowball rounds that grow as they fly, halo volleys, spike trails, dash shockwaves, and late-run reality breaks such as bullets that orbit you, every 10th shot being a nuke, screen-wide pulses, black holes, and a permanent trail of fire.
 
+## Install on your phone
+
+Open the GitHub Pages link in Chrome and tap **Install app** on the title screen, or use the browser menu's **Add to Home screen** / **Install** (Firefox: menu → Install). It runs full screen and works offline after the first load.
+
 ## Run reports
 
-Pause or die, then press **Copy run report**. It copies a summary of the run (picks, damage by source, a 30-second timeline, frame rate, device) that you can paste into a chat for balance review. **Save report file** downloads the same thing as a .txt.
+Pause or die, type any thoughts into the notes box, then press **Copy run report**. It copies a summary of the run (picks, damage by source, a 30-second timeline, frame rate, device) that you can paste into a chat for balance review. **Save report file** downloads the same thing as a .txt.
 
 ## Updates
 
