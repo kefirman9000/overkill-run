@@ -17,6 +17,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 - Rarity runs Common → Rare → Epic → Legendary → Mythic. Higher threat and longer kill streaks push the odds toward the extreme stuff.
 - The threat meter rises with kills and time. It drives spawn rate, enemy toughness and elite chance.
 - Six lands, each with its own enemies and hazards: Grassy Ruins, Burning Forest (lava), Frozen Wastes (ice you slide on), Toxic Swamp (poison clouds), Crystal Caves (eruptions), The Void (black holes). After the Void, the cycle repeats harder.
+- Orbit Blades block enemy shots (evolved Saw Ring sends them back) and each Drone Minion can soak a shot every second.
 - Tougher enemies join as the threat climbs: Wraiths (turn ghostly, threat 9), Lancers (telegraphed charges, 11), Mortars (shell where you're heading, 13), Splitters (burst into shards, 15), Snipers (long aim line, 18) and Juggernauts (bullet-resistant, ring-of-shots stomp, 20).
 - A Warden boss shows up every 5 threat levels.
 

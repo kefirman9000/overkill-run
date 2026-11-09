@@ -289,7 +289,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.10.0';
+const VERSION='1.11.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -442,10 +442,10 @@ const WDEF={
   fire:{name:'Fireball',col:'#ff7a2a',desc:'Slow fireball that leaves a burning line and explodes on contact.',up:l=>l%3===0?'+1 fireball':'+30% damage, bigger blast, faster casting'},
   bolt:{name:'Chain Lightning',col:'#7df9ff',desc:'Lightning that arcs from enemy to enemy.',up:()=>'+1 chain jump, +30% damage'},
   needle:{name:'Homing Needles',col:'#e6e6ff',desc:'A fan of needles that seek their own targets.',up:()=>'+1 needle, +30% damage'},
-  blade:{name:'Orbit Blades',col:'#9be15d',desc:'Blades that circle you. Get close to use them.',up:()=>'+1 blade, wider orbit, +30% damage'},
+  blade:{name:'Orbit Blades',col:'#9be15d',desc:'Blades that circle you. Get close to use them. They block enemy shots.',up:()=>'+1 blade, wider orbit, +30% damage'},
   missile:{name:'Homing Missiles',col:'#ff5e5b',desc:'Missiles that pick their own targets and explode. Blast damage cracks golems.',up:l=>l%2===0?'+1 missile, +30% damage':'+30% damage, bigger blast, faster reload'},
   bomb:{name:'Cluster Bombs',col:'#ffb627',desc:'Lobs bombs into the thickest crowd. Splits into bomblets from Lv 3.',up:l=>l===3?'Bombs burst into bomblets':l%3===0?'+1 bomb per throw':'+30% damage, bigger blast'},
-  drone:{name:'Drone Minions',col:'#6be0ff',desc:'Little drones that follow you and shoot on their own.',up:l=>l%2===1?'+1 drone, +30% damage':'+30% damage, drones fire faster'},
+  drone:{name:'Drone Minions',col:'#6be0ff',desc:'Little drones that follow you, shoot on their own and soak up enemy shots.',up:l=>l%2===1?'+1 drone, +30% damage':'+30% damage, drones fire faster'},
   beam:{name:'Prism Beam',col:'#f2ead8',desc:'A beam that cuts through everything in a line.',up:l=>l%3===0?'+1 beam, +30% damage':'+30% damage, longer and wider beam'},
   oil:{name:'Oil Slick',col:'#8a7cff',desc:'Drops slowing oil as you move. Ignites at Lv 3.',up:l=>l===3?'Slicks ignite and burn':'Bigger, longer, nastier slicks'},
 };
@@ -454,7 +454,7 @@ const EVO={
   fire:{name:'Meteor Storm',mut:'chainkill',mutName:'Chain Reaction',desc:'Huge blasts that leave a ring of fire behind.'},
   bolt:{name:'Storm Lattice',mut:'freeze',mutName:'Cryo Coating',desc:'+4 chain jumps, every hit freezes, fires almost twice as fast.'},
   needle:{name:'Hornet Swarm',mut:'split',mutName:'Shrapnel',desc:'Twice the needles, and every needle splits on hit.'},
-  blade:{name:'Saw Ring',mut:'trail',mutName:'Spike Trail',desc:'Twice the blades, a wider orbit and double damage.'},
+  blade:{name:'Saw Ring',mut:'trail',mutName:'Spike Trail',desc:'Twice the blades, a wider orbit and double damage. Blocked shots fly back at enemies.'},
   missile:{name:'Missile Barrage',mut:'multi',mutName:'Twin Barrels',desc:'Twice the missiles with bigger blasts.'},
   bomb:{name:'Carpet Bomb',mut:'area',mutName:'Wide Load',desc:'Twice the bombs, and every bomb bursts into six bomblets.'},
   drone:{name:'Hive Mind',mut:'rate',mutName:'Hair Trigger',desc:'Twice the drones, firing much faster.'},
@@ -761,7 +761,7 @@ function spawnHazard(){
 
 /* ================= combat ================= */
 function burst(x,y,col,n,sp=50,life=.4,size=1){
-  for(let i=0;i<n&&PT.length<(isTouch?450:900);i++){const a=R()*TAU,s=rnd(.3,1)*sp;PT.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.5,1)*life,max:life,c:col,s:size})}
+  for(let i=0;i<n&&PT.length<(isTouch?450:900)*(G.lowFx?.45:1);i++){const a=R()*TAU,s=rnd(.3,1)*sp;PT.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.5,1)*life,max:life,c:col,s:size})}
 }
 function hurt(e,dmg,o={}){
   if(e.dead||e.phase>0)return;                                       // a phased Wraith can't be hit
@@ -866,6 +866,18 @@ function hurtPlayer(d,cause){
   RINGS.push({x:P.x,y:P.y,r:0,max:22,life:.22,t:0,c:'#ff4d6d',noFill:1});G.hurt=.25;G.hurtBy[cause||'unknown']=(G.hurtBy[cause||'unknown']||0)+d;snd('hurt');burst(P.x,P.y,'#ff4d6d',8,50,.4);G.lastHit=cause;
   if(P.hp<=0){if(tryPhoenix())return;P.hp=0;gameOver()}
 }
+/* Orbit Blades and Drone Minions stop enemy shots. Blades block every shot they touch (evolved blades bat it back
+   as your own shot); each drone soaks one shot, then needs 1 s (0.5 s evolved) before it can take another. */
+function interceptEB(b){
+  for(const q of G.blades)if(Math.abs(q[0]-b.x)<4&&Math.abs(q[1]-b.y)<4){
+    b.life=0;G.blocked=(G.blocked||0)+1;burst(b.x,b.y,'#9be15d',4,40,.2);
+    if(G.bladeEvo)spawnProj(b.x,b.y,Math.atan2(-b.vy,-b.vx),170*S.pspeed,{dmg:20*dmgMul(),size:2,col:'#c6f06a',life:1,src:'reflect',noOrbit:1});
+    return true}
+  const dw=G.drones.length&&W.find(w=>w.id==='drone');
+  if(dw)for(const d of G.drones)if(!(d.block>0)&&Math.abs(d.x-b.x)<4&&Math.abs(d.y-b.y)<5){
+    d.block=dw.evo?.5:1;b.life=0;G.blocked=(G.blocked||0)+1;burst(b.x,b.y,'#6be0ff',4,40,.2);return true}
+  return false;
+}
 function spawnProj(x,y,a,spd,o){
   const b=Object.assign({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,spd,life:1,dmg:10,size:3,col:'#fff',pierce:S.pierce,bounce:S.bounce,split:S.split>0,dist:0,hit:null,kind:'bolt',src:'pea',elem:'kinetic'},o);
   if(S.orbitShots&&!o.noOrbit){b.orb={a,rad:6,t:0};b.life+=1.2}
@@ -893,16 +905,16 @@ function fireWeapon(w){
       volley(a,1+Math.floor(l/3)+Math.floor(S.multi/2),.3,105,{kind:'fire',dmg:20*lm,size:4,col:'#ff7a2a',life:1.6,rad:(18+l*2)*S.area*(w.evo?1.6:1),napalm:w.evo?1:0,patchLife:1.6+l*.15,elem:'fire',src:'fire',pierce:0,bounce:0,split:false});snd('shoot');return Math.max(.8,1.25-.04*l)}
     case 'bolt':{const t=nearest(P.x,P.y,130);if(!t)return 0;chainZap(t,P,3+l+S.multi+(w.evo?4:0),12*lm,'bolt',w.evo);return Math.max(.5,1.25-.05*l)*(w.evo?.55:1)}
     case 'missile':{const t=nearest(P.x,P.y,range);if(!t)return 0;const a=Math.atan2(t.y-P.y,t.x-P.x);
-      volley(a,(1+Math.floor(l/2)+Math.floor(S.multi/2))*(w.evo?2:1),.5,45,{kind:'missile',dmg:18*lm,size:3,col:'#ff5e5b',life:2.4,rad:(16+l*2)*S.area*(w.evo?1.4:1),elem:'blast',src:'missile',pierce:0,bounce:0,split:false,target:t});snd('shoot');return Math.max(.9,1.7-.08*l)}
+      volley(a,(1+Math.floor(l/2)+Math.floor(S.multi/3))*(w.evo?2:1),.5,45,{kind:'missile',dmg:18*lm,size:3,col:'#ff5e5b',life:2.4,rad:(16+l*2)*S.area*(w.evo?1.4:1),elem:'blast',src:'missile',pierce:0,bounce:0,split:false,target:t});snd('shoot');return Math.max(.9,1.7-.08*l)}
     case 'bomb':{
       const cands=E.filter(e=>!e.dead&&Math.abs(e.x-P.x)<LW*.5&&Math.abs(e.y-P.y)<LH*.5);if(!cands.length)return 0;
       const n=(1+Math.floor(l/3))*(w.evo?2:1);
       for(let k=0;k<n;k++){let best=cands[0],bn=-1;for(let i=0;i<6;i++){const c=cands[Math.floor(R()*cands.length)];let m=0;query(c.x,c.y,26,()=>m++);if(m>bn){bn=m;best=c}}
         addZone('shell',best.x+rnd(-6,6),best.y+rnd(-6,6),(20+l*2)*S.area,.6,{boom:{r:(20+l*2)*S.area,dmg:28*lm,col:'#ffb627',src:'bomb'},bomblets:w.evo?6:l>=3?3:0})}
       snd('shoot');return Math.max(1.2,2.1-.1*l)}
-    case 'beam':{const t=nearest(P.x,P.y,range);if(!t)return 0;const a0=Math.atan2(t.y-P.y,t.x-P.x),n=(1+Math.floor(l/3))*(w.evo?3:1),len=(150+l*10)*S.area,wd=3+l*.4;
+    case 'beam':{const t=nearest(P.x,P.y,range);if(!t)return 0;const a0=Math.atan2(t.y-P.y,t.x-P.x),n=Math.min(9,(1+Math.floor(l/3)+Math.floor(S.multi/2))*(w.evo?3:1)),len=(150+l*10)*S.area,wd=(3.5+l*.5)*Math.sqrt(S.area);
       for(let k=0;k<n;k++){const a=a0+(k-(n-1)/2)*.22,x2=P.x+Math.cos(a)*len,y2=P.y+Math.sin(a)*len;BEAMS.push({x1:P.x,y1:P.y,x2,y2,life:.16,w:wd});
-        for(const e of E){if(e.dead)continue;const px=e.x-P.x,py=e.y-P.y,proj=px*Math.cos(a)+py*Math.sin(a);if(proj<0||proj>len)continue;const perp=Math.abs(-px*Math.sin(a)+py*Math.cos(a));if(perp<wd+e.r)hurt(e,16*lm*(w.evo?2:1),{proc:true,col:'#f2ead8',src:'beam',elem:'shock'})}}
+        for(const e of E){if(e.dead)continue;const px=e.x-P.x,py=e.y-P.y,proj=px*Math.cos(a)+py*Math.sin(a);if(proj<0||proj>len)continue;const perp=Math.abs(-px*Math.sin(a)+py*Math.cos(a));if(perp<wd+e.r)hurt(e,26*lm*(w.evo?2:1),{proc:true,col:'#f2ead8',src:'beam',elem:'shock'})}}
       snd('zap');return Math.max(.7,1.5-.06*l)}
     case 'needle':{const t=nearest(P.x,P.y,range);if(!t)return 0;const a=Math.atan2(t.y-P.y,t.x-P.x);
       volley(a,(2+l+S.multi)*(w.evo?2:1),w.evo?.2:.32,170,{kind:'needle',dmg:7*lm,size:2,col:w.evo?'#ffd166':'#e6e6ff',life:1.4,src:'needle',target:t,split:w.evo||S.split>0});snd('shoot');return .95}
@@ -1256,11 +1268,11 @@ function update(dt){
     G.drones.forEach((d,i)=>{
       const a=i/n*TAU+G.time*.8,tx=P.x+Math.cos(a)*18,ty=P.y+Math.sin(a)*14-4;
       d.x+=(tx-d.x)*Math.min(1,dt*6);d.y+=(ty-d.y)*Math.min(1,dt*6);
-      d.cd-=dt*S.rate*fr*(dw.evo?1.7:1);
-      if(d.cd<=0){const t=nearest(d.x,d.y,150);if(t){d.cd=Math.max(.35,.8-.05*dw.lvl);const ang=Math.atan2(t.y-d.y,t.x-d.x);spawnProj(d.x,d.y,ang,220*S.pspeed,{dmg:6*lm,size:2,col:'#6be0ff',life:.8,src:'drone',noOrbit:1})}else d.cd=.1}
+      d.cd-=dt*S.rate*fr*(dw.evo?1.7:1);if(d.block>0)d.block-=dt;
+      if(d.cd<=0){const t=nearest(d.x,d.y,150);if(t){d.cd=Math.max(.35,.8-.05*dw.lvl);const ang=Math.atan2(t.y-d.y,t.x-d.x),k=1+Math.floor(S.multi/3);for(let j=0;j<k;j++)spawnProj(d.x,d.y,ang+(j-(k-1)/2)*.15,220*S.pspeed,{dmg:11*lm,size:2,col:'#6be0ff',life:.8,src:'drone',noOrbit:1})}else d.cd=.1}
     });
   }else G.drones.length=0;
-  const bw=W.find(w=>w.id==='blade');G.blades.length=0;
+  const bw=W.find(w=>w.id==='blade');G.blades.length=0;G.bladeEvo=!!(bw&&bw.evo);
   if(bw){
     G.oang+=dt*(3.4+bw.lvl*.1);const n=Math.min(14,2+bw.lvl+Math.floor(S.multi/2))*(S.double?2:1)*(bw.evo?2:1),Rr=(22+bw.lvl*2)*S.area*(bw.evo?1.25:1),lm=(1+.3*(bw.lvl-1))*dmgMul()*(bw.evo?2:1);
     for(let i=0;i<n;i++){const a=G.oang+i*TAU/n,x=P.x+Math.cos(a)*Rr,y=P.y+Math.sin(a)*Rr;G.blades.push([x,y]);
@@ -1310,7 +1322,7 @@ function update(dt){
     });
   }
   // ---- enemy bullets
-  if(!isMode('timestop'))for(const b of EB){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(Math.hypot(b.x-P.x,b.y-P.y)<4.5&&P.inv<=0){b.life=0;if(b.chill)P.chill=1.6;hurtPlayer(b.dmg,b.from)}}
+  if(!isMode('timestop'))for(const b of EB){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(b.life>0&&interceptEB(b))continue;if(Math.hypot(b.x-P.x,b.y-P.y)<4.5&&P.inv<=0){b.life=0;if(b.chill)P.chill=1.6;hurtPlayer(b.dmg,b.from)}}
   // ---- zones
   for(const z of Z){
     z.t+=dt;z.life-=dt;z.x+=z.vx*dt;z.y+=z.vy*dt;
@@ -1447,8 +1459,24 @@ function ambient(dt){
 
 /* ================= render ================= */
 function line(x1,y1,x2,y2,c){const d=Math.max(Math.abs(x2-x1),Math.abs(y2-y1))|0;ctx.fillStyle=c;for(let i=0;i<=d;i++){const t=d?i/d:0;ctx.fillRect(Math.round(x1+(x2-x1)*t),Math.round(y1+(y2-y1)*t),1,1)}}
-function ring(x,y,r,c){const n=Math.max(12,Math.ceil(r*6.3));ctx.fillStyle=c;for(let i=0;i<n;i++){const a=i/n*TAU;ctx.fillRect(Math.round(x+Math.cos(a)*r),Math.round(y+Math.sin(a)*r),1,1)}}
-function disc(x,y,r,c){ctx.fillStyle=c;x=Math.round(x);y=Math.round(y);const ri=Math.round(r);for(let dy=-ri;dy<=ri;dy++){const w=Math.round(Math.sqrt(Math.max(0,r*r-dy*dy)));ctx.fillRect(x-w,y+dy,w*2+1,1)}}
+/* rings and discs are drawn once per (radius, colour) into a small sprite and stamped with one drawImage:
+   a 40-px ring used to be ~250 separate 1-px fillRects, the biggest cost of a busy frame on phones */
+const SHAPE=new Map();
+function shapeSprite(kind,r,c){
+  const key=kind+r+c;let sp=SHAPE.get(key);if(sp)return sp;
+  if(SHAPE.size>600)SHAPE.clear();
+  const R0=Math.ceil(r)+1,cvs=document.createElement('canvas');cvs.width=cvs.height=R0*2+1;const g=cvs.getContext('2d');g.fillStyle=c;
+  if(kind==='r'){const n=Math.max(12,Math.ceil(r*6.3));for(let i=0;i<n;i++){const a=i/n*TAU;g.fillRect(R0+Math.round(Math.cos(a)*r),R0+Math.round(Math.sin(a)*r),1,1)}}
+  else{const ri=Math.round(r);for(let dy=-ri;dy<=ri;dy++){const w=Math.round(Math.sqrt(Math.max(0,r*r-dy*dy)));g.fillRect(R0-w,R0+dy,w*2+1,1)}}
+  sp={c:cvs,o:R0};SHAPE.set(key,sp);return sp;
+}
+const GEMS=new Map();
+function gemSprite(c,s){const k=c+s;let g=GEMS.get(k);if(g)return g;
+  g=document.createElement('canvas');g.width=g.height=s*2+1;const x=g.getContext('2d');x.fillStyle=c;
+  x.fillRect(0,s,s*2+1,1);x.fillRect(s,0,1,s*2+1);if(s>1){x.fillRect(1,s-1,s*2-1,3);x.fillRect(s-1,1,3,s*2-1)}
+  x.fillStyle='#fff';x.fillRect(s,s-Math.max(0,s-1),1,1);GEMS.set(k,g);return g}
+function ring(x,y,r,c){if(r<=0)return;const sp=shapeSprite('r',Math.round(r*2)/2,c);ctx.drawImage(sp.c,Math.round(x)-sp.o,Math.round(y)-sp.o)}
+function disc(x,y,r,c){if(r<0)return;const sp=shapeSprite('d',Math.round(r*2)/2,c);ctx.drawImage(sp.c,Math.round(x)-sp.o,Math.round(y)-sp.o)}
 function hash(x,y){let h=(x*374761393+y*668265263)|0;h=(h^(h>>>13))*1274126177|0;return (h^(h>>>16))>>>0}
 function drawGround(ox,oy){
   const cur=BIOMES[G.biomeI%BIOMES.length],prev=BIOMES[G.biomePrev%BIOMES.length],T=16;
@@ -1530,7 +1558,7 @@ function render(){
   const sh=RM?0:G.shake*CFG.shake;
   const ox=Math.round(cam.x-LW/2+(sh?rnd(-sh,sh):0)),oy=Math.round(cam.y-LH/2+(sh?rnd(-sh,sh):0));
   drawGround(ox,oy);
-  for(const d of DECALS){ctx.globalAlpha=Math.min(.5,d.life/4);ctx.fillStyle=d.c;ctx.fillRect(Math.round(d.x-ox)-d.w/2,Math.round(d.y-oy)+2,d.w,1);ctx.fillRect(Math.round(d.x-ox)-1,Math.round(d.y-oy)+1,2,1)}
+  for(const d of DECALS){if(d.x-ox<-6||d.y-oy<-6||d.x-ox>LW+6||d.y-oy>LH+6)continue;ctx.globalAlpha=Math.min(.5,d.life/4);ctx.fillStyle=d.c;ctx.fillRect(Math.round(d.x-ox)-d.w/2,Math.round(d.y-oy)+2,d.w,1);ctx.fillRect(Math.round(d.x-ox)-1,Math.round(d.y-oy)+1,2,1)}
   ctx.globalAlpha=1;
   for(const z of Z)if(z.kind!=='hole'&&z.kind!=='fhole')drawZone(z,ox,oy);
   for(const sh of SHRINES){const x=Math.round(sh.x-ox),y=Math.round(sh.y-oy),c=`hsl(${(G.time*120)%360},90%,62%)`;
@@ -1546,8 +1574,7 @@ function render(){
     if(p.kind==='gem'){
       const tr=p.tier,c=tr===4?(Math.floor(p.t*10)%2?'#ff3b5c':'#3ff0ff'):RC[tr],s=[1,2,2,3,3][tr];
       if(tr>=3){ctx.globalAlpha=.22+.1*Math.sin(p.t*6);ctx.fillStyle=c;ctx.fillRect(x-1,y-22,3,20);ctx.globalAlpha=1}
-      ctx.fillStyle=c;ctx.fillRect(x-s,y,s*2+1,1);ctx.fillRect(x,y-s,1,s*2+1);if(s>1){ctx.fillRect(x-s+1,y-1,s*2-1,3);ctx.fillRect(x-1,y-s+1,3,s*2-1)}
-      ctx.fillStyle='#fff';ctx.fillRect(x,y-Math.max(0,s-1),1,1);
+      const gs=gemSprite(c,s);ctx.drawImage(gs,x-s,y-s);
       if(tr===4&&Math.random()<.3){ctx.fillStyle='#3ff0ff';ctx.fillRect(x+rnd(-4,4)|0,y+rnd(-4,4)|0,2,1)}
     }else{
       const [c,ic]=p.kind==='mode'?[MODES[p.mode].col,'crit']:{heart:['#ff4d6d','heal'],vac:['#6be0ff','vac'],bomb:['#ffb627','nuke'],bubble:['#6be0ff','shield'],frenzy:['#ffe066','rate'],freezeAll:['#a6f0ff','freeze']}[p.kind];
@@ -1591,11 +1618,12 @@ function render(){
       if(P.chill>0){ctx.fillStyle='#a6f0ff';ctx.fillRect(x-1,y+2,1,1);ctx.fillRect(x+8,y+5,1,1)}
     }
   }
-  for(const d of G.drones){const x=Math.round(d.x-ox)-3,y=Math.round(d.y-oy+Math.sin(G.time*6+d.x)*1)-2;ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+1,y+7,5,1);ctx.drawImage(DRONE_SPR,x,y)}
+  for(const d of G.drones){const x=Math.round(d.x-ox)-3,y=Math.round(d.y-oy+Math.sin(G.time*6+d.x)*1)-2;ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+1,y+7,5,1);if(d.block>0)ctx.globalAlpha=.5;ctx.drawImage(DRONE_SPR,x,y);ctx.globalAlpha=1}
   for(const [bx,by] of G.blades){const x=Math.round(bx-ox),y=Math.round(by-oy);ctx.fillStyle='#9be15d';ctx.fillRect(x-1,y-1,3,3);ctx.fillStyle='#fff';ctx.fillRect(x,y,1,1);ctx.fillStyle='#4f7a3c';ctx.fillRect(x-2,y,1,1);ctx.fillRect(x+2,y,1,1);ctx.fillRect(x,y-2,1,1);ctx.fillRect(x,y+2,1,1)}
   // player projectiles
   for(const b of PB){
     const x=b.x-ox,y=b.y-oy;
+    if(x<-12||y<-12||x>LW+12||y>LH+12)continue;                       // off screen: nothing to draw
     if(b.kind==='needle'){const v=Math.hypot(b.vx,b.vy)||1;line(x-b.vx/v*4,y-b.vy/v*4,x,y,b.col);continue}
     if(b.kind==='missile'){const v=Math.hypot(b.vx,b.vy)||1,ux=b.vx/v,uy=b.vy/v;line(x-ux*4,y-uy*4,x,y,'#ff5e5b');ctx.fillStyle='#fff';ctx.fillRect(Math.round(x),Math.round(y),1,1);ctx.fillStyle='#ffd166';ctx.fillRect(Math.round(x-ux*5),Math.round(y-uy*5),1,1);continue}
     const g=S.grow&&!b.orb?1+Math.min(2.5,b.dist/90*S.grow*.5):1,s=Math.round(b.size*g);
@@ -1605,7 +1633,7 @@ function render(){
     ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(Math.round(x-s/2),Math.round(y-s/2),1,1);
   }
   // enemy bullets: drawn above almost everything so they stay readable
-  for(const b of EB){const x=Math.round(b.x-ox),y=Math.round(b.y-oy);const c=b.chill?'#a6f0ff':'#ff3fa4';ctx.fillStyle='#14101c';ctx.fillRect(x-2,y-2,5,5);ctx.fillStyle=c;ctx.fillRect(x-1,y-1,3,3);ctx.fillStyle='#fff';ctx.fillRect(x,y,1,1)}
+  for(const b of EB){const x=Math.round(b.x-ox),y=Math.round(b.y-oy);if(x<-4||y<-4||x>LW+4||y>LH+4)continue;const c=b.chill?'#a6f0ff':'#ff3fa4';ctx.fillStyle='#14101c';ctx.fillRect(x-2,y-2,5,5);ctx.fillStyle=c;ctx.fillRect(x-1,y-1,3,3);ctx.fillStyle='#fff';ctx.fillRect(x,y,1,1)}
   for(const r of RINGS){const a=1-r.t/r.life;if(!r.noFill){ctx.globalAlpha=a*.3;disc(r.x-ox,r.y-oy,r.r,r.c)}ctx.globalAlpha=Math.max(0,a);ring(r.x-ox,r.y-oy,r.r,r.noFill?r.c:'#fff');ctx.globalAlpha=1}
   for(const bm of BEAMS){const k=bm.life/.16;ctx.globalAlpha=Math.min(1,k*1.5);ctx.strokeStyle='#ffd6f5';ctx.lineWidth=Math.max(1,bm.w*k*1.6);ctx.beginPath();ctx.moveTo(bm.x1-ox,bm.y1-oy);ctx.lineTo(bm.x2-ox,bm.y2-oy);ctx.stroke();
     ctx.strokeStyle='#ffffff';ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1}
@@ -1613,7 +1641,7 @@ function render(){
     let x=a.x1-ox,y=a.y1-oy;const sx=x,sy=y,ex=a.x2-ox,ey=a.y2-oy;
     for(let i=1;i<=4;i++){const t=i/4,nx=sx+(ex-sx)*t+(i<4?rnd(-3,3):0),ny=sy+(ey-sy)*t+(i<4?rnd(-3,3):0);line(x,y,nx,ny,i%2?'#7df9ff':'#fff');x=nx;y=ny}
   }
-  for(const p of PT){ctx.globalAlpha=Math.min(1,p.life/p.max*1.5);ctx.fillStyle=p.c;ctx.fillRect(Math.round(p.x-ox),Math.round(p.y-oy),p.s,p.s)}
+  for(const p of PT){const x=Math.round(p.x-ox),y=Math.round(p.y-oy);if(x<-3||y<-3||x>LW||y>LH)continue;ctx.globalAlpha=Math.min(1,p.life/p.max*1.5);ctx.fillStyle=p.c;ctx.fillRect(x,y,p.s,p.s)}
   for(const a of AMB){ctx.globalAlpha=a.tw?Math.abs(Math.sin(a.life*10)):Math.min(1,a.life);ctx.fillStyle=a.c;const x=Math.round(a.x-ox),y=Math.round(a.y-oy);if(a.ring){ctx.fillRect(x-1,y,1,1);ctx.fillRect(x+1,y,1,1);ctx.fillRect(x,y-1,1,1)}else ctx.fillRect(x,y,a.w,a.h)}
   ctx.globalAlpha=1;
   // offscreen boss arrow
@@ -1673,7 +1701,7 @@ function buildReport(){
     mode:G.daily?'daily '+G.seedStr:'normal',startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
       bossesKilled:G.bossKills,bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
-    weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
+    weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
     damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
     upgrades:G.log,superModes:G.modesUsed,timeline:G.timeline,
@@ -1920,7 +1948,7 @@ function frame(now){
   if(G.state==='title')titleDemo(now/1000);
   else{
     if(G.state==='play'){
-      if(raw>0&&raw<1){G.frames++;G.ftSum+=raw;G.fpsWin.push(raw);if(G.fpsWin.length>60)G.fpsWin.shift();if(G.frames>120&&G.fpsWin.length===60){const f=curFps();if(f<G.fpsMin)G.fpsMin=f}}
+      if(raw>0&&raw<1){G.frames++;G.ftSum+=raw;G.fpsWin.push(raw);if(G.fpsWin.length>60)G.fpsWin.shift();if(G.frames>120&&G.fpsWin.length===60){const f=curFps();if(f<G.fpsMin)G.fpsMin=f;G.lowFx=G.lowFx?f<52:f<40}}
       if(G.stop>0)G.stop-=dt;else update(dt);
     }else if(G.state==='over'){for(const p of PT){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}PT=PT.filter(p=>p.life>0);G.flash=Math.max(0,G.flash-dt)}
     render();
