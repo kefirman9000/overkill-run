@@ -57,8 +57,22 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 .wi{position:relative;width:28px;height:28px;background:rgba(13,11,20,.8);box-shadow:inset 0 -2px 0 var(--c,var(--edge));display:grid;place-items:center}
 .wi img{width:16px;height:16px;image-rendering:pixelated}
 .wi b{position:absolute;right:1px;bottom:0;font-size:8px;color:var(--c)}
-#dashBtn{pointer-events:auto;width:72px;height:72px;border-radius:50%;font-size:12px;background:rgba(21,17,32,.85);box-shadow:0 0 0 3px var(--edge);touch-action:none}
-#dashBtn.cd{opacity:.45}
+#dashBtn{position:fixed;left:0;top:0;z-index:3;width:var(--ds,72px);height:var(--ds,72px);transform:translate(-50%,-50%);border-radius:50%;font-size:12px;
+  background:rgba(21,17,32,.85);box-shadow:0 0 0 3px var(--edge);touch-action:none;opacity:var(--cop,.7);text-shadow:2px 2px 0 #000}
+#dashBtn.cd{filter:grayscale(1) brightness(.6)}
+#stick{position:fixed;left:0;top:0;z-index:2;width:var(--js,112px);height:var(--js,112px);transform:translate(-50%,-50%);pointer-events:none;opacity:var(--cop,.7)}
+#stick .base{position:absolute;inset:0;border-radius:50%;background:rgba(13,11,20,.4);box-shadow:0 0 0 3px rgba(242,234,216,.45),inset 0 0 0 2px rgba(0,0,0,.4)}
+#stick .knob{position:absolute;left:50%;top:50%;width:42%;height:42%;border-radius:50%;background:rgba(242,234,216,.7);box-shadow:0 0 0 2px rgba(0,0,0,.5);transform:translate(-50%,-50%)}
+#stick.active .base{box-shadow:0 0 0 3px var(--threat),inset 0 0 0 2px rgba(0,0,0,.4)}
+#stick.place,#dashBtn.place{outline:3px dashed var(--threat);outline-offset:6px;opacity:1}
+#placeOv{position:fixed;inset:0;z-index:6;touch-action:none;background:rgba(8,6,14,.25)}
+.placebar{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 16px);transform:translateX(-50%);width:min(460px,calc(100% - 32px));
+  background:var(--panel);box-shadow:0 0 0 3px var(--edge),6px 6px 0 #000;padding:12px 14px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+.placebar span{line-height:1}
+.placebar button{font-size:12px;padding:10px 14px;background:var(--threat);color:#0d0b14;font-weight:700}
+.slider{display:grid;grid-template-columns:minmax(0,9em) minmax(0,1fr) 3.2em;align-items:center;gap:10px}
+.slider input{width:100%;accent-color:var(--threat);touch-action:auto}
+.slider b{font-family:var(--font-d);font-size:10px;text-align:right;font-weight:400}
 #lvTxt{font-size:10px;font-variant-numeric:tabular-nums}
 #toasts{position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:28%;display:flex;flex-direction:column;gap:4px;max-width:calc(100% - 32px)}
 .toast{font-family:var(--font-b);font-size:20px;text-shadow:2px 2px 0 #000;animation:tin .18s steps(3) both;max-width:42ch}
@@ -71,7 +85,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 #banner .big{font-size:clamp(26px,7vw,54px);font-weight:700;color:var(--threat);text-shadow:4px 4px 0 #000}
 #banner .sub{font-size:clamp(11px,2.4vw,15px);margin-top:6px}
 @keyframes ban{0%{opacity:0;transform:scale(1.4)}10%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0}}
-.ov{position:fixed;inset:0;display:flex;overflow:auto;background:rgba(8,6,14,.74);touch-action:pan-y;
+.ov{position:fixed;inset:0;z-index:4;display:flex;overflow:auto;background:rgba(8,6,14,.74);touch-action:pan-y;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   padding-block:calc(env(safe-area-inset-top,0px) + 20px) calc(env(safe-area-inset-bottom,0px) + 20px)}
 .card{margin:auto;width:min(520px,100%);background:var(--panel);box-shadow:0 0 0 3px var(--edge),8px 8px 0 #000;padding:20px 20px 22px;display:flex;flex-direction:column;gap:14px;user-select:text;-webkit-user-select:text}
@@ -148,11 +162,14 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
   <div id="toasts"></div>
   <div id="banner"><div class="big" id="banBig"></div><div class="sub" id="banSub"></div></div>
   <div class="bottom">
-    <div class="botrow"><div id="wList"></div><button id="dashBtn" hidden aria-label="Dash">DASH</button></div>
+    <div class="botrow"><div id="wList"></div></div>
     <div class="lbl"><span id="lvTxt">LV 1</span><span id="xpTxt"></span></div>
     <div class="bar xpbar"><i id="xpFill"></i></div>
   </div>
 </div>
+
+<div id="stick" hidden><div class="base"></div><div class="knob" id="knob"></div></div>
+<button id="dashBtn" hidden aria-label="Dash">DASH</button>
 
 <div class="ov" id="title">
   <div class="card">
@@ -172,7 +189,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
       <kbd>P / ESC</kbd><span>pause, build, run report</span>
     </div>
     <div class="note" id="bestTitle"></div>
-    <div class="btns"><button class="go" id="startBtn">START RUN</button><button id="dailyBtn">DAILY RUN</button><button id="updBtn">CHECK FOR UPDATE</button></div>
+    <div class="btns"><button class="go" id="startBtn">START RUN</button><button id="dailyBtn">DAILY RUN</button><button class="optBtn">OPTIONS</button><button id="updBtn">CHECK FOR UPDATE</button></div>
     <div class="note" id="updTxt"></div>
   </div>
 </div>
@@ -188,7 +205,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
   <div class="card">
     <h2>PAUSED</h2>
     <dl class="stats" id="buildStats"></dl>
-    <div class="btns"><button class="go" id="resumeBtn">RESUME</button><button class="repBtn">COPY RUN REPORT</button><button class="saveBtn">SAVE REPORT FILE</button><button id="quitBtn">QUIT TO TITLE</button></div>
+    <div class="btns"><button class="go" id="resumeBtn">RESUME</button><button class="optBtn">OPTIONS</button><button class="repBtn">COPY RUN REPORT</button><button class="saveBtn">SAVE REPORT FILE</button><button id="quitBtn">QUIT TO TITLE</button></div>
     <div class="note repNote"></div>
   </div>
 </div>
@@ -203,6 +220,29 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
   </div>
 </div>
 
+<div class="ov" id="opts" hidden>
+  <div class="card">
+    <h2>OPTIONS</h2>
+    <h3>TOUCH CONTROLS</h3>
+    <div class="pickrow" id="optMode"><button data-v="fixed">FIXED JOYSTICK</button><button data-v="float">FLOATING JOYSTICK</button></div>
+    <p class="note">Fixed stays in one spot on screen. Floating appears wherever you put your thumb.</p>
+    <div class="pickrow" id="optUI"><button data-v="auto">SHOW ON TOUCH SCREENS</button><button data-v="always">ALWAYS SHOW</button><button data-v="off">HIDE</button></div>
+    <label class="slider" for="optJs"><span>Joystick size</span><input type="range" id="optJs" min="60" max="160" step="5"><b id="optJsV"></b></label>
+    <label class="slider" for="optDead"><span>Dead zone</span><input type="range" id="optDead" min="0" max="35" step="1"><b id="optDeadV"></b></label>
+    <label class="slider" for="optDs"><span>Dash button size</span><input type="range" id="optDs" min="60" max="160" step="5"><b id="optDsV"></b></label>
+    <label class="slider" for="optOp"><span>Control opacity</span><input type="range" id="optOp" min="20" max="100" step="5"><b id="optOpV"></b></label>
+    <div class="pickrow" id="optTap"><button data-v="1">TAP SCREEN TO DASH</button><button data-v="0">DASH BUTTON ONLY</button></div>
+    <div class="btns"><button id="optPlace">MOVE CONTROLS</button><button id="optSwap">SWAP SIDES</button><button id="optReset">RESET CONTROLS</button></div>
+    <h3>FEEL</h3>
+    <div class="pickrow" id="optShake"><button data-v="1">SCREEN SHAKE ON</button><button data-v="0">SCREEN SHAKE OFF</button></div>
+    <div class="btns"><button class="go" id="optDone">DONE</button></div>
+  </div>
+</div>
+
+<div id="placeOv" hidden>
+  <div class="placebar"><span>Drag the joystick and the dash button where you want them.</span><button id="placeDone">DONE</button></div>
+</div>
+
 <div class="ov" id="repOv" hidden>
   <div class="card">
     <h2>RUN REPORT</h2>
@@ -214,7 +254,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.0.0';
+const VERSION='1.1.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -408,10 +448,16 @@ const RELICS={
 };
 let chosenW='pea';const chosenR=new Set();
 
+/* ================= control settings ================= */
+const CFG_DEF={mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:1};
+let CFG=Object.assign({},CFG_DEF);
+try{const c=JSON.parse(localStorage.getItem('overkill-run-controls')||'null');if(c)CFG=Object.assign(CFG,c)}catch(e){}
+function saveCfg(){try{localStorage.setItem('overkill-run-controls',JSON.stringify(CFG))}catch(e){}}
+
 /* ================= state ================= */
 let G={state:'title'},P,S,W,E,PB,EB,PU,PT,Z,RINGS,ARCS,DECALS,DEAD,AMB,GHOSTS,BOOMQ,cam={x:0,y:0};
 const keys={};
-const joy={on:false,ox:0,oy:0,dx:0,dy:0,id:null};
+const joy={on:false,ox:0,oy:0,dx:0,dy:0,kx:0,ky:0,id:null};
 let isTouch=matchMedia('(pointer: coarse)').matches;
 function reset(opts){
   const daily=!!opts.daily,seedStr=daily?new Date().toLocaleDateString('en-CA'):'';
@@ -421,7 +467,7 @@ function reset(opts){
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
     taken:{},log:[],timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
   P={x:0,y:0,vx:0,vy:0,hp:100,max:100,inv:0,face:1,moving:false,dashes:1,dashCd:0,dashT:0,ddx:1,ddy:0,chill:0,lx:0,ly:0};
-  S={dmg:1,rate:1,move:1,area:1,magnet:34,pspeed:1,regen:0,multi:0,pierce:0,bounce:0,rear:0,circle:0,split:0,grow:0,burn:0,freeze:0,frostKill:0,chainKill:0,
+  S={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,regen:0,multi:0,pierce:0,bounce:0,rear:0,circle:0,split:0,grow:0,burn:0,freeze:0,frostKill:0,chainKill:0,
     trail:0,dashMax:1,dashShock:0,orbitShots:0,nuke:0,pulse:0,hole:0,momentum:0,scorch:0,double:0,stasis:0,killNeedle:0,horizonDash:0};
   W=[{id:opts.weapon,lvl:1,cd:.3}];
   E=[];PB=[];EB=[];PU=[];PT=[];Z=[];RINGS=[];ARCS=[];DECALS=[];DEAD=[];AMB=[];GHOSTS=[];BOOMQ=[];
@@ -431,7 +477,7 @@ function reset(opts){
   if(G.relics.includes('mutagen')){const pool=CARDS.filter(c=>c.r===2&&c.id!=='dash');const c=pool[Math.floor(cardRand()*pool.length)];takeCard(c,[c.name],true)}
   $('toasts').innerHTML='';
 }
-const xpNeed=l=>Math.round(6+l*5+Math.pow(l,1.7));
+const xpNeed=l=>Math.round(5+l*4+Math.pow(l,1.6));
 
 /* ================= audio ================= */
 let AC=null,muted=false,noiseBuf=null;const lastSnd={};
@@ -821,7 +867,7 @@ function update(dt){
   while(G.spawnAcc>=1&&E.length<maxAlive()){G.spawnAcc--;spawnEnemy()}
   G.packT-=dt;
   if(G.packT<=0&&G.threat>=1){
-    G.packT=rnd(9,15);const a=R()*TAU,d=Math.hypot(LW,LH)/2+16,n=6+G.threat*2;
+    G.packT=rnd(11,17);const a=R()*TAU,d=Math.hypot(LW,LH)/2+16,n=Math.round(5+G.threat*1.5);
     for(let i=0;i<n;i++){const aa=a+rnd(-.3,.3),dd=d+rnd(0,30);spawnEnemy('swarmer',P.x+Math.cos(aa)*dd,P.y+Math.sin(aa)*dd)}
   }
 
@@ -884,8 +930,9 @@ function update(dt){
     if(d>Math.hypot(LW,LH)*1.4&&e.type!=='boss')e.dead=true;
   }
   buildGrid();
-  for(const e of E){
-    if(e.dead)continue;
+  G.sepFlip=!G.sepFlip;
+  for(let i=G.sepFlip?0:1;i<E.length;i+=2){
+    const e=E[i];if(e.dead)continue;
     query(e.x,e.y,e.r+8,o=>{if(o===e)return;const dx=e.x-o.x,dy=e.y-o.y,d=Math.hypot(dx,dy),m=e.r+o.r;
       if(d<m&&d>0){const p=(m-d)*.5*(o.type==='boss'?1.6:1)*(e.type==='boss'?.1:1);e.x+=dx/d*p;e.y+=dy/d*p}});
   }
@@ -980,7 +1027,7 @@ function update(dt){
   if(G.boss&&G.boss.dead)G.boss=null;
   // ---- telemetry
   G.peakE=Math.max(G.peakE,E.length);G.peakPB=Math.max(G.peakPB,PB.length);
-  G.tlT-=dt;if(G.tlT<=0){G.tlT=30;G.timeline.push({t:Math.round(G.time),kills:G.kills,threat:G.threat,lv:G.level,alive:E.length,hp:Math.round(P.hp)+'/'+P.max,fps:curFps()})}
+  G.tlT-=dt;if(G.tlT<=0){G.tlT=30;G.timeline.push({t:Math.round(G.time),kills:G.kills,threat:G.threat,lv:G.level,alive:E.length,hp:Math.round(P.hp)+'/'+P.max,fps:G.fpsWin.length>=30?curFps():null})}
   // ---- level ups
   if(G.pendingLv>0&&G.stop<=0&&G.state==='play')openLevelUp();
   G.hudT-=dt;if(G.hudT<=0){G.hudT=.1;updateHud()}
@@ -1097,7 +1144,7 @@ function drawZone(z,ox,oy){
   ctx.globalAlpha=1;
 }
 function render(){
-  const sh=RM?0:G.shake;
+  const sh=RM||!CFG.shake?0:G.shake;
   const ox=Math.round(cam.x-LW/2+(sh?rnd(-sh,sh):0)),oy=Math.round(cam.y-LH/2+(sh?rnd(-sh,sh):0));
   drawGround(ox,oy);
   for(const d of DECALS){ctx.globalAlpha=Math.min(.5,d.life/4);ctx.fillStyle=d.c;ctx.fillRect(Math.round(d.x-ox)-d.w/2,Math.round(d.y-oy)+2,d.w,1);ctx.fillRect(Math.round(d.x-ox)-1,Math.round(d.y-oy)+1,2,1)}
@@ -1174,7 +1221,6 @@ function render(){
     for(let i=0;i<5;i++){ctx.fillRect(Math.round(x-Math.cos(a)*i-Math.sin(a)*i),Math.round(y-Math.sin(a)*i+Math.cos(a)*i),1,1);ctx.fillRect(Math.round(x-Math.cos(a)*i+Math.sin(a)*i),Math.round(y-Math.sin(a)*i-Math.cos(a)*i),1,1)}}}
   if(G.hurt>0){ctx.fillStyle=`rgba(255,40,70,${Math.min(.9,G.hurt*.9)})`;ctx.fillRect(0,0,LW,2);ctx.fillRect(0,LH-2,LW,2);ctx.fillRect(0,0,2,LH);ctx.fillRect(LW-2,0,2,LH)}
   if(G.flash>0){ctx.fillStyle=`rgba(255,255,255,${G.flash*.55})`;ctx.fillRect(0,0,LW,LH)}
-  if(joy.on){ring(joy.ox,joy.oy,16,'rgba(255,255,255,.35)');ctx.fillStyle='rgba(255,255,255,.65)';ctx.fillRect(Math.round(joy.ox+joy.dx*16)-2,Math.round(joy.oy+joy.dy*16)-2,5,5)}
 }
 
 /* ================= HUD ================= */
@@ -1211,7 +1257,7 @@ function curFps(){const w=G.fpsWin;if(!w||!w.length)return 0;let s=0;for(const v
 function buildReport(){
   const sumD=Object.values(G.dmgBy).reduce((a,b)=>a+b,0)||1;
   const dmg=Object.entries(G.dmgBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({source:k,damage:Math.round(v),pct:Math.round(v/sumD*100)}));
-  const statKeys=Object.keys(S).filter(k=>{const d={dmg:1,rate:1,move:1,area:1,magnet:34,pspeed:1,dashMax:1}[k]??0;return Math.abs(S[k]-d)>1e-6});
+  const statKeys=Object.keys(S).filter(k=>{const d={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,dashMax:1}[k]??0;return Math.abs(S[k]-d)>1e-6});
   const r={
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
     mode:G.daily?'daily '+G.seedStr:'normal',startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
@@ -1222,7 +1268,8 @@ function buildReport(){
     damageBySource:dmg,killsBySource:G.killsBy,killsByEnemy:G.killsByType,
     upgrades:G.log,timeline:G.timeline,
     perf:{avgFps:G.frames?Math.round(G.frames/G.ftSum):0,worstFps:G.fpsMin===999?0:Math.round(G.fpsMin),peakEnemies:G.peakE,peakProjectiles:G.peakPB},
-    device:{viewport:innerWidth+'x'+innerHeight,pixelScale:SC,touch:isTouch,ua:navigator.userAgent}
+    device:{viewport:innerWidth+'x'+innerHeight,pixelScale:SC,touch:isTouch,ua:navigator.userAgent},
+    controls:CFG
   };
   const top=dmg.slice(0,4).map(d=>`${d.source} ${d.pct}%`).join(', ');
   const head=[
@@ -1278,14 +1325,14 @@ $('rPick').addEventListener('click',e=>{const b=e.target.closest('button[data-r]
 function start(daily){
   initAudio();if(AC&&AC.state==='suspended')AC.resume();
   if(daily)reset({daily:true,weapon:'pea',relics:[]});else reset({daily:false,weapon:chosenW,relics:chosenR});
-  ['title','over','pause','lvl','repOv'].forEach(id=>$(id).hidden=true);$('hud').hidden=false;
-  $('dashBtn').hidden=!isTouch;
+  ['title','over','pause','lvl','repOv','opts'].forEach(id=>$(id).hidden=true);$('hud').hidden=false;
+  applyControls();
   banner(daily?'DAILY RUN':'THREAT 0',daily?'Same upgrade offers for everyone today':'Entering '+landName(0));
   updateHud();
 }
 function gameOver(){
   if(G.state==='over')return;
-  G.state='over';snd('over');G.stop=0;burst(P.x,P.y,'#2ec4b6',40,90,.8,2);G.flash=.6;
+  G.state='over';snd('over');G.stop=0;joy.on=false;applyControls();burst(P.x,P.y,'#2ec4b6',40,90,.8,2);G.flash=.6;
   meta.runs++;meta.totalKills+=G.kills;
   const nb=G.kills>meta.bestKills;
   meta.bestKills=Math.max(meta.bestKills,G.kills);meta.bestThreat=Math.max(meta.bestThreat,G.threat);meta.bestLevel=Math.max(meta.bestLevel,G.level);
@@ -1301,22 +1348,115 @@ function gameOver(){
 function setPause(on){
   if(G.state!=='play'&&G.state!=='pause')return;
   G.state=on?'pause':'play';$('pause').hidden=!on;
+  joy.on=false;joy.dx=joy.dy=joy.kx=joy.ky=0;applyControls();
   if(on){
-    joy.on=false;
     const rows=[['HP',Math.ceil(P.hp)+' / '+P.max],['Level',G.level],['Threat',G.threat+' · '+landName(G.threat)],...W.map(w=>[WDEF[w.id].name,'Lv '+w.lvl])];
     for(const id in G.taken){const c=CARDS.find(c=>c.id===id);if(c)rows.push([c.name,G.taken[id]>1?'x'+G.taken[id]:RN[c.r].toLowerCase()])}
     $('buildStats').innerHTML=rows.map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('');
     document.querySelectorAll('.repNote').forEach(n=>n.textContent='');
   }
 }
-function toTitle(){G={state:'title'};['over','pause','lvl','repOv','hud'].forEach(id=>$(id).hidden=true);$('title').hidden=false;buildTitle()}
+function toTitle(){G={state:'title'};['over','pause','lvl','repOv','hud','opts'].forEach(id=>$(id).hidden=true);$('title').hidden=false;buildTitle();applyControls()}
 $('startBtn').onclick=()=>start(false);$('dailyBtn').onclick=()=>start(true);
 $('againBtn').onclick=()=>start(G.daily);$('titleBtn').onclick=toTitle;$('quitBtn').onclick=toTitle;
 $('resumeBtn').onclick=()=>setPause(false);
 $('pauseBtn').onclick=()=>setPause(G.state==='play');
 $('muteBtn').onclick=()=>{muted=!muted;$('muteBtn').style.opacity=muted?.4:1};
 const dashBtn=$('dashBtn');
-dashBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();dashQueued=true});
+dashBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(!placing)dashQueued=true});
+
+/* on-screen controls */
+let placing=false;
+const stickEl=$('stick'),knobEl=$('knob');
+const showSticks=()=>CFG.ui==='always'||(CFG.ui==='auto'&&isTouch);
+const stickR=()=>56*CFG.jsize;
+function clampPos(fx,fy,r){return{x:clamp(fx*innerWidth,r+8,innerWidth-r-8),y:clamp(fy*innerHeight,r+8,innerHeight-r-8)}}
+function stickCenter(){return clampPos(CFG.jx,CFG.jy,stickR())}
+function dashCenter(){return clampPos(CFG.dx,CFG.dy,36*CFG.dsize)}
+function drawStick(){
+  const c=(CFG.mode==='float'&&joy.on&&!placing)?{x:joy.ox,y:joy.oy}:stickCenter();
+  stickEl.style.left=c.x+'px';stickEl.style.top=c.y+'px';
+  knobEl.style.transform=`translate(calc(-50% + ${joy.on?joy.kx:0}px),calc(-50% + ${joy.on?joy.ky:0}px))`;
+  stickEl.classList.toggle('active',joy.on);
+}
+function applyControls(){
+  const root=document.documentElement.style;
+  root.setProperty('--js',Math.round(stickR()*2)+'px');root.setProperty('--ds',Math.round(72*CFG.dsize)+'px');root.setProperty('--cop',CFG.op);
+  const inGame=!$('hud').hidden&&G.state!=='over'&&G.state!=='title';
+  const vis=placing||(showSticks()&&inGame);
+  dashBtn.hidden=!vis;
+  stickEl.hidden=!(placing||(vis&&(CFG.mode==='fixed'||joy.on)));
+  const d=dashCenter();dashBtn.style.left=d.x+'px';dashBtn.style.top=d.y+'px';
+  stickEl.classList.toggle('place',placing);dashBtn.classList.toggle('place',placing);
+  drawStick();
+}
+addEventListener('resize',applyControls);
+function moveJoy(x,y){
+  const r=stickR();let dx=x-joy.ox,dy=y-joy.oy,d=Math.hypot(dx,dy);
+  if(d>r){if(CFG.mode==='float'){joy.ox+=dx*(1-r/d);joy.oy+=dy*(1-r/d)}dx*=r/d;dy*=r/d;d=r}
+  const n=d/r,m=n<CFG.dead?0:(n-CFG.dead)/(1-CFG.dead);
+  joy.dx=d?dx/d*m:0;joy.dy=d?dy/d*m:0;joy.kx=dx;joy.ky=dy;
+  drawStick();
+}
+cv.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='touch'&&!isTouch){isTouch=true;applyControls()}
+  if(G.state!=='play')return;
+  if(joy.on){if(CFG.tapDash&&e.pointerType!=='mouse')dashQueued=true;return}
+  const useFixed=CFG.mode==='fixed'&&showSticks();
+  if(useFixed){
+    const c=stickCenter();
+    if(Math.hypot(e.clientX-c.x,e.clientY-c.y)>stickR()*2.2){if(CFG.tapDash&&e.pointerType!=='mouse')dashQueued=true;return}
+    joy.ox=c.x;joy.oy=c.y;
+  }else{joy.ox=e.clientX;joy.oy=e.clientY}
+  joy.on=true;joy.id=e.pointerId;
+  try{cv.setPointerCapture(e.pointerId)}catch(_){}
+  moveJoy(e.clientX,e.clientY);applyControls();
+});
+cv.addEventListener('pointermove',e=>{if(joy.on&&e.pointerId===joy.id)moveJoy(e.clientX,e.clientY)});
+const endJoy=e=>{if(e.pointerId===joy.id){joy.on=false;joy.dx=joy.dy=joy.kx=joy.ky=0;applyControls()}};
+cv.addEventListener('pointerup',endJoy);cv.addEventListener('pointercancel',endJoy);
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* options screen */
+let optsFrom=null;
+function syncOpts(){
+  const mark=(id,v)=>$(id).querySelectorAll('button').forEach(b=>b.classList.toggle('sel',b.dataset.v===String(v)));
+  mark('optMode',CFG.mode);mark('optUI',CFG.ui);mark('optTap',CFG.tapDash);mark('optShake',CFG.shake);
+  $('optJs').value=Math.round(CFG.jsize*100);$('optJsV').textContent=Math.round(CFG.jsize*100)+'%';
+  $('optDead').value=Math.round(CFG.dead*100);$('optDeadV').textContent=Math.round(CFG.dead*100)+'%';
+  $('optDs').value=Math.round(CFG.dsize*100);$('optDsV').textContent=Math.round(CFG.dsize*100)+'%';
+  $('optOp').value=Math.round(CFG.op*100);$('optOpV').textContent=Math.round(CFG.op*100)+'%';
+}
+function openOpts(){
+  optsFrom=!$('pause').hidden?'pause':'title';
+  $(optsFrom).hidden=true;$('opts').hidden=false;syncOpts();
+}
+function closeOpts(){saveCfg();$('opts').hidden=true;$(optsFrom||'title').hidden=false;applyControls()}
+document.querySelectorAll('.optBtn').forEach(b=>b.onclick=openOpts);
+const pickHandler=(id,key,num)=>$(id).addEventListener('click',e=>{const b=e.target.closest('button[data-v]');if(!b)return;CFG[key]=num?+b.dataset.v:b.dataset.v;saveCfg();syncOpts();applyControls()});
+pickHandler('optMode','mode');pickHandler('optUI','ui');pickHandler('optTap','tapDash',1);pickHandler('optShake','shake',1);
+const sliderHandler=(id,key)=>$(id).addEventListener('input',e=>{CFG[key]=+e.target.value/100;syncOpts();applyControls()});
+sliderHandler('optJs','jsize');sliderHandler('optDead','dead');sliderHandler('optDs','dsize');sliderHandler('optOp','op');
+$('optDone').onclick=closeOpts;
+$('optSwap').onclick=()=>{CFG.jx=1-CFG.jx;CFG.dx=1-CFG.dx;saveCfg();applyControls()};
+$('optReset').onclick=()=>{const keep={shake:CFG.shake};CFG=Object.assign({},CFG_DEF,keep);saveCfg();syncOpts();applyControls()};
+let dragTarget=null;
+$('optPlace').onclick=()=>{placing=true;$('opts').hidden=true;$('placeOv').hidden=false;applyControls()};
+$('placeDone').onclick=()=>{placing=false;dragTarget=null;$('placeOv').hidden=true;saveCfg();$('opts').hidden=false;applyControls()};
+$('placeOv').addEventListener('pointerdown',e=>{
+  if(e.target.closest('.placebar'))return;
+  const s=stickCenter(),d=dashCenter();
+  const ds=Math.hypot(e.clientX-s.x,e.clientY-s.y),dd=Math.hypot(e.clientX-d.x,e.clientY-d.y);
+  dragTarget=dd<36*CFG.dsize*1.6&&dd<ds?'dash':ds<stickR()*1.6?'stick':null;
+  if(dragTarget){try{e.currentTarget.setPointerCapture(e.pointerId)}catch(_){}}
+});
+$('placeOv').addEventListener('pointermove',e=>{
+  if(!dragTarget)return;
+  const fx=clamp(e.clientX/innerWidth,0,1),fy=clamp(e.clientY/innerHeight,0,1);
+  if(dragTarget==='stick'){CFG.jx=fx;CFG.jy=fy}else{CFG.dx=fx;CFG.dy=fy}
+  applyControls();
+});
+$('placeOv').addEventListener('pointerup',()=>{dragTarget=null});
 
 /* updater: only checks when asked */
 $('updBtn').onclick=async()=>{
@@ -1341,23 +1481,16 @@ addEventListener('keydown',e=>{
   if(G.state==='title'&&e.code==='Enter'&&!$('title').hidden&&document.activeElement===document.body){start(false);return}
   if(DASH_KEYS.includes(e.code)&&!e.repeat&&G.state==='play')dashQueued=true;
   keys[e.code]=true;
-  if((e.code==='KeyP'||e.code==='Escape')){if(!$('repOv').hidden){$('repOv').hidden=true;return}setPause(G.state==='play')}
+  if((e.code==='KeyP'||e.code==='Escape')){
+    if(!$('repOv').hidden){$('repOv').hidden=true;return}
+    if(placing){$('placeDone').click();return}
+    if(!$('opts').hidden){closeOpts();return}
+    setPause(G.state==='play')}
   if(e.code==='KeyM')$('muteBtn').click();
 });
 addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;joy.on=false;if(G.state==='play')setPause(true)});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.state==='play')setPause(true)});
-cv.addEventListener('pointerdown',e=>{
-  if(e.pointerType==='touch'&&!isTouch){isTouch=true;if(G.state!=='title')$('dashBtn').hidden=false}
-  if(G.state!=='play'||joy.on)return;
-  joy.on=true;joy.id=e.pointerId;joy.ox=e.clientX/SC;joy.oy=e.clientY/SC;joy.dx=joy.dy=0;
-  try{cv.setPointerCapture(e.pointerId)}catch(_){}
-});
-cv.addEventListener('pointermove',e=>{if(!joy.on||e.pointerId!==joy.id)return;let dx=e.clientX/SC-joy.ox,dy=e.clientY/SC-joy.oy;const d=Math.hypot(dx,dy);
-  if(d>16){joy.ox+=dx*(1-16/d);joy.oy+=dy*(1-16/d);dx*=16/d;dy*=16/d}joy.dx=dx/16;joy.dy=dy/16});
-const endJoy=e=>{if(e.pointerId===joy.id){joy.on=false;joy.dx=joy.dy=0}};
-cv.addEventListener('pointerup',endJoy);cv.addEventListener('pointercancel',endJoy);
-cv.addEventListener('contextmenu',e=>e.preventDefault());
 
 /* title backdrop */
 function titleDemo(t){
@@ -1378,7 +1511,7 @@ function frame(now){
   }
   requestAnimationFrame(frame);
 }
-buildTitle();
+buildTitle();applyControls();
 requestAnimationFrame(frame);
 </script>
 </body>
