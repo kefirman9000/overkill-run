@@ -69,6 +69,10 @@ Each boss arrives with a cinematic intro card and a moment of slow motion. Chang
 
 Heart Containers raise max HP (bosses always drop one, elites sometimes do). Cards: Thick Skin, Iron Heart (+50 max HP, full heal), Plating (less damage taken), Giant's Blood (max HP x1.5). Rare pickups: Iron Skin (half damage for 12 s) and Guardian Orbs (three orbs that block shots for 15 s), alongside the existing heal, shield bubble, frenzy, freeze and screen bomb.
 
+### More pickups and cards
+
+Pickups also include **Decoy** (a copy of you that draws nearby enemies, then explodes), **Wind Boots** (endless dashes and +30% speed for 10 s) and **Thunderclap** (lightning through up to 25 enemies). New cards: Static Field (lightning jumps from you), Dash Barrage (each dash fires a ring of shots), Lucky Clover (more pickups), Bounty Hunter (elites always drop one), Frost Aura (slows enemies near you) and Glass Cannon (+60% damage, -30% max HP).
+
 ### Super modes
 
 Short, overpowered bursts you trigger on the battlefield:
@@ -77,7 +81,7 @@ Short, overpowered bursts you trigger on the battlefield:
 - **Supply crates** drop in with a shadow. Your weapons crack them open and they leave a power orb.
 - **The Overkill meter** fills while you hold a 25+ kill streak and fires a mode on its own when full.
 
-Modes: Overdrive (every weapon evolved), Titan (huge, invulnerable, crushes what you touch), Time Stop, Orbital Strike, Storm Cloud, Turret Drop and Soul Rush.
+Modes: Overdrive (every weapon evolved), Titan (huge, invulnerable, crushes what you touch), Time Stop, Orbital Strike, Storm Cloud, Turret Drop, Soul Rush, Meteor Shower (meteors rain on enemies) and Vortex (a black hole circles you, dragging the crowd).
 
 ## Install on your phone
 
