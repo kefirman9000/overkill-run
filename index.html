@@ -289,25 +289,39 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.11.1';
+const VERSION='1.12.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const TAU=Math.PI*2;
 let LW=320,LH=180,SC=4;
-let K=2;   // canvas pixels per world pixel: 2 = half-pixel camera and player movement; drops to 1 for the rest of a run if the frame rate sinks
+const K=1;                                                          // canvas pixels per world pixel
 const RK=v=>Math.round(v*K)/K;
 /* VIEW = world pixels across the short side of the screen; smaller is more zoomed in */
 const VIEW_IN=150,VIEW_OUT=300,VIEW_FIXED=200;
 let VIEW=VIEW_FIXED;
+/* Every world pixel is a whole number of screen (device) pixels, N. With a fractional scale the pixel grid
+   shimmers as things move (some pixels 3 screen pixels wide, some 4); auto zoom used to change it every frame.
+   Zoom now picks a whole N, with a short eased step between two of them. */
+let ZN=0,ZFROM=0,ZTO=0,ZT=1,ZLAST=-99;
+const DPR=()=>window.devicePixelRatio||1,SHORT=()=>Math.min(innerWidth,innerHeight)*DPR();
+const nFor=v=>Math.max(1,Math.round(SHORT()/v));
+function setZoom(v){ZN=ZTO=ZFROM=nFor(v);ZT=1}
 function applyView(force){
-  const w=innerWidth,h=innerHeight,sc=Math.min(w,h)/VIEW;
+  if(!ZN)setZoom(VIEW);
+  const w=innerWidth,h=innerHeight,sc=ZN/DPR();VIEW=Math.min(w,h)/sc;
   const lw=Math.ceil(w/sc),lh=Math.ceil(h/sc);
   if(force||lw!==LW||lh!==LH){LW=lw;LH=lh;cv.width=LW*K;cv.height=LH*K;ctx.imageSmoothingEnabled=false}
   SC=sc;cv.style.width=(LW*SC)+'px';cv.style.height=(LH*SC)+'px';
 }
-function resize(){applyView(true)}
+function resize(){setZoom(VIEW);applyView(true)}
+function zoomToward(v,dt){
+  const ex=SHORT()/v;                                                // wanted screen pixels per world pixel
+  if(ZT>=1&&Math.abs(ex-ZTO)>.75){const tn=Math.max(1,Math.round(ex));  // past the halfway point + margin: step
+    if(tn<ZTO||G.time-ZLAST>2.5){ZFROM=ZN;ZTO=tn;ZT=0;ZLAST=G.time}}  // zoom out at once, back in at most every 2.5 s
+  if(ZT<1){ZT=Math.min(1,ZT+dt/.35);const e=ZT*ZT*(3-2*ZT);ZN=ZT>=1?ZTO:ZFROM+(ZTO-ZFROM)*e}
+}
 addEventListener('resize',resize);resize();
 
 let R=Math.random,cardRand=Math.random;
@@ -572,7 +586,6 @@ let isTouch=matchMedia('(pointer: coarse)').matches;
 function reset(opts){
   const daily=!!opts.daily,seedStr=daily?new Date().toLocaleDateString('en-CA'):'';
   cardRand=daily?mulberry32(strHash('overkill-'+seedStr)):Math.random;
-  if(K!==2){K=2;applyView(true)}                                     // each run starts with the smooth camera
   G={state:'play',daily,seedStr,startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,lvCD:0,surges:0,cashedOut:0,autoPicked:0,
     threat:0,tp:0,biomeI:0,biomePrev:0,morph:1,streak:0,streakT:0,bestStreak:0,stop:0,shake:0,flash:0,hurt:0,spawnAcc:0,packT:12,hazT:6,
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
@@ -764,7 +777,7 @@ function spawnHazard(){
 
 /* ================= combat ================= */
 function burst(x,y,col,n,sp=50,life=.4,size=1){
-  for(let i=0;i<n&&PT.length<(isTouch?450:900)*(G.lowFx?.45:1);i++){const a=R()*TAU,s=rnd(.3,1)*sp;PT.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.5,1)*life,max:life,c:col,s:size})}
+  for(let i=0;i<n&&PT.length<(isTouch?300:900)*(G.lowFx?.45:1);i++){const a=R()*TAU,s=rnd(.3,1)*sp;PT.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.5,1)*life,max:life,c:col,s:size})}
 }
 function hurt(e,dmg,o={}){
   if(e.dead||e.phase>0)return;                                       // a phased Wraith can't be hit
@@ -1128,8 +1141,8 @@ function update(dt){
   if(CFG.autoZoom){
     let n=0;for(const e of E){if(e.type==='crate')continue;const dx=e.x-P.x,dy=e.y-P.y;if(dx*dx+dy*dy<170*170)n++}
     const target=Math.min(VIEW_OUT,VIEW_IN+Math.sqrt(n)*11+(G.boss?30:0)+(G.mode&&G.mode.id==='orbital'?20:0));
-    VIEW+=(target-VIEW)*Math.min(1,dt*(target>VIEW?1.6:.35));
-  }else VIEW+=(VIEW_FIXED-VIEW)*Math.min(1,dt*3);
+    zoomToward(target,dt);
+  }else zoomToward(VIEW_FIXED,dt);
   applyView();
   G.streakT-=dt;if(G.streakT<=0)G.streak=0;
 
@@ -1560,8 +1573,11 @@ function drawZone(z,ox,oy){
 function render(){
   const sh=RM?0:G.shake*CFG.shake;
   // the view moves in half-pixel steps: whole pixels in ox/oy, the rest in the canvas transform
-  const cxf=cam.x-LW/2+(sh?rnd(-sh,sh):0),cyf=cam.y-LH/2+(sh?rnd(-sh,sh):0),ox=Math.floor(cxf),oy=Math.floor(cyf);
-  ctx.setTransform(K,0,0,K,-RK((cxf-ox)*K),-RK((cyf-oy)*K));
+  // view origin chosen so the player's pixel position and the world's move together: the player sits at a
+  // steady spot on screen (the camera's smooth lag) and the ground steps one whole pixel when the player does
+  const shx=sh?Math.round(rnd(-sh,sh)):0,shy=sh?Math.round(rnd(-sh,sh)):0;
+  const ox=Math.round(P.x)-Math.round(P.x-cam.x+LW/2)+shx,oy=Math.round(P.y)-Math.round(P.y-cam.y+LH/2)+shy;
+  ctx.setTransform(1,0,0,1,0,0);
   drawGround(ox,oy);
   for(const d of DECALS){if(d.x-ox<-6||d.y-oy<-6||d.x-ox>LW+6||d.y-oy>LH+6)continue;ctx.globalAlpha=Math.min(.5,d.life/4);ctx.fillStyle=d.c;ctx.fillRect(RK(d.x-ox)-d.w/2,RK(d.y-oy)+2,d.w,1);ctx.fillRect(RK(d.x-ox)-1,RK(d.y-oy)+1,2,1)}
   ctx.globalAlpha=1;
@@ -1770,7 +1786,7 @@ $('wPick').addEventListener('click',e=>{const b=e.target.closest('button[data-w]
 $('rPick').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(b&&!b.disabled){const id=b.dataset.r;chosenR.has(id)?chosenR.delete(id):chosenR.add(id);buildTitle()}});
 function start(daily){
   initAudio();if(AC&&AC.state==='suspended')AC.resume();
-  VIEW=CFG.autoZoom?VIEW_IN:VIEW_FIXED;applyView(true);
+  VIEW=CFG.autoZoom?VIEW_IN:VIEW_FIXED;setZoom(VIEW);applyView(true);
   if(daily)reset({daily:true,weapon:'pea',relics:[]});else reset({daily:false,weapon:chosenW,relics:chosenR});
   ['title','over','pause','lvl','repOv','opts'].forEach(id=>$(id).hidden=true);$('hud').hidden=false;
   applyControls();
@@ -1955,7 +1971,7 @@ function frame(now){
   if(G.state==='title')titleDemo(now/1000);
   else{
     if(G.state==='play'){
-      if(raw>0&&raw<1){G.frames++;G.ftSum+=raw;G.fpsWin.push(raw);if(G.fpsWin.length>60)G.fpsWin.shift();if(G.frames>120&&G.fpsWin.length===60){const f=curFps();if(f<G.fpsMin)G.fpsMin=f;G.lowFx=G.lowFx?f<52:f<40;if(G.lowFx&&K>1){K=1;applyView(true)}}}
+      if(raw>0&&raw<1){G.frames++;G.ftSum+=raw;G.fpsWin.push(raw);if(G.fpsWin.length>60)G.fpsWin.shift();if(G.frames>120&&G.fpsWin.length===60){const f=curFps();if(f<G.fpsMin)G.fpsMin=f;G.lowFx=G.lowFx?f<52:f<40}}
       if(G.stop>0)G.stop-=dt;else update(dt);
     }else if(G.state==='over'){for(const p of PT){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}PT=PT.filter(p=>p.life>0);G.flash=Math.max(0,G.flash-dt)}
     render();
