@@ -382,6 +382,7 @@ const ET={
   sniper:{hue:0,sat:20,hp:22,spd:18,r:4,dmg:10,gem:1,ai:'sniper',fixedHue:true,rows:['....eee.','..aae...','.aaaaaa.','aacaacaa','aadaadaa','.aaaaaa.','..b..b..','.bb..bb.']},
   jugg:{hue:15,sat:30,hp:260,spd:11,r:7,dmg:22,gem:3,ai:'jugg',res:{kinetic:.6},fixedHue:true,rows:['....bbbbbb....','..bbaaaaaabb..','.baaaaaaaaaab.','baaccaaaaccaab','baacdaaaacdaab','baaaaaaaaaaaab','bbaaeeeeeeaabb','baaaaaaaaaaaab','baabbaaaabbaab','.baab....baab.','.bbbb....bbbb.','..............']},
   boss:{hue:350,sat:60,hp:420,spd:15,r:8,dmg:24,gem:4,ai:'boss',rows:['....b......b....','...bab....bab...','...baab..baab...','..baaaabbaaaab..','.baaaaaaaaaaaab.','baaccaaaaaaccaab','baacddaaaaddcaab','baaaaaaaaaaaaaab','baaaabbbbbbaaaab','baaabeeeeeebaaab','baaaabbbbbbaaaab','.baaaaaaaaaaaab.','..baaaaaaaaaab..','.bab.baaaab.bab.','.b....bbbb....b.','................']},
+  ufo:{hue:170,sat:22,hp:120,spd:0,r:6,dmg:0,gem:3,ai:'ufo',fixedHue:true,rows:['.....cccc.....','....ceeeec....','..bbbbbbbbbb..','.baaaaaaaaaab.','bacaacaacaacab','.bbbbbbbbbbbb.','...b......b...']},
   thief:{hue:45,sat:80,hp:40,spd:62,r:4,dmg:0,gem:3,ai:'thief',fixedHue:true,rows:['...bb...','..beeb..','.bbbbbb.','baaaaaab','bacaacab','badaadab','baaaaaab','.bb..bb.']},
   pylon:{hue:190,sat:70,hp:45,spd:0,r:5,dmg:0,gem:2,ai:'pylon',fixedHue:true,rows:['...ee...','..eaae..','..eaae..','.eaacae.','.eaacae.','.eaaaae.','.eaaaae.','..eaae..','.bbbbbb.','bddddddb']},
   /* land boss looks (spawned as type 'boss' with e.spr set) */
@@ -391,7 +392,7 @@ const ET={
   b_crys:{hue:190,sat:70,r:8,fixedHue:true,rows:['.......ee.......', '..e...beeb...e..', '.beb.baeeab.beb.', '.baebaaeeaabeab.', '..baaaaaaaaaab..', '.baaccaaaaccaab.', 'baacddaaaaddcaab', 'baaaaaaeeaaaaaab', 'baaaaaeeeeaaaaab', 'baaaaaaeeaaaaaab', '.baaaaaaaaaaaab.', '..baaaaaaaaaab..', '.baab.baab.baab.', '.bab..bab..bab..', '.bb...bb...bb...', '................']},
   b_void:{hue:268,sat:50,r:8,fixedHue:true,rows:['................', '....bbbbbbbb....', '..bbaaaaaaaabb..', '.baaaaaaaaaaaab.', '.baaabbbbbbaaab.', 'baaabccccccbaaab', 'baabccddddccbaab', 'baabcdddeddcbaab', 'baabccddddccbaab', 'baaabccccccbaaab', '.baaabbbbbbaaab.', '.baaaaaaaaaaaab.', '..bab.baab.bab..', '.ba..ba..ab..ab.', '.b...b....b...b.', '................']},
 };
-const NAMES={thief:'Soul Thief',pylon:'Crystal Pylon',chaser:'Chaser',swarmer:'Swarmer',tank:'Tank',shooter:'Spitter',exploder:'Exploder',shaman:'Shaman',brood:'Broodmother',mini:'Crawler',ember:'Ember',frostling:'Frostling',bloater:'Bloater',golem:'Crystal Golem',stalker:'Stalker',wraith:'Wraith',lancer:'Lancer',mortar:'Mortar',splitter:'Splitter',shard:'Shard',sniper:'Sniper',jugg:'Juggernaut',boss:'Warden',crate:'Supply Crate'};
+const NAMES={ufo:'UFO',thief:'Soul Thief',pylon:'Crystal Pylon',chaser:'Chaser',swarmer:'Swarmer',tank:'Tank',shooter:'Spitter',exploder:'Exploder',shaman:'Shaman',brood:'Broodmother',mini:'Crawler',ember:'Ember',frostling:'Frostling',bloater:'Bloater',golem:'Crystal Golem',stalker:'Stalker',wraith:'Wraith',lancer:'Lancer',mortar:'Mortar',splitter:'Splitter',shard:'Shard',sniper:'Sniper',jugg:'Juggernaut',boss:'Warden',crate:'Supply Crate'};
 const sprCache=new Map();
 function enemySprite(type,shift,white,outline){
   const T=ET[type],sh=T.fixedHue?0:shift;
@@ -668,6 +669,8 @@ function snd(k,arg=0){
     case 'pick':{const b=520+arg*140;tone(b,b*2,.12,'sine',.08);if(arg>=2)tone(b*1.5,b*3,.14,'sine',.06,.07);if(arg>=4)tone(b*2,b*4,.2,'square',.04,.14);break}
     case 'threat':[0,.1,.2].forEach((d,i)=>tone(160*[1,1.2,1.5][i],160*[1,1.2,1.5][i],.2,'sawtooth',.05,d));break;
     case 'boss':tone(90,40,.8,'sawtooth',.12);noise(.4,.1);break;
+    case 'ufo':tone(900,500,.5,'sine',.05);tone(500,900,.5,'sine',.04,.25);break;
+    case 'beam':tone(200,600,.6,'triangle',.06);break;
     case 'over':tone(400,40,1.1,'triangle',.12);break;
   }
 }
@@ -786,26 +789,76 @@ function spawnTick(dt,mult,cap){
   while(G.spawnAcc>=sq&&E.length<cap){G.spawnAcc-=sq;spawnSquad(sq)}
 }
 function drawWaveWarnings(){
+  // a solid arrow at the screen edge pointing where the next squad will come from, pulsing as it closes in
   for(const w of G.warn){
-    if(Math.floor(w.t*6)%2===0)continue;
-    const x=clamp(LW/2+Math.cos(w.a)*(LW/2-12),10,LW-10),y=clamp(LH/2+Math.sin(w.a)*(LH/2-12),10,LH-10);
-    ctx.fillStyle='#ff4d6d';
-    for(let k=0;k<2;k++){const bx=x-Math.cos(w.a)*k*4,by=y-Math.sin(w.a)*k*4;
-      for(let i=0;i<4;i++){ctx.fillRect(RK(bx-Math.cos(w.a)*i-Math.sin(w.a)*i),RK(by-Math.sin(w.a)*i+Math.cos(w.a)*i),1,1);ctx.fillRect(RK(bx-Math.cos(w.a)*i+Math.sin(w.a)*i),RK(by-Math.sin(w.a)*i-Math.cos(w.a)*i),1,1)}}
+    const k=Math.min(1,w.t/.4)*(.65+.35*Math.sin(G.time*12)),c=Math.cos(w.a),sn=Math.sin(w.a);
+    const t=Math.min((LW/2-14)/Math.max(1e-3,Math.abs(c)),(LH/2-14)/Math.max(1e-3,Math.abs(sn))),x=LW/2+c*t,y=LH/2+sn*t;  // on the screen edge
+    const tri=(r,col)=>{ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x+c*r,y+sn*r);ctx.lineTo(x-c*r*.7-sn*r*.85,y-sn*r*.7+c*r*.85);ctx.lineTo(x-c*r*.7+sn*r*.85,y-sn*r*.7-c*r*.85);ctx.closePath();ctx.fill()};
+    ctx.globalAlpha=k;tri(8,'#0d0b14');tri(6,'#ff4d6d');ctx.fillStyle='#fff';ctx.fillRect(RK(x-c*2)-1,RK(y-sn*2)-1,2,2);ctx.globalAlpha=1;
   }
 }
-/* standing still too long draws telegraphed strikes onto you (not inside walled boss fights) */
-const CAMP_R=40,CAMP_T=4;
+/* standing still too long brings a UFO (not inside walled boss fights). It flies in, flashes a warning circle,
+   then drops a tractor beam that drags you toward its centre. Stay in the beam too long and you're abducted:
+   a big hit, and you're dropped somewhere else. Run or dash out to break free, or shoot it down for souls. */
+const CAMP_R=40,CAMP_T=4,UFO_HOLD=1.6,UFO_BEAM_R=20;
 function updateCamp(dt){
+  P.abd=Math.max(0,(P.abd||0)-dt*.6);
   if(G.arena&&G.arena.wall>0){G.campT=0;return}
   const dx=P.x-G.campX,dy=P.y-G.campY;
-  if(dx*dx+dy*dy>CAMP_R*CAMP_R){G.campX=P.x;G.campY=P.y;G.campT=0;G.campCd=0;return}
+  if(dx*dx+dy*dy>CAMP_R*CAMP_R){G.campX=P.x;G.campY=P.y;G.campT=0;return}
   G.campT+=dt;if(G.campT<CAMP_T)return;
-  G.campCd-=dt;if(G.campCd>0)return;
-  const n=1+Math.min(3,Math.floor((G.campT-CAMP_T)/4));G.campCd=1.3;
-  for(let i=0;i<n;i++){const a=R()*TAU,r=i?rnd(12,28):0;
-    addZone('shell',P.x+P.vx*.4+Math.cos(a)*r,P.y+P.vy*.4+Math.sin(a)*r,18,1.15,{boom:{r:18,dmg:0,pd:14*eDmgScale(),col:'#ff3b5c',src:'camp',hostile:true,cause:'standing still'}})}
-  if(!G.hinted.camp){G.hinted.camp=1;toast(2,'Standing still draws fire. Keep moving.')}
+  const ufos=E.filter(e=>e.type==='ufo'&&!e.dead&&e.st!=='out').length,want=1+(G.campT>CAMP_T+8?1:0)+(G.campT>CAMP_T+16?1:0);
+  if(ufos<want){
+    const a=R()*TAU,d=Math.hypot(LW,LH)/2+20,u=spawnEnemy('ufo',P.x+Math.cos(a)*d,P.y+Math.sin(a)*d,{elite:false});
+    u.st='in';u.stT=0;u.ox=rnd(-8,8);u.oy=rnd(-8,8);snd('ufo');
+    if(!G.hinted.camp){G.hinted.camp=1;toast(2,'Stand still too long and they come for you. Keep moving!')}
+  }
+}
+function ufoThink(e,dt,dx,dy,d){
+  e.stT+=dt;e.vx*=.5;e.vy*=.5;                                       // hovering: knockback barely moves it
+  const tx=P.x+e.ox-e.x,ty=P.y+e.oy-e.y,td=Math.hypot(tx,ty)||1;
+  if(e.st==='in'){if(td<6||e.stT>4){e.st='warn';e.stT=0}return [tx/td,ty/td,110]}
+  if(e.st==='warn'){if(e.stT>=1.1){e.st='beam';e.stT=0;snd('beam')}return [tx/td,ty/td,Math.min(td*3,24)]}
+  if(e.st==='beam'){
+    const px=P.x-e.x,py=P.y-e.y,pd=Math.hypot(px,py);
+    if(pd<UFO_BEAM_R&&G.state==='play'){
+      if(P.dashT>0){P.abd=0;if(!e.broke){e.broke=1;toast(0,'Broke free!')}}
+      else{P.abd=(P.abd||0)+dt*1.6;const f=55*(1-pd/UFO_BEAM_R)+15;P.x-=px/(pd||1)*f*dt;P.y-=py/(pd||1)*f*dt;
+        if(R()<.5)PT.push({x:P.x+rnd(-4,4),y:P.y+rnd(-2,4),vx:0,vy:-40,life:.4,max:.4,c:'#9dff7a',s:1});
+        if(P.abd>=UFO_HOLD)abduct(e)}
+    }
+    if(e.stT>=4.5){e.st='out';e.stT=0}
+    return [tx/td,ty/td,22];                                         // drifts after you, slower than you can run
+  }
+  // leaving
+  if(e.stT>2.5)e.dead=true;
+  return [-dx/d,-dy/d,130];
+}
+function abduct(e){
+  P.abd=0;e.st='out';e.stT=0;
+  const dmg=Math.round(P.max*.2+G.threat*2);
+  const was=P.inv;P.inv=0;hurtPlayer(dmg,'an alien abduction');if(G.state!=='play')return;P.inv=Math.max(was,1.2);
+  burst(P.x,P.y,'#9dff7a',30,80,.5,2);
+  const a=R()*TAU,r=rnd(110,160);P.x+=Math.cos(a)*r;P.y+=Math.sin(a)*r;P.vx=P.vy=0;cam.x=P.x;cam.y=P.y;
+  G.campX=P.x;G.campY=P.y;G.campT=0;
+  if(G.arena&&G.arena.wall>=.5)arenaClamp(P,4);
+  burst(P.x,P.y,'#9dff7a',30,80,.5,2);RINGS.push({x:P.x,y:P.y,r:0,max:30,life:.4,t:0,c:'#9dff7a',noFill:1});
+  G.flash=Math.max(G.flash,.6);G.shake=Math.max(G.shake,2);buzz(120);
+  banner('ABDUCTED','-'+dmg+' HP. They dropped you somewhere else.');
+}
+function drawUfo(e,ox,oy){
+  const x=RK(e.x-ox),y=RK(e.y-oy),h=14,s=enemySprite('ufo',0,e.flash>0);
+  // ground: shadow, then the warning circle or the beam
+  ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x-6,y+1,13,2);
+  if(e.st==='warn'&&Math.floor(e.stT*10)%2===0){ctx.globalAlpha=.9;ring(x,y,UFO_BEAM_R,'#9dff7a');ctx.globalAlpha=1}
+  if(e.st==='beam'){
+    const k=.25+.08*Math.sin(G.time*14);ctx.globalAlpha=k;ctx.fillStyle='#9dff7a';
+    for(let i=0;i<=h;i++){const w=Math.round(4+(UFO_BEAM_R-4)*i/h);ctx.fillRect(x-w,y-h+i,w*2+1,1)}
+    ctx.globalAlpha=.5;disc(x,y,UFO_BEAM_R,'#9dff7a');ctx.globalAlpha=.9;ring(x,y,UFO_BEAM_R,'#c8ffb0');ctx.globalAlpha=1;
+  }
+  ctx.drawImage(s,x-(s.width>>1),y-h-(s.height>>1)+Math.round(Math.sin(G.time*3+e.uid)));
+  const lit=Math.floor(G.time*8)%4;ctx.fillStyle=['#ff3b5c','#ffe066','#6be0ff','#9dff7a'][lit];ctx.fillRect(x-5+lit*3,y-h+1,1,1);
+  if(e.hp<e.max){ctx.fillStyle='#000';ctx.fillRect(x-6,y-h-6,12,1);ctx.fillStyle='#9dff7a';ctx.fillRect(x-6,y-h-6,Math.max(1,Math.round(12*e.hp/e.max)),1)}
 }
 /* Soul Thief: shows up now and then, runs from you dropping souls, and pays out big if you catch it */
 function updateThief(dt){
@@ -1229,6 +1282,7 @@ function kill(e,src){
   if(e.type==='boss'){buzz(90);G.boss=null;G.bossKills++;G.stop=.3;G.shake=4;G.flash=.7;snd('boom');if(G.arena)arenaWon(e);else banner(bossOf(e).name.toUpperCase()+' DOWN','The threat climbs anyway')}
   else if(e.type==='pylon')pylonDown(e);
   else if(e.type==='thief')thiefDown(e);
+  else if(e.type==='ufo'){banner('UFO DOWN','Nice shot');G.ufosDown=(G.ufosDown||0)+1;G.shake=Math.max(G.shake,2)}
   else if(e.elite){G.stop=Math.max(G.stop,.05)}
   // mutations on kill
   if(S.frostKill){query(e.x,e.y,26,o=>{o.slow=Math.max(o.slow,1.6)});if(R()<.3)RINGS.push({x:e.x,y:e.y,r:0,max:24,life:.2,t:0,c:'#a6f0ff',noFill:1})}
@@ -1684,6 +1738,7 @@ function update(dt){
         break;
       case 'boss':{const o=bossThink(e,dt,dx,dy,d);if(o){tx=o[0];ty=o[1];s=o[2]}}
         break;
+      case 'ufo':{const o=ufoThink(e,dt,dx,dy,d);tx=o[0];ty=o[1];s=o[2];if(e.dead)continue;break}
       case 'thief':{tx=-tx;ty=-ty;if(d>190)s*=.45;else if(d<60)s*=1.15;
         e.life-=dt;e.cd-=dt;if(e.cd<=0){e.cd=.45;PU.push({kind:'gem',tier:Math.min(3,Math.floor(G.threat/8)),x:e.x,y:e.y,t:0,vx:rnd(-20,20),vy:rnd(-20,20)})}
         if(R()<.3)PT.push({x:e.x+rnd(-3,3),y:e.y,vx:0,vy:-10,life:.4,max:.4,c:'#ffd84a',s:1});
@@ -1711,7 +1766,8 @@ function update(dt){
   G.sepFlip=!G.sepFlip;
   for(let i=G.sepFlip?0:1;i<E.length;i+=2){
     const e=E[i];if(e.dead)continue;
-    query(e.x,e.y,e.r+8,o=>{if(o===e)return;const dx=e.x-o.x,dy=e.y-o.y,d=Math.hypot(dx,dy),m=e.r+o.r;
+    if(e.type==='ufo')continue;
+    query(e.x,e.y,e.r+8,o=>{if(o===e||o.type==='ufo')return;const dx=e.x-o.x,dy=e.y-o.y,d=Math.hypot(dx,dy),m=e.r+o.r;
       if(d<m&&d>0){const p=(m-d)*.5*(o.type==='boss'||o.type==='crate'?1.6:1)*(e.type==='boss'?.1:e.type==='crate'?0:1);e.x+=dx/d*p;e.y+=dy/d*p}});
   }
 
@@ -2069,6 +2125,7 @@ function render(){
     const x=RK(e.x-ox-s.width/2),y=RK(e.y-oy-s.height/2);
     if(x<-20||y<-20||x>LW+20||y>LH+20)continue;
     if(e.sub)continue;                                              // submerged: only the ripples show
+    if(e.type==='ufo'){drawUfo(e,ox,oy);continue}
     ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+1,y+s.height-1,s.width-2,2);
     if(e.elite){ctx.globalAlpha=.55+.45*Math.sin(G.time*8+e.t);ctx.drawImage(enemySprite(e.spr||e.type,e.shift,false,true),x-1,y-1);ctx.globalAlpha=1}
     if(e.phase>0){ctx.globalAlpha=.25+.1*Math.sin(G.time*20);ctx.drawImage(s,x,y);ctx.globalAlpha=1}else ctx.drawImage(s,x,y);
@@ -2189,7 +2246,7 @@ function buildReport(){
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
     mode:G.daily?'daily '+G.seedStr:'normal',startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
-      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
+      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),ufosShotDown:G.ufosDown||0,bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
     damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
