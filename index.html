@@ -289,20 +289,22 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.11.0';
+const VERSION='1.11.1';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const TAU=Math.PI*2;
 let LW=320,LH=180,SC=4;
+let K=2;   // canvas pixels per world pixel: 2 = half-pixel camera and player movement; drops to 1 for the rest of a run if the frame rate sinks
+const RK=v=>Math.round(v*K)/K;
 /* VIEW = world pixels across the short side of the screen; smaller is more zoomed in */
 const VIEW_IN=150,VIEW_OUT=300,VIEW_FIXED=200;
 let VIEW=VIEW_FIXED;
 function applyView(force){
   const w=innerWidth,h=innerHeight,sc=Math.min(w,h)/VIEW;
   const lw=Math.ceil(w/sc),lh=Math.ceil(h/sc);
-  if(force||lw!==LW||lh!==LH){LW=lw;LH=lh;cv.width=LW;cv.height=LH;ctx.imageSmoothingEnabled=false}
+  if(force||lw!==LW||lh!==LH){LW=lw;LH=lh;cv.width=LW*K;cv.height=LH*K;ctx.imageSmoothingEnabled=false}
   SC=sc;cv.style.width=(LW*SC)+'px';cv.style.height=(LH*SC)+'px';
 }
 function resize(){applyView(true)}
@@ -570,6 +572,7 @@ let isTouch=matchMedia('(pointer: coarse)').matches;
 function reset(opts){
   const daily=!!opts.daily,seedStr=daily?new Date().toLocaleDateString('en-CA'):'';
   cardRand=daily?mulberry32(strHash('overkill-'+seedStr)):Math.random;
+  if(K!==2){K=2;applyView(true)}                                     // each run starts with the smooth camera
   G={state:'play',daily,seedStr,startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,lvCD:0,surges:0,cashedOut:0,autoPicked:0,
     threat:0,tp:0,biomeI:0,biomePrev:0,morph:1,streak:0,streakT:0,bestStreak:0,stop:0,shake:0,flash:0,hurt:0,spawnAcc:0,packT:12,hazT:6,
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
@@ -1475,14 +1478,14 @@ function gemSprite(c,s){const k=c+s;let g=GEMS.get(k);if(g)return g;
   g=document.createElement('canvas');g.width=g.height=s*2+1;const x=g.getContext('2d');x.fillStyle=c;
   x.fillRect(0,s,s*2+1,1);x.fillRect(s,0,1,s*2+1);if(s>1){x.fillRect(1,s-1,s*2-1,3);x.fillRect(s-1,1,3,s*2-1)}
   x.fillStyle='#fff';x.fillRect(s,s-Math.max(0,s-1),1,1);GEMS.set(k,g);return g}
-function ring(x,y,r,c){if(r<=0)return;const sp=shapeSprite('r',Math.round(r*2)/2,c);ctx.drawImage(sp.c,Math.round(x)-sp.o,Math.round(y)-sp.o)}
-function disc(x,y,r,c){if(r<0)return;const sp=shapeSprite('d',Math.round(r*2)/2,c);ctx.drawImage(sp.c,Math.round(x)-sp.o,Math.round(y)-sp.o)}
+function ring(x,y,r,c){if(r<=0)return;const sp=shapeSprite('r',Math.round(r*2)/2,c);ctx.drawImage(sp.c,RK(x)-sp.o,RK(y)-sp.o)}
+function disc(x,y,r,c){if(r<0)return;const sp=shapeSprite('d',Math.round(r*2)/2,c);ctx.drawImage(sp.c,RK(x)-sp.o,RK(y)-sp.o)}
 function hash(x,y){let h=(x*374761393+y*668265263)|0;h=(h^(h>>>13))*1274126177|0;return (h^(h>>>16))>>>0}
 function drawGround(ox,oy){
   const cur=BIOMES[G.biomeI%BIOMES.length],prev=BIOMES[G.biomePrev%BIOMES.length],T=16;
-  const tx0=Math.floor(ox/T),ty0=Math.floor(oy/T),tx1=Math.floor((ox+LW)/T),ty1=Math.floor((oy+LH)/T);
+  const tx0=Math.floor(ox/T),ty0=Math.floor(oy/T),tx1=Math.floor((ox+LW+1)/T),ty1=Math.floor((oy+LH+1)/T);
   const det=CFG.detail,t=det?(G.time||performance.now()/1000):0;
-  if(!det){ctx.fillStyle=cur.g[0];ctx.fillRect(0,0,LW,LH)}
+  if(!det){ctx.fillStyle=cur.g[0];ctx.fillRect(0,0,LW+1,LH+1)}
   for(let ty=ty0;ty<=ty1;ty++)for(let tx=tx0;tx<=tx1;tx++){
     const h=hash(tx,ty),sx=tx*T-ox,sy=ty*T-oy;
     const b=(G.morph<1&&(h%997)/997>G.morph)?prev:cur;
@@ -1532,10 +1535,10 @@ function drawZone(z,ox,oy){
   const x=z.x-ox,y=z.y-oy,fade=Math.min(1,z.life/.6,z.t/.3);
   ctx.globalAlpha=Math.max(0,fade);
   switch(z.kind){
-    case 'drop':{ctx.globalAlpha=1;const fall=z.life/z.max*60;ctx.fillStyle='rgba(0,0,0,.4)';const sw=Math.round(9*(1-z.life/z.max*.5));ctx.fillRect(Math.round(x-sw/2),Math.round(y+3),sw,2);
-      ctx.drawImage(enemySprite('crate',0,false),Math.round(x)-4,Math.round(y-fall)-4);break}
-    case 'shell':{ctx.globalAlpha=1;ring(x,y,z.r*(1-z.life/z.max*.6),z.boom&&z.boom.hostile?'rgba(255,59,92,.85)':'rgba(255,182,39,.6)');if(z.boom&&z.boom.hostile&&Math.floor(z.t*10)%2===0)ring(x,y,z.r,'rgba(255,59,92,.5)');const fall=z.life/z.max*30;ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(Math.round(x)-2,Math.round(y),5,2);
-      ctx.fillStyle='#3a3150';ctx.fillRect(Math.round(x)-2,Math.round(y-fall)-3,5,5);ctx.fillStyle='#ffb627';ctx.fillRect(Math.round(x),Math.round(y-fall)-5,1,2);break}
+    case 'drop':{ctx.globalAlpha=1;const fall=z.life/z.max*60;ctx.fillStyle='rgba(0,0,0,.4)';const sw=RK(9*(1-z.life/z.max*.5));ctx.fillRect(RK(x-sw/2),RK(y+3),sw,2);
+      ctx.drawImage(enemySprite('crate',0,false),RK(x)-4,RK(y-fall)-4);break}
+    case 'shell':{ctx.globalAlpha=1;ring(x,y,z.r*(1-z.life/z.max*.6),z.boom&&z.boom.hostile?'rgba(255,59,92,.85)':'rgba(255,182,39,.6)');if(z.boom&&z.boom.hostile&&Math.floor(z.t*10)%2===0)ring(x,y,z.r,'rgba(255,59,92,.5)');const fall=z.life/z.max*30;ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(RK(x)-2,RK(y),5,2);
+      ctx.fillStyle='#3a3150';ctx.fillRect(RK(x)-2,RK(y-fall)-3,5,5);ctx.fillStyle='#ffb627';ctx.fillRect(RK(x),RK(y-fall)-5,1,2);break}
     case 'fuse':ctx.globalAlpha=1;if(Math.floor(z.t*16)%2===0)ring(x,y,z.r,'#ff3b5c');ring(x,y,z.r*(z.life/z.max),'#ffb627');disc(x,y,2,'#fff');break;
     case 'lava':disc(x,y,z.r+1,'#5a1a0e');disc(x,y,z.r,'#c8361a');disc(x,y,z.r*.65,'#ff7a2a');
       if(Math.random()<.3)PT.push({x:z.x+rnd(-z.r,z.r)*.6,y:z.y+rnd(-z.r,z.r)*.6,vx:0,vy:-15,life:.3,max:.3,c:'#ffd166',s:1});break;
@@ -1544,11 +1547,11 @@ function drawZone(z,ox,oy){
     case 'ppuddle':ctx.globalAlpha*=.6;disc(x,y,z.r,'#6a8a2a');break;
     case 'spike':
       if(z.arm>0){if(Math.floor(z.arm*12)%2===0)ring(x,y,z.r,'#ff3b5c');ring(x,y,z.r*(1-z.arm/.9),'#a6f0ff')}
-      else{for(let i=0;i<6;i++){const a=i/6*TAU+z.t;const px=x+Math.cos(a)*z.r*.6,py=y+Math.sin(a)*z.r*.6;ctx.fillStyle=i%2?'#6be0ff':'#e0c3ff';ctx.fillRect(Math.round(px),Math.round(py)-4,2,5);ctx.fillStyle='#fff';ctx.fillRect(Math.round(px),Math.round(py)-4,1,1)}}
+      else{for(let i=0;i<6;i++){const a=i/6*TAU+z.t;const px=x+Math.cos(a)*z.r*.6,py=y+Math.sin(a)*z.r*.6;ctx.fillStyle=i%2?'#6be0ff':'#e0c3ff';ctx.fillRect(RK(px),RK(py)-4,2,5);ctx.fillStyle='#fff';ctx.fillRect(RK(px),RK(py)-4,1,1)}}
       break;
     case 'hole':case 'fhole':disc(x,y,z.kind==='hole'?7:9,'#000');ring(x,y,z.kind==='hole'?8:10,z.kind==='hole'?'#7d3cff':'#c792ea');ctx.globalAlpha*=.35;ring(x,y,z.r*(.6+.1*Math.sin(z.t*5)),z.kind==='hole'?'#7d3cff':'#c792ea');break;
-    case 'ftrail':case 'firepatch':case 'scorch':{const c=Math.floor(z.t*10+z.x)%3;ctx.fillStyle=['#ff5e5b','#ff9f43','#ffd166'][c];ctx.fillRect(Math.round(x)-1,Math.round(y)-1,3,2);if(z.kind==='scorch'){ctx.fillStyle='#3a1a10';ctx.fillRect(Math.round(x)-3,Math.round(y)+1,6,1)}break}
-    case 'spikes':ctx.fillStyle='#c9c9d6';ctx.fillRect(Math.round(x)-2,Math.round(y),1,1);ctx.fillRect(Math.round(x),Math.round(y)-1,1,2);ctx.fillRect(Math.round(x)+2,Math.round(y),1,1);break;
+    case 'ftrail':case 'firepatch':case 'scorch':{const c=Math.floor(z.t*10+z.x)%3;ctx.fillStyle=['#ff5e5b','#ff9f43','#ffd166'][c];ctx.fillRect(RK(x)-1,RK(y)-1,3,2);if(z.kind==='scorch'){ctx.fillStyle='#3a1a10';ctx.fillRect(RK(x)-3,RK(y)+1,6,1)}break}
+    case 'spikes':ctx.fillStyle='#c9c9d6';ctx.fillRect(RK(x)-2,RK(y),1,1);ctx.fillRect(RK(x),RK(y)-1,1,2);ctx.fillRect(RK(x)+2,RK(y),1,1);break;
     case 'oil':case 'oilfire':ctx.globalAlpha*=.75;disc(x,y,z.r,'#1c1830');disc(x-z.r*.3,y-z.r*.3,z.r*.25,'#8a7cff');
       if(z.kind==='oilfire'&&Math.random()<.4)PT.push({x:z.x+rnd(-z.r,z.r)*.7,y:z.y+rnd(-z.r,z.r)*.7,vx:0,vy:-18,life:.3,max:.3,c:pick(['#ff7a2a','#ffd166']),s:1});break;
   }
@@ -1556,19 +1559,21 @@ function drawZone(z,ox,oy){
 }
 function render(){
   const sh=RM?0:G.shake*CFG.shake;
-  const ox=Math.round(cam.x-LW/2+(sh?rnd(-sh,sh):0)),oy=Math.round(cam.y-LH/2+(sh?rnd(-sh,sh):0));
+  // the view moves in half-pixel steps: whole pixels in ox/oy, the rest in the canvas transform
+  const cxf=cam.x-LW/2+(sh?rnd(-sh,sh):0),cyf=cam.y-LH/2+(sh?rnd(-sh,sh):0),ox=Math.floor(cxf),oy=Math.floor(cyf);
+  ctx.setTransform(K,0,0,K,-RK((cxf-ox)*K),-RK((cyf-oy)*K));
   drawGround(ox,oy);
-  for(const d of DECALS){if(d.x-ox<-6||d.y-oy<-6||d.x-ox>LW+6||d.y-oy>LH+6)continue;ctx.globalAlpha=Math.min(.5,d.life/4);ctx.fillStyle=d.c;ctx.fillRect(Math.round(d.x-ox)-d.w/2,Math.round(d.y-oy)+2,d.w,1);ctx.fillRect(Math.round(d.x-ox)-1,Math.round(d.y-oy)+1,2,1)}
+  for(const d of DECALS){if(d.x-ox<-6||d.y-oy<-6||d.x-ox>LW+6||d.y-oy>LH+6)continue;ctx.globalAlpha=Math.min(.5,d.life/4);ctx.fillStyle=d.c;ctx.fillRect(RK(d.x-ox)-d.w/2,RK(d.y-oy)+2,d.w,1);ctx.fillRect(RK(d.x-ox)-1,RK(d.y-oy)+1,2,1)}
   ctx.globalAlpha=1;
   for(const z of Z)if(z.kind!=='hole'&&z.kind!=='fhole')drawZone(z,ox,oy);
-  for(const sh of SHRINES){const x=Math.round(sh.x-ox),y=Math.round(sh.y-oy),c=`hsl(${(G.time*120)%360},90%,62%)`;
+  for(const sh of SHRINES){const x=RK(sh.x-ox),y=RK(sh.y-oy),c=`hsl(${(G.time*120)%360},90%,62%)`;
     ctx.globalAlpha=Math.min(1,sh.t/2);ctx.fillStyle='#3a3150';ctx.fillRect(x-6,y-3,13,7);ctx.fillStyle='#5a4f78';ctx.fillRect(x-6,y-3,13,1);
     ctx.fillStyle=c;ctx.fillRect(x-2,y-1,5,3);ctx.globalAlpha=Math.min(1,sh.t/2)*(.25+.1*Math.sin(G.time*5));ctx.fillRect(x-1,y-30,3,28);ctx.globalAlpha=1;
-    ring(x,y,12,'rgba(255,224,102,.35)');if(sh.prog>0){const n=Math.ceil(sh.prog/1.6*24);ctx.fillStyle='#ffe066';for(let i=0;i<n;i++){const a=-Math.PI/2+i/24*TAU;ctx.fillRect(Math.round(x+Math.cos(a)*12),Math.round(y+Math.sin(a)*12),1,1)}}}
-  for(const t of TURRETS){const x=Math.round(t.x-ox),y=Math.round(t.y-oy);ctx.fillStyle='#2a3a1e';ctx.fillRect(x-4,y-1,9,4);ctx.fillStyle='#9be15d';ctx.fillRect(x-2,y-5,5,5);ctx.fillStyle='#fff';ctx.fillRect(x,y-4,1,1);if(t.t<2&&Math.floor(t.t*8)%2)ring(x,y,6,'#9be15d')}
+    ring(x,y,12,'rgba(255,224,102,.35)');if(sh.prog>0){const n=Math.ceil(sh.prog/1.6*24);ctx.fillStyle='#ffe066';for(let i=0;i<n;i++){const a=-Math.PI/2+i/24*TAU;ctx.fillRect(RK(x+Math.cos(a)*12),RK(y+Math.sin(a)*12),1,1)}}}
+  for(const t of TURRETS){const x=RK(t.x-ox),y=RK(t.y-oy);ctx.fillStyle='#2a3a1e';ctx.fillRect(x-4,y-1,9,4);ctx.fillStyle='#9be15d';ctx.fillRect(x-2,y-5,5,5);ctx.fillStyle='#fff';ctx.fillRect(x,y-4,1,1);if(t.t<2&&Math.floor(t.t*8)%2)ring(x,y,6,'#9be15d')}
   // pickups
   for(const p of PU){
-    const x=Math.round(p.x-ox),y=Math.round(p.y-oy+Math.sin(p.t*4)*1.2);
+    const x=RK(p.x-ox),y=RK(p.y-oy+Math.sin(p.t*4)*1.2);
     if(x<-10||y<-30||x>LW+10||y>LH+10)continue;
     if(p.kind==='mode'&&R()<.5)PT.push({x:p.x+rnd(-5,5),y:p.y+rnd(-5,5),vx:0,vy:-16,life:.4,max:.4,c:MODES[p.mode].col,s:1});
     if(p.kind==='gem'){
@@ -1585,32 +1590,32 @@ function render(){
   for(const e of E){
     const white=e.flash>0||(e.fuse>0&&Math.floor(e.fuse*14)%2===0)||(e.tele&&Math.floor(G.time*18)%2===0);
     const s=enemySprite(e.type,e.shift,white);
-    const x=Math.round(e.x-ox-s.width/2),y=Math.round(e.y-oy-s.height/2);
+    const x=RK(e.x-ox-s.width/2),y=RK(e.y-oy-s.height/2);
     if(x<-20||y<-20||x>LW+20||y>LH+20)continue;
     ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+1,y+s.height-1,s.width-2,2);
     if(e.elite){ctx.globalAlpha=.55+.45*Math.sin(G.time*8+e.t);ctx.drawImage(enemySprite(e.type,e.shift,false,true),x-1,y-1);ctx.globalAlpha=1}
     if(e.phase>0){ctx.globalAlpha=.25+.1*Math.sin(G.time*20);ctx.drawImage(s,x,y);ctx.globalAlpha=1}else ctx.drawImage(s,x,y);
     if(e.tele){const cx=x+(s.width>>1);ctx.fillStyle='#ff3b5c';ctx.fillRect(cx,y-7,1,3);ctx.fillRect(cx,y-3,1,1);
-      if(e.ai==='shooter'||e.ai==='frost'||e.ai==='sniper'){const a=Math.atan2(P.y-e.y,P.x-e.x);ctx.fillStyle='rgba(255,59,92,.7)';for(let k=2;k<(e.ai==='sniper'?40:6);k++)ctx.fillRect(Math.round(e.x-ox+Math.cos(a)*k*4),Math.round(e.y-oy+Math.sin(a)*k*4),1,1)}}
+      if(e.ai==='shooter'||e.ai==='frost'||e.ai==='sniper'){const a=Math.atan2(P.y-e.y,P.x-e.x);ctx.fillStyle='rgba(255,59,92,.7)';for(let k=2;k<(e.ai==='sniper'?40:6);k++)ctx.fillRect(RK(e.x-ox+Math.cos(a)*k*4),RK(e.y-oy+Math.sin(a)*k*4),1,1)}}
     if(e.buff>0&&Math.random()<.3)PT.push({x:e.x+rnd(-4,4),y:e.y+rnd(-4,4),vx:0,vy:-10,life:.25,max:.25,c:'#6fd16a',s:1});
     if(e.slow>0){ctx.fillStyle='#a6f0ff';ctx.fillRect(x-1,y,1,1);ctx.fillRect(x+s.width,y+3,1,1);ctx.fillRect(x+2,y-1,1,1)}
-    if(e.hp<e.max&&(e.elite||e.r>5)&&e.type!=='boss'){const w=s.width;ctx.fillStyle='#000';ctx.fillRect(x,y-3,w,1);ctx.fillStyle='#ff4d6d';ctx.fillRect(x,y-3,Math.max(1,Math.round(w*e.hp/e.max)),1)}
+    if(e.hp<e.max&&(e.elite||e.r>5)&&e.type!=='boss'){const w=s.width;ctx.fillStyle='#000';ctx.fillRect(x,y-3,w,1);ctx.fillStyle='#ff4d6d';ctx.fillRect(x,y-3,Math.max(1,RK(w*e.hp/e.max)),1)}
   }
-  for(const d of DEAD){const x=Math.round(d.x-ox-d.spr.width/2),y=Math.round(d.y-oy-d.spr.height/2);ctx.globalAlpha=1-d.t/.1;ctx.drawImage(d.spr,x,y);ctx.globalAlpha=1}
+  for(const d of DEAD){const x=RK(d.x-ox-d.spr.width/2),y=RK(d.y-oy-d.spr.height/2);ctx.globalAlpha=1-d.t/.1;ctx.drawImage(d.spr,x,y);ctx.globalAlpha=1}
   for(const z of Z)if(z.kind==='hole'||z.kind==='fhole')drawZone(z,ox,oy);
   // player
-  for(const g of GHOSTS){ctx.globalAlpha=g.life/.18*.5;const x=Math.round(g.x-ox-4),y=Math.round(g.y-oy-4);ctx.drawImage(SPR_PW,x,y)}
+  for(const g of GHOSTS){ctx.globalAlpha=g.life/.18*.5;const x=RK(g.x-ox-4),y=RK(g.y-oy-4);ctx.drawImage(SPR_PW,x,y)}
   ctx.globalAlpha=1;
   {
-    const x=Math.round(P.x-ox-4),y=Math.round(P.y-oy-4);
+    const x=RK(P.x-ox-4),y=RK(P.y-oy-4);
     ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(x+1,y+7,6,2);
     if(!(P.inv>0&&P.dashT<=0&&Math.floor(P.inv*20)%2)){
       const spr=P.inv>.45&&P.dashT<=0?SPR_PW:SPR_P[P.moving?(Math.floor(G.walk)%2):0];
       ctx.save();
-      if(isMode('titan')){const k=2;ctx.translate(Math.round(P.x-ox),Math.round(P.y-oy)+2);if(P.face<0)ctx.scale(-1,1);ctx.drawImage(SPR_PO,-4*k-1,-8*k-1,10*k,10*k);ctx.drawImage(spr,-4*k,-8*k,8*k,8*k)}
+      if(isMode('titan')){const k=2;ctx.translate(RK(P.x-ox),RK(P.y-oy)+2);if(P.face<0)ctx.scale(-1,1);ctx.drawImage(SPR_PO,-4*k-1,-8*k-1,10*k,10*k);ctx.drawImage(spr,-4*k,-8*k,8*k,8*k)}
       else if(P.face<0){ctx.translate(x+8,y);ctx.scale(-1,1);ctx.drawImage(SPR_PO,-1,-1);ctx.drawImage(spr,0,0)}else{ctx.drawImage(SPR_PO,x-1,y-1);ctx.drawImage(spr,x,y)}
       ctx.restore();
-      if(isMode('storm')){const cx=Math.round(P.x-ox),cy=Math.round(P.y-oy)-28;ctx.fillStyle='#5a5a70';ctx.fillRect(cx-9,cy-2,18,5);ctx.fillRect(cx-6,cy-5,12,4);ctx.fillStyle='#8a8aa0';ctx.fillRect(cx-5,cy-5,8,2);
+      if(isMode('storm')){const cx=RK(P.x-ox),cy=RK(P.y-oy)-28;ctx.fillStyle='#5a5a70';ctx.fillRect(cx-9,cy-2,18,5);ctx.fillRect(cx-6,cy-5,12,4);ctx.fillStyle='#8a8aa0';ctx.fillRect(cx-5,cy-5,8,2);
         if(Math.floor(G.time*10)%3===0){ctx.fillStyle='#7df9ff';ctx.fillRect(cx+rnd(-6,6)|0,cy+3,1,3)}}
       if(P.shield>0){ctx.globalAlpha=.35+.15*P.shield;ring(P.x-ox,P.y-oy,7,'#6be0ff');ctx.globalAlpha=1}
       if(P.bubble>0&&!(P.bubble<1.5&&Math.floor(P.bubble*10)%2)){ctx.globalAlpha=.8;ring(P.x-ox,P.y-oy,9,'#ffffff');ring(P.x-ox,P.y-oy,10,'#6be0ff');ctx.globalAlpha=1}
@@ -1618,22 +1623,22 @@ function render(){
       if(P.chill>0){ctx.fillStyle='#a6f0ff';ctx.fillRect(x-1,y+2,1,1);ctx.fillRect(x+8,y+5,1,1)}
     }
   }
-  for(const d of G.drones){const x=Math.round(d.x-ox)-3,y=Math.round(d.y-oy+Math.sin(G.time*6+d.x)*1)-2;ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+1,y+7,5,1);if(d.block>0)ctx.globalAlpha=.5;ctx.drawImage(DRONE_SPR,x,y);ctx.globalAlpha=1}
-  for(const [bx,by] of G.blades){const x=Math.round(bx-ox),y=Math.round(by-oy);ctx.fillStyle='#9be15d';ctx.fillRect(x-1,y-1,3,3);ctx.fillStyle='#fff';ctx.fillRect(x,y,1,1);ctx.fillStyle='#4f7a3c';ctx.fillRect(x-2,y,1,1);ctx.fillRect(x+2,y,1,1);ctx.fillRect(x,y-2,1,1);ctx.fillRect(x,y+2,1,1)}
+  for(const d of G.drones){const x=RK(d.x-ox)-3,y=RK(d.y-oy+Math.sin(G.time*6+d.x)*1)-2;ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+1,y+7,5,1);if(d.block>0)ctx.globalAlpha=.5;ctx.drawImage(DRONE_SPR,x,y);ctx.globalAlpha=1}
+  for(const [bx,by] of G.blades){const x=RK(bx-ox),y=RK(by-oy);ctx.fillStyle='#9be15d';ctx.fillRect(x-1,y-1,3,3);ctx.fillStyle='#fff';ctx.fillRect(x,y,1,1);ctx.fillStyle='#4f7a3c';ctx.fillRect(x-2,y,1,1);ctx.fillRect(x+2,y,1,1);ctx.fillRect(x,y-2,1,1);ctx.fillRect(x,y+2,1,1)}
   // player projectiles
   for(const b of PB){
     const x=b.x-ox,y=b.y-oy;
     if(x<-12||y<-12||x>LW+12||y>LH+12)continue;                       // off screen: nothing to draw
     if(b.kind==='needle'){const v=Math.hypot(b.vx,b.vy)||1;line(x-b.vx/v*4,y-b.vy/v*4,x,y,b.col);continue}
-    if(b.kind==='missile'){const v=Math.hypot(b.vx,b.vy)||1,ux=b.vx/v,uy=b.vy/v;line(x-ux*4,y-uy*4,x,y,'#ff5e5b');ctx.fillStyle='#fff';ctx.fillRect(Math.round(x),Math.round(y),1,1);ctx.fillStyle='#ffd166';ctx.fillRect(Math.round(x-ux*5),Math.round(y-uy*5),1,1);continue}
-    const g=S.grow&&!b.orb?1+Math.min(2.5,b.dist/90*S.grow*.5):1,s=Math.round(b.size*g);
+    if(b.kind==='missile'){const v=Math.hypot(b.vx,b.vy)||1,ux=b.vx/v,uy=b.vy/v;line(x-ux*4,y-uy*4,x,y,'#ff5e5b');ctx.fillStyle='#fff';ctx.fillRect(RK(x),RK(y),1,1);ctx.fillStyle='#ffd166';ctx.fillRect(RK(x-ux*5),RK(y-uy*5),1,1);continue}
+    const g=S.grow&&!b.orb?1+Math.min(2.5,b.dist/90*S.grow*.5):1,s=RK(b.size*g);
     if(b.kind==='fire'){disc(x,y,s*.6+1,'#ff5e5b');disc(x,y,s*.4,'#ffd166');continue}
     if(b.kind==='nuke'){disc(x,y,3.5,Math.floor(G.time*12)%2?'#ff3b5c':'#fff');continue}
-    ctx.fillStyle=b.col;ctx.fillRect(Math.round(x-s/2),Math.round(y-s/2),s,s);
-    ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(Math.round(x-s/2),Math.round(y-s/2),1,1);
+    ctx.fillStyle=b.col;ctx.fillRect(RK(x-s/2),RK(y-s/2),s,s);
+    ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(RK(x-s/2),RK(y-s/2),1,1);
   }
   // enemy bullets: drawn above almost everything so they stay readable
-  for(const b of EB){const x=Math.round(b.x-ox),y=Math.round(b.y-oy);if(x<-4||y<-4||x>LW+4||y>LH+4)continue;const c=b.chill?'#a6f0ff':'#ff3fa4';ctx.fillStyle='#14101c';ctx.fillRect(x-2,y-2,5,5);ctx.fillStyle=c;ctx.fillRect(x-1,y-1,3,3);ctx.fillStyle='#fff';ctx.fillRect(x,y,1,1)}
+  for(const b of EB){const x=RK(b.x-ox),y=RK(b.y-oy);if(x<-4||y<-4||x>LW+4||y>LH+4)continue;const c=b.chill?'#a6f0ff':'#ff3fa4';ctx.fillStyle='#14101c';ctx.fillRect(x-2,y-2,5,5);ctx.fillStyle=c;ctx.fillRect(x-1,y-1,3,3);ctx.fillStyle='#fff';ctx.fillRect(x,y,1,1)}
   for(const r of RINGS){const a=1-r.t/r.life;if(!r.noFill){ctx.globalAlpha=a*.3;disc(r.x-ox,r.y-oy,r.r,r.c)}ctx.globalAlpha=Math.max(0,a);ring(r.x-ox,r.y-oy,r.r,r.noFill?r.c:'#fff');ctx.globalAlpha=1}
   for(const bm of BEAMS){const k=bm.life/.16;ctx.globalAlpha=Math.min(1,k*1.5);ctx.strokeStyle='#ffd6f5';ctx.lineWidth=Math.max(1,bm.w*k*1.6);ctx.beginPath();ctx.moveTo(bm.x1-ox,bm.y1-oy);ctx.lineTo(bm.x2-ox,bm.y2-oy);ctx.stroke();
     ctx.strokeStyle='#ffffff';ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1}
@@ -1641,17 +1646,18 @@ function render(){
     let x=a.x1-ox,y=a.y1-oy;const sx=x,sy=y,ex=a.x2-ox,ey=a.y2-oy;
     for(let i=1;i<=4;i++){const t=i/4,nx=sx+(ex-sx)*t+(i<4?rnd(-3,3):0),ny=sy+(ey-sy)*t+(i<4?rnd(-3,3):0);line(x,y,nx,ny,i%2?'#7df9ff':'#fff');x=nx;y=ny}
   }
-  for(const p of PT){const x=Math.round(p.x-ox),y=Math.round(p.y-oy);if(x<-3||y<-3||x>LW||y>LH)continue;ctx.globalAlpha=Math.min(1,p.life/p.max*1.5);ctx.fillStyle=p.c;ctx.fillRect(x,y,p.s,p.s)}
-  for(const a of AMB){ctx.globalAlpha=a.tw?Math.abs(Math.sin(a.life*10)):Math.min(1,a.life);ctx.fillStyle=a.c;const x=Math.round(a.x-ox),y=Math.round(a.y-oy);if(a.ring){ctx.fillRect(x-1,y,1,1);ctx.fillRect(x+1,y,1,1);ctx.fillRect(x,y-1,1,1)}else ctx.fillRect(x,y,a.w,a.h)}
+  for(const p of PT){const x=RK(p.x-ox),y=RK(p.y-oy);if(x<-3||y<-3||x>LW||y>LH)continue;ctx.globalAlpha=Math.min(1,p.life/p.max*1.5);ctx.fillStyle=p.c;ctx.fillRect(x,y,p.s,p.s)}
+  for(const a of AMB){ctx.globalAlpha=a.tw?Math.abs(Math.sin(a.life*10)):Math.min(1,a.life);ctx.fillStyle=a.c;const x=RK(a.x-ox),y=RK(a.y-oy);if(a.ring){ctx.fillRect(x-1,y,1,1);ctx.fillRect(x+1,y,1,1);ctx.fillRect(x,y-1,1,1)}else ctx.fillRect(x,y,a.w,a.h)}
   ctx.globalAlpha=1;
+  ctx.setTransform(K,0,0,K,0,0);                                    // screen overlays stay put
   // offscreen boss arrow
   if(G.boss){const b=G.boss,bx=b.x-ox,by=b.y-oy;if(bx<0||by<0||bx>LW||by>LH){const a=Math.atan2(b.y-P.y,b.x-P.x);
     const x=clamp(LW/2+Math.cos(a)*(LW/2-10),8,LW-8),y=clamp(LH/2+Math.sin(a)*(LH/2-10),8,LH-8);ctx.fillStyle=Math.floor(G.time*4)%2?'#c45cff':'#fff';
-    for(let i=0;i<5;i++){ctx.fillRect(Math.round(x-Math.cos(a)*i-Math.sin(a)*i),Math.round(y-Math.sin(a)*i+Math.cos(a)*i),1,1);ctx.fillRect(Math.round(x-Math.cos(a)*i+Math.sin(a)*i),Math.round(y-Math.sin(a)*i-Math.cos(a)*i),1,1)}}}
+    for(let i=0;i<5;i++){ctx.fillRect(RK(x-Math.cos(a)*i-Math.sin(a)*i),RK(y-Math.sin(a)*i+Math.cos(a)*i),1,1);ctx.fillRect(RK(x-Math.cos(a)*i+Math.sin(a)*i),RK(y-Math.sin(a)*i-Math.cos(a)*i),1,1)}}}
   if(isMode('timestop')){ctx.fillStyle='rgba(166,240,255,.14)';ctx.fillRect(0,0,LW,LH)}
   if(G.mode){const c=MODES[G.mode.id].col;ctx.globalAlpha=.5+.3*Math.sin(G.time*8);ctx.fillStyle=c;ctx.fillRect(0,0,LW,1);ctx.fillRect(0,LH-1,LW,1);ctx.fillRect(0,0,1,LH);ctx.fillRect(LW-1,0,1,LH);ctx.globalAlpha=1}
   // shrine pointer when off screen
-  for(const sh of SHRINES){const bx=sh.x-ox,by=sh.y-oy;if(bx<0||by<0||bx>LW||by>LH){const a=Math.atan2(sh.y-P.y,sh.x-P.x);const x=clamp(LW/2+Math.cos(a)*(LW/2-8),6,LW-6),y=clamp(LH/2+Math.sin(a)*(LH/2-8),6,LH-6);ctx.fillStyle='#ffe066';ctx.fillRect(Math.round(x)-1,Math.round(y)-1,3,3)}}
+  for(const sh of SHRINES){const bx=sh.x-ox,by=sh.y-oy;if(bx<0||by<0||bx>LW||by>LH){const a=Math.atan2(sh.y-P.y,sh.x-P.x);const x=clamp(LW/2+Math.cos(a)*(LW/2-8),6,LW-6),y=clamp(LH/2+Math.sin(a)*(LH/2-8),6,LH-6);ctx.fillStyle='#ffe066';ctx.fillRect(RK(x)-1,RK(y)-1,3,3)}}
   if(G.state==='play'&&P.hp<P.max*.3){const k=.25+.2*Math.sin(G.time*7);ctx.fillStyle=`rgba(255,40,70,${k})`;ctx.fillRect(0,0,LW,3);ctx.fillRect(0,LH-3,LW,3);ctx.fillRect(0,0,3,LH);ctx.fillRect(LW-3,0,3,LH);
     if((G.beatT=(G.beatT||0)-1/60)<=0){G.beatT=1;snd('beat')}}
   if(G.hurt>0){ctx.fillStyle=`rgba(255,40,70,${Math.min(.9,G.hurt*.9)})`;ctx.fillRect(0,0,LW,2);ctx.fillRect(0,LH-2,LW,2);ctx.fillRect(0,0,2,LH);ctx.fillRect(LW-2,0,2,LH)}
@@ -1939,6 +1945,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.state===
 /* title backdrop */
 function titleDemo(t){
   G.biomeI=Math.floor(t/6)%BIOMES.length;G.biomePrev=G.biomeI;G.morph=1;G.time=t;
+  ctx.setTransform(K,0,0,K,0,0);
   cam={x:t*12,y:t*5};drawGround(Math.round(cam.x-LW/2),Math.round(cam.y-LH/2));
   ctx.fillStyle='rgba(13,11,20,.4)';ctx.fillRect(0,0,LW,LH);
 }
@@ -1948,7 +1955,7 @@ function frame(now){
   if(G.state==='title')titleDemo(now/1000);
   else{
     if(G.state==='play'){
-      if(raw>0&&raw<1){G.frames++;G.ftSum+=raw;G.fpsWin.push(raw);if(G.fpsWin.length>60)G.fpsWin.shift();if(G.frames>120&&G.fpsWin.length===60){const f=curFps();if(f<G.fpsMin)G.fpsMin=f;G.lowFx=G.lowFx?f<52:f<40}}
+      if(raw>0&&raw<1){G.frames++;G.ftSum+=raw;G.fpsWin.push(raw);if(G.fpsWin.length>60)G.fpsWin.shift();if(G.frames>120&&G.fpsWin.length===60){const f=curFps();if(f<G.fpsMin)G.fpsMin=f;G.lowFx=G.lowFx?f<52:f<40;if(G.lowFx&&K>1){K=1;applyView(true)}}}
       if(G.stop>0)G.stop-=dt;else update(dt);
     }else if(G.state==='over'){for(const p of PT){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}PT=PT.filter(p=>p.life>0);G.flash=Math.max(0,G.flash-dt)}
     render();
