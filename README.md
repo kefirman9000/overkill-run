@@ -19,11 +19,18 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 - Six lands, each with its own enemies and hazards: Grassy Ruins, Burning Forest (lava), Frozen Wastes (ice you slide on), Toxic Swamp (poison clouds), Crystal Caves (eruptions), The Void (black holes). After the Void, the cycle repeats harder.
 - Orbit Blades block enemy shots (evolved Saw Ring sends them back) and each Drone Minion can soak a shot every second.
 - Tougher enemies join as the threat climbs: Wraiths (turn ghostly, threat 9), Lancers (telegraphed charges, 11), Mortars (shell where you're heading, 13), Splitters (burst into shards, 15), Snipers (long aim line, 18) and Juggernauts (bullet-resistant, ring-of-shots stomp, 20).
-- A Warden boss shows up every 5 threat levels.
+- Every 5 threat levels the land's boss arrives, and each one is a different kind of fight:
+  - **The Warden** (Grassy Ruins): an arena. The horde vanishes, walls rise, and it's you against it.
+  - **Cinder King** (Burning Forest): an escape. A wall of fire sweeps the map and he rides just ahead of it.
+  - **Glacial Maw** (Frozen Wastes): thin ice. An all-ice arena whose edge cracks away during the fight.
+  - **Bog Mother** (Toxic Swamp): she dives and resurfaces elsewhere, and bubbles show where a second early.
+  - **Prism Colossus** (Crystal Caves): shielded. Break its four pylons first, and each one enrages it.
+  - **The Hollow** (The Void): a hunt. It stalks you unseen through the horde and can only be hurt when it shows itself.
+- Beating a boss heals you, banks a Power Surge and drops a Heart Container (+max HP).
 
 ### Weapons
 
-Pea Shooter, Fireball, Chain Lightning, Homing Needles, Orbit Blades, Oil Slick, Homing Missiles, Cluster Bombs, Drone Minions and Prism Beam. You start with one, carry up to four, and unlock more starting choices as you play.
+Pea Shooter, Fireball, Chain Lightning, Homing Needles, Orbit Blades, Oil Slick, Homing Missiles, Cluster Bombs, Drone Minions, Prism Beam, Scattergun, Boomerang and Frost Nova. You start with one, carry up to four, and unlock more starting choices as you play.
 
 ### Evolutions
 
@@ -41,10 +48,19 @@ Max a weapon (Lv 6) while holding its matching mutation and the next level-up of
 | Cluster Bombs | Wide Load | Carpet Bomb |
 | Drone Minions | Hair Trigger | Hive Mind |
 | Prism Beam | Heavier Rounds | Death Ray |
+| Scattergun | Rear Guns | Dragon's Breath |
+| Boomerang | Drill Tips | Glaive Storm |
+| Frost Nova | Cold Snap | Absolute Zero |
 
 ### Mutations
 
 Rear guns, ricochet, shrapnel, snowball rounds that grow as they fly, halo volleys, spike trails, dash shockwaves, and late-run reality breaks such as bullets that orbit you, every 10th shot being a nuke, screen-wide pulses, black holes, and a permanent trail of fire.
+
+Mutation cards show which of your weapons they evolve, and the pause screen lists your evolution plan.
+
+### Health and defense
+
+Heart Containers raise max HP (bosses always drop one, elites sometimes do). Cards: Thick Skin, Iron Heart (+50 max HP, full heal), Plating (less damage taken), Giant's Blood (max HP x1.5). Rare pickups: Iron Skin (half damage for 12 s) and Guardian Orbs (three orbs that block shots for 15 s), alongside the existing heal, shield bubble, frenzy, freeze and screen bomb.
 
 ### Super modes
 
