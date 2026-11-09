@@ -20,7 +20,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 
 ### Weapons
 
-Pea Shooter, Fireball, Chain Lightning, Homing Needles, Orbit Blades and Oil Slick. You start with one, carry up to four, and unlock more starting choices as you play.
+Pea Shooter, Fireball, Chain Lightning, Homing Needles, Orbit Blades, Oil Slick, Homing Missiles, Cluster Bombs, Drone Minions and Prism Beam. You start with one, carry up to four, and unlock more starting choices as you play.
 
 ### Evolutions
 
@@ -34,6 +34,10 @@ Max a weapon (Lv 6) while holding its matching mutation and the next level-up of
 | Homing Needles | Shrapnel | Hornet Swarm |
 | Orbit Blades | Spike Trail | Saw Ring |
 | Oil Slick | Incendiary | Napalm Wake |
+| Homing Missiles | Twin Barrels | Missile Barrage |
+| Cluster Bombs | Wide Load | Carpet Bomb |
+| Drone Minions | Hair Trigger | Hive Mind |
+| Prism Beam | Heavier Rounds | Death Ray |
 
 ### Mutations
 
