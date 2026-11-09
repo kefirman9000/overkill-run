@@ -20,7 +20,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 
 ### Weapons
 
-Pea Shooter, Fireball, Chain Lightning, Homing Needles, Orbit Blades and Oil Slick. You start with one and unlock more starting choices as you play.
+Pea Shooter, Fireball, Chain Lightning, Homing Needles, Orbit Blades and Oil Slick. You start with one, carry up to four, and unlock more starting choices as you play.
 
 ### Evolutions
 
