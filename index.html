@@ -615,7 +615,7 @@ function reset(opts){
   G={state:'play',daily,seedStr,startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,lvCD:0,surges:0,cashedOut:0,autoPicked:0,
     threat:0,tp:0,biomeI:0,biomePrev:0,morph:1,streak:0,streakT:0,bestStreak:0,stop:0,shake:0,flash:0,hurt:0,spawnAcc:0,packT:12,hazT:6,
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
-    taken:{},hurtBy:{},fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
+    taken:{},hurtBy:{},fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,campK:null,lastCampK:null,cloud:null,worms:[],thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
   P={armorT:0,guardT:0,shield:0,shieldT:0,frenzy:0,bubble:0,x:0,y:0,vx:0,vy:0,hp:100,max:100,inv:0,face:1,moving:false,dashes:1,dashCd:0,dashT:0,ddx:1,ddy:0,chill:0,lx:0,ly:0};
   S={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,regen:0,multi:0,pierce:0,bounce:0,rear:0,circle:0,split:0,grow:0,burn:0,freeze:0,frostKill:0,chainKill:0,
     trail:0,dashMax:1,dashShock:0,orbitShots:0,nuke:0,pulse:0,hole:0,momentum:0,scorch:0,double:0,stasis:0,killNeedle:0,horizonDash:0,
@@ -671,6 +671,7 @@ function snd(k,arg=0){
     case 'boss':tone(90,40,.8,'sawtooth',.12);noise(.4,.1);break;
     case 'ufo':tone(900,500,.5,'sine',.05);tone(500,900,.5,'sine',.04,.25);break;
     case 'beam':tone(200,600,.6,'triangle',.06);break;
+    case 'quake':noise(.5,.08);tone(60,40,.5,'sawtooth',.06);break;
     case 'over':tone(400,40,1.1,'triangle',.12);break;
   }
 }
@@ -797,25 +798,97 @@ function drawWaveWarnings(){
     ctx.globalAlpha=k;tri(8,'#0d0b14');tri(6,'#ff4d6d');ctx.fillStyle='#fff';ctx.fillRect(RK(x-c*2)-1,RK(y-sn*2)-1,2,2);ctx.globalAlpha=1;
   }
 }
-/* standing still too long brings a UFO (not inside walled boss fights). It flies in, flashes a warning circle,
-   then drops a tractor beam that drags you toward its centre. Stay in the beam too long and you're abducted:
-   a big hit, and you're dropped somewhere else. Run or dash out to break free, or shoot it down for souls. */
+/* Standing still too long brings trouble (not inside walled boss fights). Each time you camp, one of these
+   comes, never the same one twice in a row:
+     ufo      a UFO beams you up; stay in the beam too long and you're abducted and dropped elsewhere
+     quake    cracks spread under your feet, then the ground collapses into a sinkhole that drags you in
+     storm    a storm cloud gathers over you and calls down telegraphed lightning strikes
+     worm     a sandworm burrows toward you and erupts underneath you
+   Nothing here can be shot; the answer is always to move. */
 const CAMP_R=40,CAMP_T=4,UFO_HOLD=1.6,UFO_BEAM_R=20;
+const CAMP_KINDS=['ufo','quake','storm','worm'];
 function updateCamp(dt){
   P.abd=Math.max(0,(P.abd||0)-dt*.6);
-  if(G.arena&&G.arena.wall>0){G.campT=0;return}
+  updateCampFx(dt);
+  if(G.arena&&G.arena.wall>0){G.campT=0;G.campK=null;return}
   const dx=P.x-G.campX,dy=P.y-G.campY;
-  if(dx*dx+dy*dy>CAMP_R*CAMP_R){G.campX=P.x;G.campY=P.y;G.campT=0;return}
+  if(dx*dx+dy*dy>CAMP_R*CAMP_R){G.campX=P.x;G.campY=P.y;G.campT=0;G.campK=null;return}
   G.campT+=dt;if(G.campT<CAMP_T)return;
-  const ufos=E.filter(e=>e.type==='ufo'&&!e.dead&&e.st!=='out').length,want=1+(G.campT>CAMP_T+8?1:0)+(G.campT>CAMP_T+16?1:0);
-  if(ufos<want){
-    const a=R()*TAU,d=Math.hypot(LW,LH)/2+20,u=spawnEnemy('ufo',P.x+Math.cos(a)*d,P.y+Math.sin(a)*d,{elite:false});
-    u.st='in';u.stT=0;u.ox=rnd(-8,8);u.oy=rnd(-8,8);snd('ufo');
-    if(!G.hinted.camp){G.hinted.camp=1;toast(2,'Stand still too long and they come for you. You can\'t shoot them down: keep moving!')}
+  if(!G.campK){
+    G.campK=pick(CAMP_KINDS.filter(k=>k!==G.lastCampK));G.lastCampK=G.campK;G.campCd=0;
+    G.campSeen=G.campSeen||{};G.campSeen[G.campK]=(G.campSeen[G.campK]||0)+1;
+    if(!G.hinted['camp:'+G.campK]){G.hinted['camp:'+G.campK]=1;toast(2,{ufo:'They come for whoever stands still. UFOs can\'t be shot: move!',quake:'The ground is giving way under you. Move!',storm:'A storm is gathering over you. Keep moving!',worm:'Something is burrowing toward you. Move!'}[G.campK])}
+  }
+  const over=G.campT-CAMP_T;G.campCd-=dt;
+  switch(G.campK){
+    case 'ufo':{
+      const ufos=E.filter(e=>e.type==='ufo'&&!e.dead&&e.st!=='out').length,want=over>8?2:1;
+      if(ufos<want&&G.campCd<=0){G.campCd=3;const a=R()*TAU,d=Math.hypot(LW,LH)/2+20,u=spawnEnemy('ufo',P.x+Math.cos(a)*d,P.y+Math.sin(a)*d,{elite:false});u.st='in';u.stT=0;u.age=0;u.ox=rnd(-8,8);u.oy=rnd(-8,8);snd('ufo')}
+      break}
+    case 'quake':
+      if(G.campCd<=0){G.campCd=over>8?2.6:4;addZone('crack',P.x+P.vx*.3,P.y+P.vy*.3,26,1.4,{});G.shake=Math.max(G.shake,.8);snd('quake')}
+      break;
+    case 'storm':
+      if(!G.cloud)G.cloud={x:P.x,y:P.y,a:0};
+      if(G.campCd<=0&&G.cloud.a>.7){G.campCd=over>8?.55:.85;
+        const x=P.x+P.vx*.5+rnd(-6,6),y=P.y+P.vy*.5+rnd(-6,6);
+        addZone('fuse',x,y,15,.75,{boom:{x,y,r:15,dmg:0,pd:12*eDmgScale(),col:'#7df9ff',src:'storm',hostile:true,cause:'a lightning strike',
+          after:q=>{ARCS.push({x1:q.x+rnd(-6,6),y1:q.y-60,x2:q.x,y2:q.y,life:.18});ARCS.push({x1:q.x,y1:q.y-60,x2:q.x+rnd(-4,4),y2:q.y,life:.12});G.flash=Math.max(G.flash,.15);snd('zap')}}})}
+      break;
+    case 'worm':
+      if(G.campCd<=0&&G.worms.length<(over>8?2:1)){G.campCd=4;const a=R()*TAU,d=Math.hypot(LW,LH)/2+10;G.worms.push({x:P.x+Math.cos(a)*d,y:P.y+Math.sin(a)*d,st:'dig',t:0,age:0});snd('quake')}
+      break;
   }
 }
+/* the lingering bits: the storm cloud follows you while you camp and drifts off when you move; worms dig, rise, erupt */
+function updateCampFx(dt){
+  const c=G.cloud;
+  if(c){
+    if(G.campK==='storm'){c.a=Math.min(1,c.a+dt*.8);c.x+=(P.x-c.x)*Math.min(1,dt*2);c.y+=(P.y-c.y)*Math.min(1,dt*2)}
+    else{c.a-=dt*.7;c.y-=dt*20;if(c.a<=0)G.cloud=null}
+  }
+  for(const w of G.worms){
+    w.t+=dt;w.age+=dt;
+    if(w.st==='dig'){
+      const chasing=G.campK==='worm'||w.age<3;                        // after you move it gives up within a few seconds
+      if(!chasing||w.age>12){w.st='gone';continue}
+      const dx=P.x-w.x,dy=P.y-w.y,d=Math.hypot(dx,dy)||1;
+      w.x+=dx/d*68*dt;w.y+=dy/d*68*dt;                                 // a little slower than you run
+      if(R()<.6)PT.push({x:w.x+rnd(-3,3),y:w.y+rnd(-1,2),vx:rnd(-12,12),vy:rnd(-18,-4),life:.4,max:.4,c:pick(['#6b4a2b','#8a6a42','#4a3420']),s:1});
+      if(d<5){w.st='rise';w.t=0;G.shake=Math.max(G.shake,1);snd('quake')}
+    }else if(w.st==='rise'){
+      if(w.t>=.6){w.st='erupt';w.t=0;G.shake=Math.max(G.shake,2.5);burst(w.x,w.y,'#8a6a42',26,90,.5,2);snd('boom');
+        const dx=P.x-w.x,dy=P.y-w.y,d=Math.hypot(dx,dy);
+        if(d<16){const was=P.inv;P.inv=0;hurtPlayer(Math.round(P.max*.16+G.threat*1.5),'a sandworm');P.inv=Math.max(P.inv,was);const l=d||1;P.vx+=(dx/l||1)*260;P.vy+=(dy/l)*260}
+        query(w.x,w.y,22,e=>hurt(e,60*eDmgScale(),{silent:true,src:'env',elem:'blast',kx:e.x-w.x,ky:e.y-w.y,kb:80}))}
+    }else if(w.st==='erupt'){if(w.t>=.9)w.st='gone'}
+  }
+  G.worms=G.worms.filter(w=>w.st!=='gone');
+}
+function drawCampGround(ox,oy){
+  for(const w of G.worms){
+    const x=RK(w.x-ox),y=RK(w.y-oy);
+    if(w.st==='dig'){ctx.fillStyle='#4a3420';ctx.fillRect(x-4,y-1,9,3);ctx.fillStyle='#6b4a2b';ctx.fillRect(x-3,y-2,7,2);ctx.fillStyle='#8a6a42';ctx.fillRect(x-1,y-3,3,1)}
+    else if(w.st==='rise'){if(Math.floor(w.t*12)%2===0)ring(x,y,16,'#ff3b5c');ctx.fillStyle='#4a3420';ctx.fillRect(x-6,y-1,13,3)}
+    else if(w.st==='erupt'){const h=Math.round(Math.min(1,w.t*6)*Math.max(0,1-(w.t-.5)*2.5)*22);
+      ctx.fillStyle='#5a3a2a';ctx.fillRect(x-4,y-h,9,h);ctx.fillStyle='#c4a07a';for(let i=0;i<h;i+=3)ctx.fillRect(x-4,y-h+i,9,1);
+      if(h>6){ctx.fillStyle='#2a1a12';ctx.fillRect(x-3,y-h,7,3);ctx.fillStyle='#fff';ctx.fillRect(x-2,y-h+1,1,1);ctx.fillRect(x+2,y-h+1,1,1)}
+      ctx.fillStyle='#4a3420';ctx.fillRect(x-7,y-1,15,3)}
+  }
+}
+function drawCampSky(ox,oy){
+  const c=G.cloud;if(!c)return;
+  const x=RK(c.x-ox),y=RK(c.y-oy)-34;ctx.globalAlpha=Math.max(0,Math.min(1,c.a));
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(x-14,y+40,28,3);
+  ctx.fillStyle='#3a3a4e';ctx.fillRect(x-14,y-2,28,7);ctx.fillRect(x-9,y-6,18,5);ctx.fillRect(x-4,y-9,10,4);
+  ctx.fillStyle='#55556e';ctx.fillRect(x-8,y-6,10,2);ctx.fillRect(x-3,y-9,6,2);
+  if(Math.floor(G.time*9)%5===0){ctx.fillStyle='#7df9ff';ctx.fillRect(x+rnd(-10,10)|0,y+5,1,3)}
+  ctx.globalAlpha=1;
+}
+/* a UFO: flies in, flashes a warning circle, then beams. It leaves when you move off, and never stays long. */
 function ufoThink(e,dt,dx,dy,d){
-  e.stT+=dt;e.vx*=.5;e.vy*=.5;                                       // hovering: knockback barely moves it
+  e.stT+=dt;e.age=(e.age||0)+dt;e.vx*=.5;e.vy*=.5;
+  if(e.st!=='out'&&(e.age>10||(G.campK!=='ufo'&&e.st!=='beam'))){e.st='out';e.stT=0}   // you moved, or it's been here long enough
   const tx=P.x+e.ox-e.x,ty=P.y+e.oy-e.y,td=Math.hypot(tx,ty)||1;
   if(e.st==='in'){if(td<6||e.stT>4){e.st='warn';e.stT=0}return [tx/td,ty/td,110]}
   if(e.st==='warn'){if(e.stT>=1.1){e.st='beam';e.stT=0;snd('beam')}return [tx/td,ty/td,Math.min(td*3,24)]}
@@ -826,12 +899,11 @@ function ufoThink(e,dt,dx,dy,d){
       else{P.abd=(P.abd||0)+dt*1.6;const f=55*(1-pd/UFO_BEAM_R)+15;P.x-=px/(pd||1)*f*dt;P.y-=py/(pd||1)*f*dt;
         if(R()<.5)PT.push({x:P.x+rnd(-4,4),y:P.y+rnd(-2,4),vx:0,vy:-40,life:.4,max:.4,c:'#9dff7a',s:1});
         if(P.abd>=UFO_HOLD)abduct(e)}
-    }
-    if(e.stT>=4.5){e.st='out';e.stT=0}
-    return [tx/td,ty/td,22];                                         // drifts after you, slower than you can run
+    }else if(pd>UFO_BEAM_R+30)e.lost=(e.lost||0)+dt;
+    if(e.stT>=4.5||e.lost>1.2){e.st='out';e.stT=0}                     // you got away: it gives up
+    return [tx/td,ty/td,22];
   }
-  // leaving
-  if(e.stT>2.5)e.dead=true;
+  if(e.stT>2.5)e.dead=true;                                          // leaving
   return [-dx/d,-dy/d,130];
 }
 function abduct(e){
@@ -1196,6 +1268,8 @@ const ZK={
   poison:{hostile:1},
   spike:{hostile:1,once:1},
   hole:{hostile:1,pullP:30,pullE:70},
+  crack:{},
+  pit:{hostile:1,pullP:42,pullE:50},
   fhole:{friendly:1,pullE:150,elem:'blast'},
   ftrail:{hostile:1},
   ppuddle:{hostile:1},
@@ -1857,6 +1931,7 @@ function update(dt){
   // ---- zones
   for(const z of Z){
     z.t+=dt;z.life-=dt;z.x+=z.vx*dt;z.y+=z.vy*dt;
+    if(z.kind==='crack'){if(z.life<=0&&!z.done){z.done=1;addZone('pit',z.x,z.y,30,5,{pd:16*eDmgScale()});burst(z.x,z.y,'#6b4a2b',24,70,.5,2);G.shake=Math.max(G.shake,2.2);snd('boom')}continue}
     if(z.kind==='fuse'){if(z.life<=0&&!z.done){z.done=1;BOOMQ.push(z.boom)}continue}
     if(z.kind==='drop'){if(z.life<=0&&!z.done){z.done=1;spawnEnemy('crate',z.x,z.y,{elite:false});burst(z.x,z.y,'#b8834a',10,50,.4)}continue}
     if(z.kind==='shell'){if(z.life<=0&&!z.done){z.done=1;BOOMQ.push(Object.assign({x:z.x,y:z.y},z.boom));
@@ -1867,13 +1942,13 @@ function update(dt){
       const pdx=z.x-P.x,pdy=z.y-P.y,pd=Math.hypot(pdx,pdy)||1;
       if(K.pullP&&pd<z.r&&P.dashT<=0){const f=K.pullP*(1-pd/z.r);P.x+=pdx/pd*f*dt;P.y+=pdy/pd*f*dt}
       query(z.x,z.y,z.r,e=>{if(e.type==='boss')return;const dx=z.x-e.x,dy=z.y-e.y,d=Math.hypot(dx,dy)||1;if(d<z.r){const f=K.pullE*(1-d/z.r)+10;e.x+=dx/d*f*dt;e.y+=dy/d*f*dt}});
-      if(R()<.5){const a=R()*TAU;PT.push({x:z.x+Math.cos(a)*z.r,y:z.y+Math.sin(a)*z.r,vx:-Math.cos(a)*z.r*1.5,vy:-Math.sin(a)*z.r*1.5,life:.6,max:.6,c:z.kind==='fhole'?'#c792ea':'#7d3cff',s:1})}
+      if(R()<.5){const a=R()*TAU;PT.push({x:z.x+Math.cos(a)*z.r,y:z.y+Math.sin(a)*z.r,vx:-Math.cos(a)*z.r*1.5,vy:-Math.sin(a)*z.r*1.5,life:.6,max:.6,c:z.kind==='fhole'?'#c792ea':z.kind==='pit'?'#8a6a42':'#7d3cff',s:1})}
     }
     z.tick-=dt;
     if(z.tick<=0){
       z.tick=.25;
-      const core=(z.kind==='hole'||z.kind==='fhole')?7:z.r;
-      if(K.hostile&&z.pd&&P.dashT<=0&&Math.hypot(P.x-z.x,P.y-z.y)<core+2){const was=P.inv;P.inv=0;hurtPlayerEnv(z.pd*.25,{lava:'lava',poison:'poison gas',hole:'a black hole',ftrail:'flames',ppuddle:'a poison puddle'}[z.kind]||'the land');P.inv=was}
+      const core=(z.kind==='hole'||z.kind==='fhole')?7:z.kind==='pit'?z.r*.55:z.r;
+      if(K.hostile&&z.pd&&P.dashT<=0&&Math.hypot(P.x-z.x,P.y-z.y)<core+2){const was=P.inv;P.inv=0;hurtPlayerEnv(z.pd*.25,{lava:'lava',poison:'poison gas',hole:'a black hole',pit:'a sinkhole',ftrail:'flames',ppuddle:'a poison puddle'}[z.kind]||'the land');P.inv=was}
       if(K.friendly&&z.ed){const rr=z.kind==='fhole'?14:z.r;query(z.x,z.y,rr+6,e=>{if(Math.hypot(e.x-z.x,e.y-z.y)<rr+e.r){hurt(e,z.ed*.25,{silent:true,src:z.src,elem:K.elem,ignite:K.ignite});if(K.slowE)e.slow=Math.max(e.slow,.4)}})}
     }
   }
@@ -2081,6 +2156,11 @@ function drawZone(z,ox,oy){
       if(Math.random()<.3)PT.push({x:z.x+rnd(-z.r,z.r)*.6,y:z.y+rnd(-z.r,z.r)*.6,vx:0,vy:-15,life:.3,max:.3,c:'#ffd166',s:1});break;
     case 'ice':ctx.globalAlpha*=.55;disc(x,y,z.r,'#e8f6ff');ctx.globalAlpha=Math.max(0,fade)*.8;ring(x,y,z.r,'#ffffff');line(x-z.r*.4,y-z.r*.2,x-z.r*.1,y-z.r*.5,'#ffffff');break;
     case 'poison':ctx.globalAlpha*=.35;disc(x,y,z.r,'#7ac23c');ctx.globalAlpha=Math.max(0,fade)*.6;disc(x+Math.sin(z.t*2)*3,y+Math.cos(z.t*2)*2,z.r*.6,'#9ad13c');break;
+    case 'crack':{ctx.globalAlpha=1;const k=z.t/z.max;ctx.fillStyle=Math.floor(z.t*10)%2?'#2a1a12':'#ff3b5c';
+      for(let i=0;i<7;i++){const a=i/7*TAU+hash(i,z.x|0)%10*.06;for(let s=2;s<z.r*k;s+=2){const j=(hash(i,s)%3)-1;ctx.fillRect(RK(x+Math.cos(a)*s+j),RK(y+Math.sin(a)*s),1,1)}}
+      ctx.globalAlpha=.5;ring(x,y,z.r,'#ff3b5c');break}
+    case 'pit':disc(x,y,z.r+2,'#4a3420');disc(x,y,z.r,'#1a120c');disc(x,y,z.r*.55,'#0a0605');
+      if(Math.random()<.4)PT.push({x:z.x+rnd(-z.r,z.r)*.8,y:z.y+rnd(-z.r,z.r)*.8,vx:0,vy:6,life:.4,max:.4,c:'#6b4a2b',s:1});break;
     case 'ppuddle':ctx.globalAlpha*=.6;disc(x,y,z.r,'#6a8a2a');break;
     case 'spike':
       if(z.arm>0){if(Math.floor(z.arm*12)%2===0)ring(x,y,z.r,'#ff3b5c');ring(x,y,z.r*(1-z.arm/.9),'#a6f0ff')}
@@ -2107,7 +2187,7 @@ function render(){
   ctx.globalAlpha=1;
   drawArena(ox,oy);
   for(const z of Z)if(z.kind!=='hole'&&z.kind!=='fhole')drawZone(z,ox,oy);
-  drawBossMarks(ox,oy);
+  drawBossMarks(ox,oy);drawCampGround(ox,oy);
   for(const sh of SHRINES){const x=RK(sh.x-ox),y=RK(sh.y-oy),c=`hsl(${(G.time*120)%360},90%,62%)`;
     ctx.globalAlpha=Math.min(1,sh.t/2);ctx.fillStyle='#3a3150';ctx.fillRect(x-6,y-3,13,7);ctx.fillStyle='#5a4f78';ctx.fillRect(x-6,y-3,13,1);
     ctx.fillStyle=c;ctx.fillRect(x-2,y-1,5,3);ctx.globalAlpha=Math.min(1,sh.t/2)*(.25+.1*Math.sin(G.time*5));ctx.fillRect(x-1,y-30,3,28);ctx.globalAlpha=1;
@@ -2207,6 +2287,7 @@ function render(){
   if(isMode('timestop')){ctx.fillStyle='rgba(166,240,255,.14)';ctx.fillRect(0,0,LW,LH)}
   if(G.mode){const c=MODES[G.mode.id].col;ctx.globalAlpha=.5+.3*Math.sin(G.time*8);ctx.fillStyle=c;ctx.fillRect(0,0,LW,1);ctx.fillRect(0,LH-1,LW,1);ctx.fillRect(0,0,1,LH);ctx.fillRect(LW-1,0,1,LH);ctx.globalAlpha=1}
   drawWaveWarnings();drawThiefPointer(ox,oy);
+  drawCampSky(ox,oy);
   // shrine pointer when off screen
   for(const sh of SHRINES){const bx=sh.x-ox,by=sh.y-oy;if(bx<0||by<0||bx>LW||by>LH){const a=Math.atan2(sh.y-P.y,sh.x-P.x);const x=clamp(LW/2+Math.cos(a)*(LW/2-8),6,LW-6),y=clamp(LH/2+Math.sin(a)*(LH/2-8),6,LH-6);ctx.fillStyle='#ffe066';ctx.fillRect(RK(x)-1,RK(y)-1,3,3)}}
   if(G.state==='play'&&P.hp<P.max*.3){const k=.25+.2*Math.sin(G.time*7);ctx.fillStyle=`rgba(255,40,70,${k})`;ctx.fillRect(0,0,LW,3);ctx.fillRect(0,LH-3,LW,3);ctx.fillRect(0,0,3,LH);ctx.fillRect(LW-3,0,3,LH);
@@ -2257,7 +2338,7 @@ function buildReport(){
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
     mode:G.daily?'daily '+G.seedStr:'normal',startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
-      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
+      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
     damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
