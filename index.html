@@ -138,7 +138,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 #cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .up{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;padding:14px 12px;min-height:150px;font-family:var(--font-b);font-size:18px;
   box-shadow:0 0 0 3px var(--c),5px 5px 0 #000;background:var(--panel)}
-.up:hover,.up:focus-visible{transform:translate(-2px,-2px);box-shadow:0 0 0 3px var(--c),7px 7px 0 #000}
+.up:hover,.up:focus-visible,.up.sel{transform:translate(-2px,-2px);box-shadow:0 0 0 3px var(--c),7px 7px 0 #000}
 .up .tag{font-family:var(--font-d);font-size:9px;padding:2px 5px;background:var(--c);color:#0d0b14}
 .up .nm{font-family:var(--font-d);font-size:13px;color:var(--c);line-height:1.15}
 .up .ds{line-height:1;color:var(--ink)}
@@ -1356,6 +1356,7 @@ function openLevelUp(){
   surge=G.pendingLv>=SURGE_AT;
   G.state='levelup';
   if(surge){G.surges++;offers=surgeHand();snd('level');G.flash=Math.max(G.flash,.3)}else offers=makeOffers();
+  lvSel=0;lvOpenT=performance.now();
   renderOffers();
 }
 /* evolution hints: a mutation card says which held weapon it evolves; a weapon card says which mutation it needs */
@@ -1367,6 +1368,17 @@ function evoHint(c){
   if(!w)return '';
   return 'Evolves '+WDEF[w.id].name+' → '+EVO[w.id].name+(w.lvl>=6?' next level':' at Lv 6 (now '+w.lvl+')');
 }
+/* keyboard picking: left/right (or A/D) moves the highlight, up (or W) takes the card.
+   Only fresh presses count, and taking waits a moment after the screen opens, so a movement key
+   you were already holding can't grab a card by accident. */
+let lvSel=0,lvOpenT=0;
+function lvButtons(){return [...$('cards').querySelectorAll('button[data-i]:not([disabled]):not(.taken)')]}
+function lvMark(){
+  const bs=lvButtons();if(!bs.length)return;
+  lvSel=((lvSel%bs.length)+bs.length)%bs.length;
+  $('cards').querySelectorAll('button.sel').forEach(b=>b.classList.remove('sel'));
+  bs[lvSel].classList.add('sel');if(!isTouch)bs[lvSel].focus({preventScroll:true});
+}
 function renderOffers(){
   $('lvl').classList.toggle('surge',surge);
   $('lvlHead').textContent=surge?'POWER SURGE · '+G.pendingLv+' BANKED LEVEL'+(G.pendingLv>1?'S':'')+' · LV '+G.level:'LEVEL '+(G.level-G.pendingLv+1)+' · PICK ONE';
@@ -1377,10 +1389,10 @@ function renderOffers(){
   $('lvl').hidden=false;
   $('cashBtn').hidden=!surge;$('cashBtn').textContent='CASH OUT '+G.pendingLv+' (C)';
   $('rerollBtn').hidden=G.rerolls<=0;$('rerollBtn').textContent='REROLL · '+G.rerolls+' LEFT';
-  $('rrNote').textContent=surge?'Each card costs 1 banked level. Cash out turns the rest into overkill meter and HP.':G.rerolls>0?'':'Kill streaks of 100 earn rerolls.';
-  const first=$('cards').querySelector('button:not([disabled])');if(first&&!isTouch)first.focus({preventScroll:true});
+  $('rrNote').textContent=(isTouch?'':'← → choose · ↑ take. ')+(surge?'Each card costs 1 banked level. Cash out turns the rest into overkill meter and HP.':G.rerolls>0?'':'Kill streaks of 100 earn rerolls.');
+  lvMark();
 }
-function reroll(){if(G.state!=='levelup'||G.rerolls<=0)return;G.rerolls--;G.rerollsUsed++;offers=surge?surgeHand():makeOffers();renderOffers();snd('pick',1)}
+function reroll(){if(G.state!=='levelup'||G.rerolls<=0)return;G.rerolls--;G.rerollsUsed++;lvSel=0;offers=surge?surgeHand():makeOffers();renderOffers();snd('pick',1)}
 $('rerollBtn').onclick=reroll;
 $('cashBtn').onclick=()=>cashOut();
 $('cards').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(b)chooseCard(+b.dataset.i)});
@@ -2314,6 +2326,12 @@ const DASH_KEYS=['Space','ShiftLeft','ShiftRight','KeyK'];
 addEventListener('keydown',e=>{
   if(e.target&&e.target.tagName==='TEXTAREA')return;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
+  if(G.state==='levelup'&&!e.repeat){
+    if(e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();lvSel--;lvMark();if(!muted&&typeof tone==='function')try{tone(660,660,.03,'square',.025)}catch(_){}return}
+    if(e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();lvSel++;lvMark();if(!muted&&typeof tone==='function')try{tone(660,660,.03,'square',.025)}catch(_){}return}
+    if(e.code==='ArrowUp'||e.code==='KeyW'){e.preventDefault();if(performance.now()-lvOpenT>350){const b=lvButtons()[lvSel];if(b)chooseCard(+b.dataset.i)}return}
+  }
+  if(G.state==='levelup'&&e.repeat&&/^(Arrow|Key[WASD])/.test(e.code)){e.preventDefault();return}
   if(G.state==='levelup'){const m=/^(?:Digit|Numpad)([1-9])$/.exec(e.code);if(m){chooseCard(+m[1]-1);return}if(e.code==='KeyR'){reroll();return}if(e.code==='KeyC'){cashOut();return}}
   if(G.state==='title'&&e.code==='Enter'&&!$('title').hidden&&document.activeElement===document.body){start(false);return}
   if(DASH_KEYS.includes(e.code)&&!e.repeat&&G.state==='play')dashQueued=true;
