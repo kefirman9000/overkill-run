@@ -9,14 +9,14 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 - **Move** with WASD or the arrow keys. On a phone, drag anywhere on the screen.
 - **Dash** with Space or Shift, or the DASH button on touch screens. It's your only defensive move, and it gives a moment of invulnerability.
 - **Level up** by collecting souls. Pick one of three cards with 1, 2, 3 or a tap.
-- **Power Surge**: level-ups that come faster than one every few seconds (or during a super mode) are banked. Three or more open one Power Surge screen: spend banked levels on a hand of cards or on surge cards (Overcharge a weapon +2 levels, Fast Evolution, a boosted Legendary), or cash the rest out for overkill meter and HP. Options has an auto-pick setting for 5+ banked levels.
+- **Power Surge**: level-ups that come faster than one every few seconds (or during a super mode) are banked. Three or more open one Power Surge screen: spend banked levels on a hand of cards or on surge cards (Overcharge a weapon +2 levels, Fast Evolution, a boosted Legendary), or cash the rest out for overkill meter and HP. Options has auto-pick: at 5+ banked levels, or always (you never see the pick screen; it takes evolutions, then mutations that finish an evolution, defense when you're hurt, weapon upgrades and the rarest cards).
 - **Pause** with P or Esc to see your build.
 
 ### Escalation
 
 - Rarity runs Common → Rare → Epic → Legendary → Mythic. Higher threat and longer kill streaks push the odds toward the extreme stuff.
 - Enemies attack in squads from one to three directions at a time, sometimes a pincer from both sides. The directions shift every 10 seconds or so, and red arrows at the screen edge point to where the next wave is coming from.
-- Keep moving: stand in one spot for a few seconds and a **UFO** comes for you. It flashes a warning circle, then drops a tractor beam that pulls you in. Stay in it too long and you're abducted (a big hit, and you're dropped somewhere else). Run or dash out, or shoot it down for souls. Souls and pickups left on the ground also fade away (they blink first).
+- Keep moving: stand in one spot for a few seconds and a **UFO** comes for you. It flashes a warning circle, then drops a tractor beam that pulls you in. Stay in it too long and you're abducted (a big hit, and you're dropped somewhere else). Run or dash out of the beam: UFOs fly too high to shoot. Souls and pickups left on the ground also fade away (they blink first).
 - A **Soul Thief** turns up every minute or so. It runs from you dropping souls; catch it within 14 seconds for a burst of rare souls and a pickup (often a Heart Container).
 - The threat meter rises with kills and time. It drives spawn rate, enemy toughness and elite chance.
 - Six lands, each with its own enemies and hazards: Grassy Ruins, Burning Forest (lava), Frozen Wastes (ice you slide on), Toxic Swamp (poison clouds), Crystal Caves (eruptions), The Void (black holes). After the Void, the cycle repeats harder.

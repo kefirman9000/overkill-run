@@ -269,8 +269,8 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
     <div class="pickrow" id="optMusic"><button data-v="1">MUSIC ON</button><button data-v="0">MUSIC OFF</button></div>
     <div class="pickrow" id="optHap"><button data-v="1">VIBRATION ON</button><button data-v="0">VIBRATION OFF</button></div>
     <div class="pickrow" id="optZoom"><button data-v="1">AUTO ZOOM</button><button data-v="0">FIXED CAMERA</button></div>
-    <div class="pickrow" id="optAuto"><button data-v="0">AUTO-PICK OFF</button><button data-v="5">AUTO-PICK AT 5+ BANKED</button></div>
-    <p class="note">Level-ups that pile up are banked; 3 or more open one Power Surge screen. Auto-pick takes evolutions, then your weapons, then the rarest card.</p>
+    <div class="pickrow" id="optAuto"><button data-v="0">AUTO-PICK OFF</button><button data-v="5">AUTO-PICK AT 5+ BANKED</button><button data-v="1">AUTO-PICK ALWAYS</button></div>
+    <p class="note">Level-ups that pile up are banked; 3 or more open one Power Surge screen. Auto-pick takes the best card for you: evolutions first, then mutations that finish an evolution, then healing and defense when you are hurt, then upgrades to your weapons and the rarest cards. Always means you never see the pick screen.</p>
     <p class="note">Auto zoom starts close and pulls back as enemies crowd around you.</p>
     <div class="btns"><button class="go" id="optDone">DONE</button></div>
   </div>
@@ -702,14 +702,14 @@ setInterval(musicTick,40);
 /* ================= spatial grid ================= */
 const CELL=24;const grid=new Map();
 const gk=(cx,cy)=>(cx+50000)*100000+(cy+50000);
-function buildGrid(){grid.clear();for(const e of E){if(e.dead)continue;const k=gk(Math.floor(e.x/CELL),Math.floor(e.y/CELL));let a=grid.get(k);if(!a){a=[];grid.set(k,a)}a.push(e)}}
+function buildGrid(){grid.clear();for(const e of E){if(e.dead||e.type==='ufo')continue;const k=gk(Math.floor(e.x/CELL),Math.floor(e.y/CELL));let a=grid.get(k);if(!a){a=[];grid.set(k,a)}a.push(e)}}
 function query(x,y,r,cb){
   const x0=Math.floor((x-r)/CELL),x1=Math.floor((x+r)/CELL),y0=Math.floor((y-r)/CELL),y1=Math.floor((y+r)/CELL);
   for(let cx=x0;cx<=x1;cx++)for(let cy=y0;cy<=y1;cy++){const a=grid.get(gk(cx,cy));if(a)for(const e of a)if(!e.dead)cb(e)}
 }
 function nearest(x,y,range,exclude){
   let best=null,bd=range*range;
-  for(const e of E){if(e.dead||(exclude&&exclude.has(e)))continue;const dx=e.x-x,dy=e.y-y,d=dx*dx+dy*dy;if(d<bd){bd=d;best=e}}
+  for(const e of E){if(e.dead||e.type==='ufo'||(exclude&&exclude.has(e)))continue;const dx=e.x-x,dy=e.y-y,d=dx*dx+dy*dy;if(d<bd){bd=d;best=e}}
   return best;
 }
 
@@ -811,7 +811,7 @@ function updateCamp(dt){
   if(ufos<want){
     const a=R()*TAU,d=Math.hypot(LW,LH)/2+20,u=spawnEnemy('ufo',P.x+Math.cos(a)*d,P.y+Math.sin(a)*d,{elite:false});
     u.st='in';u.stT=0;u.ox=rnd(-8,8);u.oy=rnd(-8,8);snd('ufo');
-    if(!G.hinted.camp){G.hinted.camp=1;toast(2,'Stand still too long and they come for you. Keep moving!')}
+    if(!G.hinted.camp){G.hinted.camp=1;toast(2,'Stand still too long and they come for you. You can\'t shoot them down: keep moving!')}
   }
 }
 function ufoThink(e,dt,dx,dy,d){
@@ -835,7 +835,7 @@ function ufoThink(e,dt,dx,dy,d){
   return [-dx/d,-dy/d,130];
 }
 function abduct(e){
-  P.abd=0;e.st='out';e.stT=0;
+  P.abd=0;e.st='out';e.stT=0;G.abductions=(G.abductions||0)+1;
   const dmg=Math.round(P.max*.2+G.threat*2);
   const was=P.inv;P.inv=0;hurtPlayer(dmg,'an alien abduction');if(G.state!=='play')return;P.inv=Math.max(was,1.2);
   burst(P.x,P.y,'#9dff7a',30,80,.5,2);
@@ -858,7 +858,7 @@ function drawUfo(e,ox,oy){
   }
   ctx.drawImage(s,x-(s.width>>1),y-h-(s.height>>1)+Math.round(Math.sin(G.time*3+e.uid)));
   const lit=Math.floor(G.time*8)%4;ctx.fillStyle=['#ff3b5c','#ffe066','#6be0ff','#9dff7a'][lit];ctx.fillRect(x-5+lit*3,y-h+1,1,1);
-  if(e.hp<e.max){ctx.fillStyle='#000';ctx.fillRect(x-6,y-h-6,12,1);ctx.fillStyle='#9dff7a';ctx.fillRect(x-6,y-h-6,Math.max(1,Math.round(12*e.hp/e.max)),1)}
+  
 }
 /* Soul Thief: shows up now and then, runs from you dropping souls, and pays out big if you catch it */
 function updateThief(dt){
@@ -894,7 +894,7 @@ function puLife(p){return p.kind==='gem'?(p.tier>=2?28:16):p.kind==='maxhp'?45:2
    Threat doesn't climb and land hazards stop during a fight. Win: heal 35% and a Power Surge (3 banked levels). */
 const ARENA_R=115;            // arena radius in world pixels
 const FLOE_R0=140,FLOE_R1=72; // the ice floe starts this big and cracks down to this
-const ARENA_HP=2;             // boss HP multiplier for boss fights (tune with the run report's bossFights)
+const ARENA_HP=5;             // boss HP multiplier for boss fights (tune with the run report's bossFights)
 const FMT={
   arena:   {walls:1,floor:1,horde:0,  zoom:2*ARENA_R,big:'BOSS ARENA',  sub:'Just you and it'},
   floe:    {walls:1,floor:1,horde:0,  zoom:2*FLOE_R0,big:'THIN ICE',    sub:'The floe is breaking up'},
@@ -1229,7 +1229,7 @@ function burst(x,y,col,n,sp=50,life=.4,size=1){
   for(let i=0;i<n&&PT.length<(isTouch?300:900)*(G.lowFx?.45:1);i++){const a=R()*TAU,s=rnd(.3,1)*sp;PT.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.5,1)*life,max:life,c:col,s:size})}
 }
 function hurt(e,dmg,o={}){
-  if(e.dead||e.phase>0)return;
+  if(e.dead||e.phase>0||e.type==='ufo')return;                       // UFOs fly too high to hit
   if(e.shieldN>0){if(R()<.15)burst(e.x,e.y-2,'#a6f0ff',2,30,.2);return}             // shielded by its pylons                                       // a phased Wraith can't be hit
   const res=ET[e.type].res,el=o.elem||'kinetic';
   const m=res&&res[el]!==undefined?res[el]:1;
@@ -1272,7 +1272,7 @@ function kill(e,src){
     else if(R()<.004)PU.push({kind:'vac',x:e.x,y:e.y,t:0,vx:0,vy:-20});
     else if(R()<.003+G.threat*.0003)PU.push({kind:'bomb',x:e.x,y:e.y,t:0,vx:0,vy:-20});
     else if(R()<.004)PU.push({kind:pick(['bubble','frenzy','freezeAll','armor','guard']),x:e.x,y:e.y,t:0,vx:0,vy:-20});
-    else if(R()<(e.elite?.035:.0007))PU.push({kind:'maxhp',x:e.x,y:e.y,t:0,vx:0,vy:-20});
+    else if(R()<(e.elite?.012:.0004))PU.push({kind:'maxhp',x:e.x,y:e.y,t:0,vx:0,vy:-20});
   }
   // death behaviors
   if(e.type==='exploder')addZone('fuse',e.x,e.y,22,.45,{boom:{x:e.x,y:e.y,r:22,dmg:30*S.dmg,pd:e.dmg*1.4,col:'#ffb627',src:'exploder',hostile:true}});
@@ -1282,7 +1282,6 @@ function kill(e,src){
   if(e.type==='boss'){buzz(90);G.boss=null;G.bossKills++;G.stop=.3;G.shake=4;G.flash=.7;snd('boom');if(G.arena)arenaWon(e);else banner(bossOf(e).name.toUpperCase()+' DOWN','The threat climbs anyway')}
   else if(e.type==='pylon')pylonDown(e);
   else if(e.type==='thief')thiefDown(e);
-  else if(e.type==='ufo'){banner('UFO DOWN','Nice shot');G.ufosDown=(G.ufosDown||0)+1;G.shake=Math.max(G.shake,2)}
   else if(e.elite){G.stop=Math.max(G.stop,.05)}
   // mutations on kill
   if(S.frostKill){query(e.x,e.y,26,o=>{o.slow=Math.max(o.slow,1.6)});if(R()<.3)RINGS.push({x:e.x,y:e.y,r:0,max:24,life:.2,t:0,c:'#a6f0ff',noFill:1})}
@@ -1386,7 +1385,7 @@ function fireWeapon(w){
     case 'missile':{const t=nearest(P.x,P.y,range);if(!t)return 0;const a=Math.atan2(t.y-P.y,t.x-P.x);
       volley(a,(1+Math.floor(l/2)+Math.floor(S.multi/3))*(w.evo?2:1),.5,45,{kind:'missile',dmg:18*lm,size:3,col:'#ff5e5b',life:2.4,rad:(16+l*2)*S.area*(w.evo?1.4:1),elem:'blast',src:'missile',pierce:0,bounce:0,split:false,target:t});snd('shoot');return Math.max(.9,1.7-.08*l)}
     case 'bomb':{
-      const cands=E.filter(e=>!e.dead&&Math.abs(e.x-P.x)<LW*.5&&Math.abs(e.y-P.y)<LH*.5);if(!cands.length)return 0;
+      const cands=E.filter(e=>!e.dead&&e.type!=='ufo'&&Math.abs(e.x-P.x)<LW*.5&&Math.abs(e.y-P.y)<LH*.5);if(!cands.length)return 0;
       const n=(1+Math.floor(l/3))*(w.evo?2:1);
       for(let k=0;k<n;k++){let best=cands[0],bn=-1;for(let i=0;i<6;i++){const c=cands[Math.floor(R()*cands.length)];let m=0;query(c.x,c.y,26,()=>m++);if(m>bn){bn=m;best=c}}
         addZone('shell',best.x+rnd(-6,6),best.y+rnd(-6,6),(20+l*2)*S.area,.6,{boom:{r:(20+l*2)*S.area,dmg:28*lm,col:'#ffb627',src:'bomb'},bomblets:w.evo?6:l>=3?3:0})}
@@ -1554,7 +1553,19 @@ function cashOut(){
   closeLevelUp();
 }
 /* auto-pick (options): evolutions, then the weapons you hold, then a new weapon, then the rarest card */
-function autoScore(c){return c.evo?1000:c.weapon&&c.id.startsWith('lvl:')?500+c.r:c.weapon?300+c.r:c.r*10+cardRand()}
+/* auto-pick: score each offered card and take the best */
+function autoScore(c){
+  if(c.evo)return 1000;
+  const lowHp=P.hp<P.max*.4,DEF=['hp','ironheart','plating','regen','leech','barrier','secondheart','thorns'];
+  if(!c.weapon){
+    const w=W.find(w=>!w.evo&&EVO[w.id].mut===c.id&&!(G.taken[c.id]>0));
+    if(w)return 700+w.lvl*20;                                           // completes an evolution recipe
+    if(lowHp&&DEF.includes(c.id))return 650+c.r*10;
+    return c.r*110+(DEF.includes(c.id)?5:0)+cardRand()*5;              // rarer is better
+  }
+  if(c.id.startsWith('lvl:')){const w=W.find(w=>w.id===c.id.slice(4));const have=w&&(G.taken[EVO[w.id].mut]||0)>0;return 480+(w?w.lvl*10:0)+(have?60:0)}
+  return W.length<3?600:300+c.r*10;                                     // fill the first weapon slots early
+}
 function autoPickAll(){
   const names=[];
   while(G.pendingLv>0){
@@ -1563,7 +1574,7 @@ function autoPickAll(){
     takeCard(c,o.map(x=>x.name+' ('+RN[x.r][0]+')').concat(['(auto)']),true);G.pendingLv--;G.autoPicked++;names.push(c.name);
   }
   G.pendingLv=0;G.lvCD=LV_GAP;
-  toast(2,'Auto-picked '+names.length+': '+names.slice(0,4).join(', ')+(names.length>4?'…':''));snd('pick',2);
+  toast(2,(names.length===1?'Auto-picked ':'Auto-picked '+names.length+': ')+names.slice(0,4).join(', ')+(names.length>4?'…':''));snd('pick',2);
 }
 
 /* ================= threat & biome ================= */
@@ -1881,7 +1892,7 @@ function update(dt){
   if(G.mode){
     G.mode.t-=dt;G.mode.cd-=dt;
     if(isMode('orbital')&&G.mode.cd<=0){
-      G.mode.cd=.4;const vis=E.filter(e=>!e.dead&&e.type!=='crate'&&Math.abs(e.x-P.x)<LW*.5&&Math.abs(e.y-P.y)<LH*.5);
+      G.mode.cd=.4;const vis=E.filter(e=>!e.dead&&e.type!=='crate'&&e.type!=='ufo'&&Math.abs(e.x-P.x)<LW*.5&&Math.abs(e.y-P.y)<LH*.5);
       if(vis.length){let best=vis[0],bn=-1;for(let i=0;i<8;i++){const c=vis[Math.floor(R()*vis.length)];let m=0;query(c.x,c.y,30,()=>m++);if(m>bn){bn=m;best=c}}
         BEAMS.push({x1:best.x,y1:best.y-LH,x2:best.x,y2:best.y,life:.16,w:5});BOOMQ.push({x:best.x,y:best.y,r:30*S.area,dmg:70*dmgMul(),col:'#ff3fa4',src:'orbital'})}
     }
@@ -2246,7 +2257,7 @@ function buildReport(){
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
     mode:G.daily?'daily '+G.seedStr:'normal',startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
-      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),ufosShotDown:G.ufosDown||0,bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
+      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
     damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
