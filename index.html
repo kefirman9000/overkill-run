@@ -235,6 +235,8 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
     <div class="btns"><button id="optPlace">MOVE CONTROLS</button><button id="optSwap">SWAP SIDES</button><button id="optReset">RESET CONTROLS</button></div>
     <h3>FEEL</h3>
     <div class="pickrow" id="optShake"><button data-v="1">SCREEN SHAKE ON</button><button data-v="0">SCREEN SHAKE OFF</button></div>
+    <div class="pickrow" id="optZoom"><button data-v="1">AUTO ZOOM</button><button data-v="0">FIXED CAMERA</button></div>
+    <p class="note">Auto zoom starts close and pulls back as enemies crowd around you.</p>
     <div class="btns"><button class="go" id="optDone">DONE</button></div>
   </div>
 </div>
@@ -254,20 +256,23 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.3.0';
+const VERSION='1.4.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const TAU=Math.PI*2;
 let LW=320,LH=180,SC=4;
-function resize(){
-  const w=innerWidth,h=innerHeight;
-  SC=Math.max(2,Math.round(Math.min(w,h)/200));
-  LW=Math.ceil(w/SC);LH=Math.ceil(h/SC);
-  cv.width=LW;cv.height=LH;cv.style.width=LW*SC+'px';cv.style.height=LH*SC+'px';
-  ctx.imageSmoothingEnabled=false;
+/* VIEW = world pixels across the short side of the screen; smaller is more zoomed in */
+const VIEW_IN=150,VIEW_OUT=235,VIEW_FIXED=200;
+let VIEW=VIEW_FIXED;
+function applyView(force){
+  const w=innerWidth,h=innerHeight,sc=Math.min(w,h)/VIEW;
+  const lw=Math.ceil(w/sc),lh=Math.ceil(h/sc);
+  if(force||lw!==LW||lh!==LH){LW=lw;LH=lh;cv.width=LW;cv.height=LH;ctx.imageSmoothingEnabled=false}
+  SC=sc;cv.style.width=(LW*SC)+'px';cv.style.height=(LH*SC)+'px';
 }
+function resize(){applyView(true)}
 addEventListener('resize',resize);resize();
 
 let R=Math.random,cardRand=Math.random;
@@ -449,7 +454,7 @@ const RELICS={
 let chosenW='pea';const chosenR=new Set();
 
 /* ================= control settings ================= */
-const CFG_DEF={mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:1};
+const CFG_DEF={mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:1,autoZoom:1};
 let CFG=Object.assign({},CFG_DEF);
 try{const c=JSON.parse(localStorage.getItem('overkill-run-controls')||'null');if(c)CFG=Object.assign(CFG,c)}catch(e){}
 function saveCfg(){try{localStorage.setItem('overkill-run-controls',JSON.stringify(CFG))}catch(e){}}
@@ -856,6 +861,13 @@ function update(dt){
   cam.x+=(P.x-cam.x)*Math.min(1,dt*10);cam.y+=(P.y-cam.y)*Math.min(1,dt*10);
   G.shake=Math.max(0,G.shake-dt*8);G.flash=Math.max(0,G.flash-dt*1.6);G.hurt=Math.max(0,G.hurt-dt);
   G.morph=Math.min(1,G.morph+dt/5);G.needleCd-=dt;
+  // camera zoom: pull back as the crowd near you grows, ease back in when it thins
+  if(CFG.autoZoom){
+    let n=0;for(const e of E){const dx=e.x-P.x,dy=e.y-P.y;if(dx*dx+dy*dy<130*130)n++}
+    const target=Math.min(VIEW_OUT,VIEW_IN+Math.sqrt(n)*9+(G.boss?25:0));
+    VIEW+=(target-VIEW)*Math.min(1,dt*(target>VIEW?1.6:.35));
+  }else VIEW+=(VIEW_FIXED-VIEW)*Math.min(1,dt*3);
+  applyView();
   G.streakT-=dt;if(G.streakT<=0)G.streak=0;
 
   // ---- trails left by the player
@@ -1280,7 +1292,7 @@ function buildReport(){
     damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
     upgrades:G.log,timeline:G.timeline,
     perf:{avgFps:G.frames?Math.round(G.frames/G.ftSum):0,worstFps:G.fpsMin===999?0:Math.round(G.fpsMin),peakEnemies:G.peakE,peakProjectiles:G.peakPB},
-    device:{viewport:innerWidth+'x'+innerHeight,pixelScale:SC,touch:isTouch,ua:navigator.userAgent},
+    device:{viewport:innerWidth+'x'+innerHeight,pixelScale:Math.round(SC*100)/100,view:Math.round(VIEW),touch:isTouch,ua:navigator.userAgent},
     controls:CFG
   };
   const top=dmg.slice(0,4).map(d=>`${d.source} ${d.pct}%`).join(', ');
@@ -1337,6 +1349,7 @@ $('wPick').addEventListener('click',e=>{const b=e.target.closest('button[data-w]
 $('rPick').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(b&&!b.disabled){const id=b.dataset.r;chosenR.has(id)?chosenR.delete(id):chosenR.add(id);buildTitle()}});
 function start(daily){
   initAudio();if(AC&&AC.state==='suspended')AC.resume();
+  VIEW=CFG.autoZoom?VIEW_IN:VIEW_FIXED;applyView(true);
   if(daily)reset({daily:true,weapon:'pea',relics:[]});else reset({daily:false,weapon:chosenW,relics:chosenR});
   ['title','over','pause','lvl','repOv','opts'].forEach(id=>$(id).hidden=true);$('hud').hidden=false;
   applyControls();
@@ -1434,7 +1447,7 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 let optsFrom=null;
 function syncOpts(){
   const mark=(id,v)=>$(id).querySelectorAll('button').forEach(b=>b.classList.toggle('sel',b.dataset.v===String(v)));
-  mark('optMode',CFG.mode);mark('optUI',CFG.ui);mark('optTap',CFG.tapDash);mark('optShake',CFG.shake);
+  mark('optMode',CFG.mode);mark('optUI',CFG.ui);mark('optTap',CFG.tapDash);mark('optShake',CFG.shake);mark('optZoom',CFG.autoZoom);
   $('optJs').value=Math.round(CFG.jsize*100);$('optJsV').textContent=Math.round(CFG.jsize*100)+'%';
   $('optDead').value=Math.round(CFG.dead*100);$('optDeadV').textContent=Math.round(CFG.dead*100)+'%';
   $('optDs').value=Math.round(CFG.dsize*100);$('optDsV').textContent=Math.round(CFG.dsize*100)+'%';
@@ -1447,7 +1460,7 @@ function openOpts(){
 function closeOpts(){saveCfg();$('opts').hidden=true;$(optsFrom||'title').hidden=false;applyControls()}
 document.querySelectorAll('.optBtn').forEach(b=>b.onclick=openOpts);
 const pickHandler=(id,key,num)=>$(id).addEventListener('click',e=>{const b=e.target.closest('button[data-v]');if(!b)return;CFG[key]=num?+b.dataset.v:b.dataset.v;saveCfg();syncOpts();applyControls()});
-pickHandler('optMode','mode');pickHandler('optUI','ui');pickHandler('optTap','tapDash',1);pickHandler('optShake','shake',1);
+pickHandler('optMode','mode');pickHandler('optUI','ui');pickHandler('optTap','tapDash',1);pickHandler('optShake','shake',1);pickHandler('optZoom','autoZoom',1);
 const sliderHandler=(id,key)=>$(id).addEventListener('input',e=>{CFG[key]=+e.target.value/100;syncOpts();applyControls()});
 sliderHandler('optJs','jsize');sliderHandler('optDead','dead');sliderHandler('optDs','dsize');sliderHandler('optOp','op');
 $('optDone').onclick=closeOpts;
