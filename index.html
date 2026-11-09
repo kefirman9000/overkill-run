@@ -269,7 +269,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 
 <script>
 'use strict';
-const VERSION='1.5.1';
+const VERSION='1.6.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -328,7 +328,7 @@ const ET={
   shaman:{hue:140,sat:70,hp:30,spd:20,r:4,dmg:6,gem:1,ai:'shaman',rows:['...ee...','..eaae..','.aaaaaa.','aacaacaa','.aaaaaa.','.abbbba.','.aaaaaa.','.a....a.']},
   brood:{hue:300,sat:45,hp:70,spd:12,r:5,dmg:12,gem:2,ai:'brood',rows:['.b.aaaa.b.','..aaaaaa..','.aaaaaaaa.','aacaaaacaa','aadaaaadaa','aaaaaaaaaa','aaeaeeaeaa','.aaaaaaaa.','b.a.aa.a.b','..........']},
   mini:{hue:320,sat:65,hp:6,spd:42,r:3,dmg:5,gem:-1,rows:['.aaa.','acaca','aaaaa','adada','.b.b.']},
-  ember:{hue:18,sat:90,hp:22,spd:30,r:4,dmg:9,gem:1,ai:'ember',res:{fire:.1},fixedHue:true,rows:['..e..e..','...ee...','..aeea..','.aaaaaa.','aacaacaa','aadaadaa','.aaaaaa.','..b..b..']},
+  ember:{hue:18,sat:90,hp:22,spd:30,r:4,dmg:9,gem:1,ai:'ember',res:{fire:.4},fixedHue:true,rows:['..e..e..','...ee...','..aeea..','.aaaaaa.','aacaacaa','aadaadaa','.aaaaaa.','..b..b..']},
   frostling:{hue:195,sat:70,hp:24,spd:22,r:4,dmg:7,gem:1,ai:'frost',res:{fire:2},fixedHue:true,rows:['.e....e.','..aaaa..','.aaaaaa.','aacaacaa','aadaadaa','.aeaaea.','..aaaa..','.b.bb.b.']},
   bloater:{hue:85,sat:60,hp:45,spd:16,r:5,dmg:10,gem:1,ai:'bloat',fixedHue:true,rows:['...aaaa...','..aaaaaa..','.aaeaaeaa.','aaacaacaaa','aaadaadaaa','aaaaaaaaaa','aaeaaaaeaa','.aaaaaaaa.','..aaaaaa..','...b..b...']},
   golem:{hue:265,sat:60,hp:75,spd:15,r:5,dmg:14,gem:2,res:{kinetic:.25,fire:.25},fixedHue:true,rows:['..bbbbbb..','.baeaaeab.','baaaaaaaab','bacaaaacab','badaaaadab','baaaaaaaab','beaabbaaeb','baaaaaaaab','.bab..bab.','.bb....bb.']},
@@ -403,11 +403,11 @@ function landName(threat){const {b,lap}=biomeOf(threat);return b.name+(lap?' '+(
 
 /* ================= weapons & cards ================= */
 const WDEF={
-  pea:{name:'Pea Shooter',col:'#ffe066',desc:'Fires at the nearest enemy.',up:l=>l%3===0?'+1 projectile, +20% damage':'+20% damage, fires faster'},
-  fire:{name:'Fireball',col:'#ff7a2a',desc:'Slow fireball that leaves a burning line and explodes on contact.',up:l=>l%3===0?'+1 fireball':'+20% damage, bigger blast, faster casting'},
-  bolt:{name:'Chain Lightning',col:'#7df9ff',desc:'Lightning that arcs from enemy to enemy.',up:()=>'+1 chain jump, +20% damage'},
-  needle:{name:'Homing Needles',col:'#e6e6ff',desc:'A fan of needles that seek their own targets.',up:()=>'+1 needle, +20% damage'},
-  blade:{name:'Orbit Blades',col:'#9be15d',desc:'Blades that circle you. Get close to use them.',up:()=>'+1 blade, wider orbit, +20% damage'},
+  pea:{name:'Pea Shooter',col:'#ffe066',desc:'Fires at the nearest enemy.',up:l=>l%3===0?'+1 projectile, +30% damage':'+30% damage, fires faster'},
+  fire:{name:'Fireball',col:'#ff7a2a',desc:'Slow fireball that leaves a burning line and explodes on contact.',up:l=>l%3===0?'+1 fireball':'+30% damage, bigger blast, faster casting'},
+  bolt:{name:'Chain Lightning',col:'#7df9ff',desc:'Lightning that arcs from enemy to enemy.',up:()=>'+1 chain jump, +30% damage'},
+  needle:{name:'Homing Needles',col:'#e6e6ff',desc:'A fan of needles that seek their own targets.',up:()=>'+1 needle, +30% damage'},
+  blade:{name:'Orbit Blades',col:'#9be15d',desc:'Blades that circle you. Get close to use them.',up:()=>'+1 blade, wider orbit, +30% damage'},
   oil:{name:'Oil Slick',col:'#8a7cff',desc:'Drops slowing oil as you move. Ignites at Lv 3.',up:l=>l===3?'Slicks ignite and burn':'Bigger, longer, nastier slicks'},
 };
 const EVO={
@@ -593,7 +593,7 @@ const maxAlive=()=>Math.min(420,55+G.threat*24);
 const TPK=45;const tpFor=n=>TPK*n*(n+1)/2;
 function luck(){return G.threat*.7+Math.min(8,G.streak/30)}
 function dmgMul(){
-  let m=S.dmg;
+  let m=S.dmg*(1+.04*((G.level||1)-1));
   if(S.momentum){const f=Math.min(1,Math.hypot(P.vx,P.vy)/(74*S.move));m*=.7+1.1*f}
   return m;
 }
@@ -606,7 +606,7 @@ const ELITE_EX=['haste','shield','split','trail'];
 function chooseType(){
   const list=SPAWN.filter(s=>G.threat>=s[1]).map(s=>[s[0],s[0]==='chaser'?Math.max(3,10-G.threat*.6):s[0]==='swarmer'?3:s[0]==='shaman'?1.5:s[0]==='brood'?1:4]);
   const bi=G.biomeI%BIOMES.length;
-  for(const k in BIOME_E){const b=+k;if(G.biomeI>=b)list.push([BIOME_E[k],bi===b?8:2])}
+  for(const k in BIOME_E){const b=+k;if(G.biomeI>=b)list.push([BIOME_E[k],bi===b?5:2])}
   return wpick(list,x=>x[1])[0];
 }
 function spawnEnemy(type,x,y,o={}){
@@ -779,7 +779,7 @@ function volley(a,n,spread,spd,base){
   }
 }
 function fireWeapon(w){
-  const range=Math.max(LW,LH)*.6+20,l=w.lvl,lm=(1+.2*(l-1))*dmgMul();
+  const range=Math.max(LW,LH)*.6+20,l=w.lvl,lm=(1+.3*(l-1))*dmgMul();
   switch(w.id){
     case 'pea':{const t=nearest(P.x,P.y,range);if(!t)return 0;const a=Math.atan2(t.y-P.y,t.x-P.x);
       volley(a,1+Math.floor(l/3)+S.multi,.12,200,{dmg:9*lm*(w.evo?1.5:1),size:w.evo?4:3,col:w.evo?'#ff9ff3':'#ffe066',life:1,src:'pea',bounce:S.bounce+(w.evo?3:0)});snd('shoot');return .5*(1-.05*Math.min(l,7))}
@@ -798,9 +798,9 @@ function weaponCards(){
   for(const id in WDEF){
     const w=W.find(x=>x.id===id);
     if(!w&&W.length<4)out.push({id:'new:'+id,r:1,tag:'NEW WEAPON',name:WDEF[id].name,icon:'w:'+id,wcol:WDEF[id].col,desc:WDEF[id].desc,apply:()=>{W.push({id,lvl:1,cd:.2})},weapon:1});
-    else if(w&&w.lvl<8)out.push({id:'lvl:'+id,r:w.lvl>=4?1:0,tag:'WEAPON',name:WDEF[id].name+' Lv '+(w.lvl+1),icon:'w:'+id,wcol:WDEF[id].col,
-      desc:WDEF[id].up(w.lvl+1)+(w.lvl+1===8?'. Max level: evolves once you have '+EVO[id].mutName+'.':''),apply:()=>{w.lvl++},weapon:1});
-    else if(w&&w.lvl>=8&&!w.evo&&(G.taken[EVO[id].mut]||0)>0)out.push({id:'evo:'+id,r:3,tag:'EVOLUTION',name:EVO[id].name,icon:'w:'+id,wcol:'#ffa31a',
+    else if(w&&w.lvl<6)out.push({id:'lvl:'+id,r:w.lvl>=3?1:0,tag:'WEAPON',name:WDEF[id].name+' Lv '+(w.lvl+1),icon:'w:'+id,wcol:WDEF[id].col,
+      desc:WDEF[id].up(w.lvl+1)+(w.lvl+1===6?'. Max level: evolves once you have '+EVO[id].mutName+'.':''),apply:()=>{w.lvl++},weapon:1});
+    else if(w&&w.lvl>=6&&!w.evo&&(G.taken[EVO[id].mut]||0)>0)out.push({id:'evo:'+id,r:3,tag:'EVOLUTION',name:EVO[id].name,icon:'w:'+id,wcol:'#ffa31a',
       desc:WDEF[id].name+' evolves. '+EVO[id].desc,apply:()=>{w.evo=1;banner('EVOLVED',EVO[id].name);G.flash=Math.max(G.flash,.5);G.stop=Math.max(G.stop,.15);buzz(60)},weapon:1,evo:1});
   }
   return out;
@@ -1033,7 +1033,7 @@ function update(dt){
   for(const w of W){if(w.id==='blade'||w.id==='oil')continue;w.cd-=dt*S.rate;if(w.cd<=0){const c=fireWeapon(w);w.cd=c||.05}}
   const bw=W.find(w=>w.id==='blade');G.blades.length=0;
   if(bw){
-    G.oang+=dt*(3.4+bw.lvl*.1);const n=Math.min(14,2+bw.lvl+Math.floor(S.multi/2))*(S.double?2:1)*(bw.evo?2:1),Rr=(22+bw.lvl*2)*S.area*(bw.evo?1.25:1),lm=(1+.2*(bw.lvl-1))*dmgMul()*(bw.evo?2:1);
+    G.oang+=dt*(3.4+bw.lvl*.1);const n=Math.min(14,2+bw.lvl+Math.floor(S.multi/2))*(S.double?2:1)*(bw.evo?2:1),Rr=(22+bw.lvl*2)*S.area*(bw.evo?1.25:1),lm=(1+.3*(bw.lvl-1))*dmgMul()*(bw.evo?2:1);
     for(let i=0;i<n;i++){const a=G.oang+i*TAU/n,x=P.x+Math.cos(a)*Rr,y=P.y+Math.sin(a)*Rr;G.blades.push([x,y]);
       query(x,y,10,e=>{if(e.oc>0)return;const dx=e.x-x,dy=e.y-y,d=Math.hypot(dx,dy)||1;if(d<e.r+3){e.oc=.25;hurt(e,12*lm,{proc:true,kx:dx/d,ky:dy/d,col:'#9be15d',src:'blade'})}})}
   }

@@ -24,7 +24,7 @@ Pea Shooter, Fireball, Chain Lightning, Homing Needles, Orbit Blades and Oil Sli
 
 ### Evolutions
 
-Max a weapon (Lv 8) while holding its matching mutation and the next level-up offers an evolution:
+Max a weapon (Lv 6) while holding its matching mutation and the next level-up offers an evolution:
 
 | Weapon | + Mutation | Evolves into |
 |---|---|---|
