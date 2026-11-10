@@ -28,7 +28,8 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
   - **Glacial Maw** (Frozen Wastes): thin ice. An all-ice arena whose edge cracks away during the fight.
   - **Bog Mother** (Toxic Swamp): she dives and resurfaces elsewhere, and bubbles show where a second early.
   - **Prism Colossus** (Crystal Caves): shielded. Break its four pylons first, and each one enrages it.
-  - **The Hollow** (The Void): a hunt. It stalks you unseen through the horde and can only be hurt when it shows itself.
+  - **The Hollow** (The Void): a hunt. It stalks you unseen and can only be hurt when it shows itself.
+- During every boss fight only the boss and whatever it summons are on the field.
 - Beating a boss heals you, banks a Power Surge and drops a Heart Container (+max HP).
 
 ### Weapons
@@ -65,11 +66,27 @@ Mutation cards show which of your weapons they evolve, and the pause screen list
 
 Each boss arrives with a cinematic intro card and a moment of slow motion. Changing land sweeps a stripe of the new land's colour across the screen, and the floating particles blend between lands. Screen effects add a soft glow to bright things, colour fringing during Overdrive and big moments, and heat shimmer near the Cinder King's fire wall. **Options → EFFECTS: OFF** turns them off, and they switch off on their own if the frame rate drops.
 
+**Options → GRAPHICS: SIMPLE** (the default) keeps the middle of the screen clear: messages sit in a strip at the top, banners are smaller, your own shots, helpers, particles and ground details are toned down, and lands crossfade instead of changing tile by tile. GRAPHICS: FULL brings back the busier look.
+
 Colours follow one simple rule so busy fights stay readable: anything that can hurt you is red or pink (enemy shots are always pink-red, chilling shots just get an ice-blue centre, and big hazards get a faint red outline), your own shots are shades of gold, and every pickup has a gold frame. Souls keep their rarity colours. **Options → COLORS: VIVID** brings back the old, more colourful look.
 
 ### Health and defense
 
 Heart Containers raise max HP (bosses always drop one, elites sometimes do). Cards: Thick Skin, Iron Heart (+50 max HP, full heal), Plating (less damage taken), Giant's Blood (max HP x1.5). Rare pickups: Iron Skin (half damage for 12 s) and Guardian Orbs (three orbs that block shots for 15 s), alongside the existing heal, shield bubble, frenzy, freeze and screen bomb.
+
+### Clear-outs, calms and checkpoints
+
+- **Clear-out:** when a boss is due, the horde stops coming. Kill everything that's left (a counter shows how many) and the boss arrives. After 12 seconds the stragglers rush you, and after 30 anything left dissolves.
+- **Calm:** midway between bosses the horde melts away and a beacon lights up some distance off, with a trail of souls leading to it. Reach it within 22 seconds for a heal, two free levels and a **checkpoint**: if you die later, you come back there once at half HP. Too slow, and the horde returns from every side.
+
+### Landmarks
+
+The world is dotted with places worth a detour, with markers at the screen edge when one is near:
+
+- **Healing spring:** stand in it to heal until it runs dry.
+- **Obelisk:** touch it to wake a super mode.
+- **Vault:** a chest guarded by an elite pack. Clear the guards, then open it for souls, a Heart Container and a free level.
+- **Nest:** spawns minis while you're near. Destroy it for a big payout.
 
 ### More pickups and cards
 
