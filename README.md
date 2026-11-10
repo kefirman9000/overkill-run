@@ -97,6 +97,11 @@ The world is dotted with places worth a detour, with markers at the screen edge 
 - **Obelisk:** touch it to wake a super mode.
 - **Vault:** a chest guarded by an elite pack. Clear the guards, then open it for souls, a Heart Container and a free level.
 - **Nest:** spawns minis while you're near. Destroy it for a big payout.
+- **Ally camp:** someone is caged here. Stand by the cage for a moment to free them, and they join you.
+
+### Allies
+
+Up to two allies follow you at once: the **Gunner** shoots whatever is closest, the **Field Medic** heals you and your other ally while close, and the **Knight** charges enemies near you and draws attackers off you onto itself. Allies have their own HP and heal slowly; if they go down, they're gone. They follow you into boss fights and catch up if you're teleported.
 
 ### More pickups and cards
 

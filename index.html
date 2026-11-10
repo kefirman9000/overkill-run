@@ -325,7 +325,7 @@ body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
 
 <script>
 'use strict';
-const VERSION='1.18.1';
+const VERSION='1.19.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -670,7 +670,7 @@ function reset(opts){
   G={state:'play',daily,seedStr,char:opts.char||'wanderer',startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,lvCD:0,surges:0,cashedOut:0,autoPicked:0,
     threat:0,tp:0,biomeI:0,biomePrev:0,morph:1,streak:0,streakT:0,bestStreak:0,stop:0,shake:0,flash:0,hurt:0,spawnAcc:0,packT:12,hazT:6,
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
-    taken:{},hurtBy:{},lms:new Map(),lmSeed:(Math.random()*1e5)|0,startX:0,startY:0,clear:null,lull:null,lullAt:-1,check:null,lullLog:[],checksUsed:0,decoy:null,staticT:0,fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,campK:null,lastCampK:null,cloud:null,worms:[],thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
+    taken:{},hurtBy:{},allies:[],lms:new Map(),lmSeed:(Math.random()*1e5)|0,startX:0,startY:0,clear:null,lull:null,lullAt:-1,check:null,lullLog:[],checksUsed:0,decoy:null,staticT:0,fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,campK:null,lastCampK:null,cloud:null,worms:[],thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
   P={bootsT:0,armorT:0,guardT:0,shield:0,shieldT:0,frenzy:0,bubble:0,x:0,y:0,vx:0,vy:0,hp:100,max:100,inv:0,face:1,moving:false,dashes:1,dashCd:0,dashT:0,ddx:1,ddy:0,chill:0,lx:0,ly:0};
   S={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,regen:0,multi:0,pierce:0,bounce:0,rear:0,circle:0,split:0,grow:0,burn:0,freeze:0,frostKill:0,chainKill:0,
     trail:0,dashMax:1,dashShock:0,orbitShots:0,nuke:0,pulse:0,hole:0,momentum:0,scorch:0,double:0,stasis:0,killNeedle:0,horizonDash:0,
@@ -1164,6 +1164,68 @@ function showWin(){
   setTimeout(()=>{$('lvl').hidden=true;$('win').hidden=false},600);
 }
 
+/* ================= allies =================
+   Rescue them from ally camps (a landmark: stand by the cage for a moment). Up to two follow you at once.
+     gunner  shoots the nearest enemy
+     medic   heals you and your other ally while close, and takes the odd shot
+     knight  charges enemies near you, and enemies around it go for it instead of you
+   Allies have their own HP and regenerate slowly; if they go down they're gone. They come with you into boss
+   fights and catch up if you get teleported. */
+const ALLY_MAX=2;
+const ALLY={
+  gunner:{name:'Gunner',desc:'shoots whatever is closest',hp:90,pal:{a:'#3a7bd5',d:'#3a7bd5',e:'#ffd84a'},col:'#6be0ff'},
+  medic:{name:'Field Medic',desc:'keeps you patched up',hp:80,pal:{a:'#ffffff',d:'#9be15d',e:'#ff4d6d'},col:'#9be15d'},
+  knight:{name:'Knight',desc:'charges in and draws enemies off you',hp:170,pal:{a:'#c9c9d6',d:'#8a8aa0',e:'#ffd84a'},col:'#c9c9d6'},
+};
+for(const k in ALLY){const pal=Object.assign({},PPAL,ALLY[k].pal);ALLY[k].spr=[makeSprite(PLAYER_A,pal),makeSprite(PLAYER_B,pal)];ALLY[k].out=outlineOf(ALLY[k].spr[0],'#14101c')}
+function addAlly(kind,x,y){
+  const max=Math.round(ALLY[kind].hp*(1+G.threat*.12));
+  G.allies.push({kind,x,y,vx:0,vy:0,hp:max,max,cd:.5,hurtT:0,face:1,walk:0,slot:G.allies.length});G.alliesJoined=(G.alliesJoined||0)+1;
+  RINGS.push({x,y,r:0,max:30,life:.4,t:0,c:ALLY[kind].col,noFill:1});burst(x,y,ALLY[kind].col,20,60,.5);snd('level');
+  banner('ALLY JOINED',ALLY[kind].name+': '+ALLY[kind].desc,true);
+}
+function updateAllies(dt){
+  const AL=G.allies;if(!AL.length)return;
+  for(let i=0;i<AL.length;i++){
+    const a=AL[i],K=ALLY[a.kind];a.cd-=dt;a.hurtT-=dt;a.hp=Math.min(a.max,a.hp+a.max*.01*dt);
+    // far behind (you were teleported, or ran off): catch up
+    if(Math.hypot(a.x-P.x,a.y-P.y)>380){const ang=R()*TAU;a.x=P.x+Math.cos(ang)*20;a.y=P.y+Math.sin(ang)*20;burst(a.x,a.y,K.col,10,40,.3)}
+    // where to stand: a slot beside and behind you; the knight goes for nearby enemies instead
+    const side=i%2?1:-1,back=-(P.face||1);let tx=P.x+back*12+side*4,ty=P.y+side*12,spd=86*S.move;
+    if(a.kind==='knight'){const t=nearest(P.x,P.y,75);if(t){tx=t.x;ty=t.y;spd*=1.15}}
+    const dx=tx-a.x,dy=ty-a.y,d=Math.hypot(dx,dy);
+    if(d>3){const k=Math.min(1,d/18);a.vx=dx/d*spd*k;a.vy=dy/d*spd*k}else{a.vx*=.7;a.vy*=.7}
+    for(const b of AL)if(b!==a){const ex=a.x-b.x,ey=a.y-b.y,el=Math.hypot(ex,ey);if(el<9&&el>0){a.vx+=ex/el*40;a.vy+=ey/el*40}}
+    a.x+=a.vx*dt;a.y+=a.vy*dt;if(Math.abs(a.vx)>4)a.face=a.vx>0?1:-1;a.walk+=Math.hypot(a.vx,a.vy)*dt*.12;
+    if(G.arena&&G.arena.wall>=.5)arenaClamp(a,4);
+    // act
+    if(a.kind==='gunner'&&a.cd<=0){const t=nearest(a.x,a.y,150);if(t){a.cd=Math.max(.25,.55-G.threat*.008);const ang=Math.atan2(t.y-a.y,t.x-a.x);
+      for(const o of [-.08,.08])spawnProj(a.x,a.y,ang+o,210,{dmg:9*dmgMul(),size:2,col:K.col,life:.75,src:'ally',noOrbit:1})}}
+    if(a.kind==='medic'){
+      if(Math.hypot(P.x-a.x,P.y-a.y)<60&&P.hp<P.max){P.hp=Math.min(P.max,P.hp+P.max*.018*dt);if(R()<.15)PT.push({x:P.x+rnd(-4,4),y:P.y+rnd(-2,3),vx:0,vy:-14,life:.4,max:.4,c:'#9be15d',s:1})}
+      for(const b of AL)if(b!==a&&Math.hypot(b.x-a.x,b.y-a.y)<60)b.hp=Math.min(b.max,b.hp+b.max*.03*dt);
+      if(a.cd<=0){const t=nearest(a.x,a.y,120);if(t){a.cd=1;spawnProj(a.x,a.y,Math.atan2(t.y-a.y,t.x-a.x),190,{dmg:8*dmgMul(),size:2,col:K.col,life:.7,src:'ally',noOrbit:1})}}
+    }
+    if(a.kind==='knight'&&a.cd<=0){let hit=false;query(a.x,a.y,16,e=>{if(e.type==='ufo'||Math.hypot(e.x-a.x,e.y-a.y)>e.r+9)return;hit=true;const ex=e.x-a.x,ey=e.y-a.y,el=Math.hypot(ex,ey)||1;hurt(e,26*dmgMul(),{kx:ex/el,ky:ey/el,kb:110,src:'ally',elem:'kinetic',col:'#c9c9d6'})});if(hit){a.cd=.45;snd('hit')}}
+    // getting hurt: enemy contact and enemy shots
+    if(a.hurtT<=0){let took=0;query(a.x,a.y,14,e=>{if(!took&&e.dmg>0&&e.type!=='ufo'&&Math.hypot(e.x-a.x,e.y-a.y)<e.r+4)took=e.dmg*(a.kind==='knight'?.5:.8)});if(took){a.hp-=took;a.hurtT=.5;a.flash=.12}}
+    for(const b of EB)if(b.life>0&&Math.abs(b.x-a.x)<4&&Math.abs(b.y-a.y)<4){a.hp-=b.dmg*.7;b.life=0;a.flash=.12}
+    a.flash=Math.max(0,(a.flash||0)-dt);
+    if(a.hp<=0){burst(a.x,a.y,K.col,24,70,.5,2);toast(2,K.name+' is down.');G.alliesLost=(G.alliesLost||0)+1;AL.splice(i--,1)}
+  }
+}
+/* enemies near a knight go for it instead of you */
+function tauntTarget(e){for(const a of G.allies)if(a.kind==='knight'&&Math.abs(a.x-e.x)<45&&Math.abs(a.y-e.y)<45)return a;return null}
+function drawAllies(ox,oy){
+  for(const a of G.allies){const K=ALLY[a.kind],x=RK(a.x-ox-4),y=RK(a.y-oy-4);
+    ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+1,y+8,6,1);
+    const spr=a.flash>0?SPR_PW:K.spr[Math.hypot(a.vx,a.vy)>8?(Math.floor(a.walk)%2):0];
+    ctx.save();if(a.face<0){ctx.translate(x+8,y);ctx.scale(-1,1);ctx.drawImage(K.out,-1,-1);ctx.drawImage(spr,0,0)}else{ctx.drawImage(K.out,x-1,y-1);ctx.drawImage(spr,x,y)}ctx.restore();
+    ctx.fillStyle=K.col;ctx.fillRect(x+3,y-4,2,2);                    // a small marker over their head
+    if(a.hp<a.max){ctx.fillStyle='#14101c';ctx.fillRect(x-1,y+10,10,2);ctx.fillStyle=K.col;ctx.fillRect(x,y+10,Math.max(1,Math.round(8*a.hp/a.max)),1)}
+  }
+}
+
 /* ================= event coordinator =================
    Only one special event at a time (shrine, supply crate, Soul Thief, vault guards, calm/beacon), with at least
    20 s of plain fighting between them. Bosses and clear-outs always happen; they just make the others wait. */
@@ -1177,8 +1239,8 @@ function evStart(){G.evNext=G.time+EV_GAP}
      vault    a chest guarded by an elite pack; clear the guards, then open it for loot
      nest     a pulsing nest that spawns minis while you're near; destroy it for a big payout
    Unclaimed landmarks nearby show a marker at the screen edge. */
-const LM_CHUNK=520,LM_KINDS=[['spring',30],['obelisk',28],['vault',26],['nest',16]];
-const LM_COL={spring:'#6be0ff',obelisk:'#c792ea',vault:'#ffd84a',nest:'#ff5e7a'};
+const LM_CHUNK=520,LM_KINDS=[['spring',26],['obelisk',22],['vault',22],['nest',14],['camp',16]];
+const LM_COL={camp:'#9be15d',spring:'#6be0ff',obelisk:'#c792ea',vault:'#ffd84a',nest:'#ff5e7a'};
 function lmKind(h){let r=h%100;for(const [k,w] of LM_KINDS){if(r<w)return k;r-=w}return 'spring'}
 function updateLandmarks(dt){
   const cx0=Math.floor(P.x/LM_CHUNK),cy0=Math.floor(P.y/LM_CHUNK);
@@ -1193,7 +1255,7 @@ function updateLandmarks(dt){
   for(const lm of G.lms.values()){
     if(!lm||lm.state==='done')continue;
     const d=Math.hypot(P.x-lm.x,P.y-lm.y);if(d>420)continue;
-    if(!lm.seen){lm.seen=1;G.lmSeen=(G.lmSeen||0)+1;if(!G.hinted['lm:'+lm.kind]){G.hinted['lm:'+lm.kind]=1;toast(1,{spring:'A healing spring nearby: stand in it to heal.',obelisk:'An obelisk nearby: touch it to wake its power.',vault:'A guarded vault nearby: clear the guards, then open it.',nest:'A nest nearby: destroy it before it fills the area.'}[lm.kind])}}
+    if(!lm.seen){lm.seen=1;G.lmSeen=(G.lmSeen||0)+1;if(!G.hinted['lm:'+lm.kind]){G.hinted['lm:'+lm.kind]=1;toast(1,{camp:'Someone is trapped nearby: stand by the cage to free them.',spring:'A healing spring nearby: stand in it to heal.',obelisk:'An obelisk nearby: touch it to wake its power.',vault:'A guarded vault nearby: clear the guards, then open it.',nest:'A nest nearby: destroy it before it fills the area.'}[lm.kind])}}
     switch(lm.kind){
       case 'spring':
         if(!lm.water)lm.water=P.max*.6;
@@ -1216,6 +1278,12 @@ function updateLandmarks(dt){
           PU.push({kind:'maxhp',x:lm.x,y:lm.y,t:0,vx:-30,vy:-30});PU.push({kind:randomPickup(),x:lm.x,y:lm.y,t:0,vx:30,vy:-30});
           G.level+=1;G.pendingLv+=1;G.lvCD=.8;G.need=xpNeed(G.level);
           burst(lm.x,lm.y,'#ffd84a',30,90,.5,2);G.flash=Math.max(G.flash,.3);banner('VAULT OPENED','Souls, a Heart Container and a free level')}
+        break;
+      case 'camp':
+        if(!lm.ally)lm.ally=pick(Object.keys(ALLY));
+        if(d<16){if(G.allies.length>=ALLY_MAX){if(!lm.fullT||G.time>lm.fullT){lm.fullT=G.time+4;toast(0,'Your party is full (2 allies).')}}
+          else{lm.prog=(lm.prog||0)+dt;if(lm.prog>=1.2){lm.state='done';G.lmClaimed=(G.lmClaimed||0)+1;addAlly(lm.ally,lm.x,lm.y)}}}
+        else lm.prog=Math.max(0,(lm.prog||0)-dt);
         break;
       case 'nest':
         if(!(lm.e&&!lm.e.dead)&&d<320){const n=spawnEnemy('nest',lm.x,lm.y,{elite:false,hpMul:1.5});n.lm=lm;n.cd=1.5;lm.e=n}
@@ -1247,6 +1315,13 @@ function drawLandmarks(ox,oy){
         if(st!=='done'){ctx.fillStyle=st==='open'?'#9be15d':'#ff3b5c';ctx.fillRect(x,y-3,1,3);if(st==='open'){ctx.globalAlpha=.4+.4*p;ring(x,y-1,11,'#ffd84a');ctx.globalAlpha=1}}
         break}
       case 'nest':if(lm.state==='done'){disc(x,y,9,'#2a1a1a');disc(x,y,5,'#1a0e0e')}break;
+      case 'camp':{ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x-8,y+3,17,2);
+        if(lm.state!=='done'){const K=ALLY[lm.ally||'gunner'];ctx.drawImage(K.spr[0],x-4,y-6)}
+        ctx.fillStyle='#5a4a3a';ctx.fillRect(x-7,y-9,15,2);ctx.fillRect(x-7,y+2,15,2);
+        if(lm.state!=='done')for(let i=-6;i<=6;i+=3){ctx.fillStyle='#8a7a6a';ctx.fillRect(x+i,y-8,1,10)}
+        else{ctx.fillStyle='#8a7a6a';ctx.fillRect(x-6,y-8,1,10);ctx.fillRect(x+6,y-8,1,10)}
+        if(lm.prog>0&&lm.state!=='done')tele(x,y,14,lm.prog/1.2,false);
+        break}
     }
     // edge marker for unclaimed landmarks that are close but off screen
     if(!on&&lm.state!=='done'&&!(G.arena&&G.arena.wall>0)&&Math.hypot(lm.x-P.x,lm.y-P.y)<560)edgeMark(Math.atan2(lm.y-P.y,lm.x-P.x),LM_COL[lm.kind],1)
@@ -2123,7 +2198,7 @@ function update(dt){
   }
 
   // ---- threat, hazards, spawns
-  updateLandmarks(dt);updateFronts(dt);updateCamp(dt);updateThief(dt);updateDecoy(dt);updatePassives(dt);
+  updateLandmarks(dt);updateAllies(dt);updateFronts(dt);updateCamp(dt);updateThief(dt);updateDecoy(dt);updatePassives(dt);
   if(G.threat%5>=3&&G.lullAt!==G.threat-G.threat%5&&G.state==='play'&&evFree())startLull();
   if(G.arena)updateArena(dt);
   else if(G.clear)updateClear(dt);                                   // clear-out: no spawns, no hazards, no threat climb
@@ -2154,6 +2229,7 @@ function update(dt){
     let slow=1;if(e.slow>0){slow=.45;e.slow-=dt}
     let tgx=P.x,tgy=P.y;
     if(G.decoy&&e.type!=='boss'&&e.type!=='ufo'&&e.type!=='thief'&&e.type!=='pylon'&&Math.hypot(G.decoy.x-e.x,G.decoy.y-e.y)<220){tgx=G.decoy.x;tgy=G.decoy.y}
+    else if(G.allies.length&&e.type!=='boss'&&e.type!=='ufo'&&e.type!=='thief'&&e.type!=='pylon'&&e.type!=='nest'){const k=tauntTarget(e);if(k){tgx=k.x;tgy=k.y}}
     let dx=tgx-e.x,dy=tgy-e.y;const d=Math.hypot(dx,dy)||1,pdist=tgx===P.x?d:Math.hypot(P.x-e.x,P.y-e.y);
     if(S.stasis&&d<64)slow*=.5;
     if(e.buff>0)e.buff-=dt;
@@ -2591,7 +2667,7 @@ function render(){
     if(cl&&K2.friendly&&!K2.hostile){ctx.save();ctx.globalAlpha=.5;drawZone(z,ox,oy);ctx.restore();ctx.globalAlpha=1;continue}
     drawZone(z,ox,oy);
     if(cl&&K2.hostile&&z.r>=10&&z.kind!=='spike'&&z.kind!=='ftrail'){ctx.globalAlpha=.3+.15*Math.sin(G.time*5);ring(z.x-ox,z.y-oy,z.kind==='pit'?z.r+2:z.r,'#ff3b5c');ctx.globalAlpha=1}}}
-  drawLandmarks(ox,oy);drawBossMarks(ox,oy);drawCampGround(ox,oy);drawDecoy(ox,oy);drawCampWarning(ox,oy);
+  drawLandmarks(ox,oy);drawBossMarks(ox,oy);drawAllies(ox,oy);drawCampGround(ox,oy);drawDecoy(ox,oy);drawCampWarning(ox,oy);
   for(const sh of SHRINES){const x=RK(sh.x-ox),y=RK(sh.y-oy),c=`hsl(${(G.time*120)%360},90%,62%)`;
     ctx.globalAlpha=Math.min(1,sh.t/2);ctx.fillStyle='#3a3150';ctx.fillRect(x-6,y-3,13,7);ctx.fillStyle='#5a4f78';ctx.fillRect(x-6,y-3,13,1);
     ctx.fillStyle=c;ctx.fillRect(x-2,y-1,5,3);ctx.globalAlpha=Math.min(1,sh.t/2)*(.25+.1*Math.sin(G.time*5));ctx.fillRect(x-1,y-30,3,28);ctx.globalAlpha=1;
@@ -2757,7 +2833,7 @@ function buildReport(){
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
     mode:G.daily?'daily '+G.seedStr:'normal',character:CHARS[G.char].name,startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.victory?'won':G.won?(G.state==='over'?'won, then died in endless':'won, in endless'):G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
-      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
+      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),allies:{joined:G.alliesJoined||0,lost:G.alliesLost||0,now:G.allies.map(a=>ALLY[a.kind].name+' '+Math.ceil(a.hp)+'/'+a.max)},checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
     damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
