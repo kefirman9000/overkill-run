@@ -72,6 +72,7 @@ button:focus-visible{outline:2px solid var(--threat);outline-offset:3px}
 #abBtn{position:fixed;left:0;top:0;z-index:3;width:var(--as,52px);height:var(--as,52px);transform:translate(-50%,-50%);border-radius:50%;padding:0;font-size:8px;line-height:1.1;
   background:conic-gradient(rgba(255,182,39,.85) calc(var(--p,1)*360deg),rgba(21,17,32,.85) 0);box-shadow:0 0 0 3px var(--edge);touch-action:none;opacity:var(--cop,.7);text-shadow:1px 1px 0 #000;display:grid;place-items:center}
 #abBtn span{display:block;max-width:44px;white-space:normal;text-align:center}#abBtn i{position:absolute;font-style:normal;font-size:13px;color:#fff}
+#abBtn.cdn:not(.desk) span{visibility:hidden}#abBtn.cdn:not(.desk) i{font-size:16px}
 #abBtn.ready{animation:abR 1s steps(2) infinite}@keyframes abR{50%{box-shadow:0 0 0 3px #ffb627}}
 #abBtn.desk{left:auto;top:auto;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 56px);transform:none;width:auto;height:auto;border-radius:0;padding:6px 10px;font-size:10px;opacity:.9;background:linear-gradient(90deg,rgba(255,182,39,.55) calc(var(--p,1)*100%),rgba(21,17,32,.85) 0)}
 #abBtn.desk span{max-width:none}#abBtn.desk i{position:static;font-size:10px;margin-left:6px}
@@ -373,6 +374,7 @@ details.story .dim{opacity:.45}
     <div class="pickrow" id="optSimple"><button data-v="1">GRAPHICS: SIMPLE</button><button data-v="0">GRAPHICS: FULL</button></div>
     <div class="pickrow" id="optColors"><button data-v="clear">COLORS: CLEAR</button><button data-v="vivid">COLORS: VIVID</button></div>
     <div class="pickrow" id="optFx"><button data-v="1">EFFECTS: ON</button><button data-v="0">EFFECTS: OFF</button></div>
+    <div class="pickrow" id="optAutoAb"><button data-v="1">ABILITY: AUTO</button><button data-v="0">ABILITY: MANUAL</button></div>
     <div class="pickrow" id="optNums"><button data-v="0">NUMBERS: OFF</button><button data-v="1">NUMBERS: BIG HITS</button><button data-v="2">NUMBERS: ALL</button></div>
     <div class="pickrow" id="optRadar"><button data-v="1">RADAR: ON</button><button data-v="0">RADAR: OFF</button></div>
     <div class="pickrow" id="optDetail"><button data-v="0">SIMPLE GROUND</button><button data-v="1">DETAILED GROUND</button></div>
@@ -401,7 +403,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.28.0';
+const VERSION='1.28.1';
 const REPO='kefirman9000/overkill-run';
 const $EL={},$=id=>{const e=$EL[id];if(e&&e.isConnected)return e;return $EL[id]=document.getElementById(id)};
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -716,7 +718,7 @@ const RELICS={
 let chosenW='pea';const chosenR=new Set();
 
 /* ================= control settings ================= */
-const CFG_DEF={nums:1,radar:1,simple:1,smooth:1,colors:'clear',fx:1,autoPick:0,mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:.4,autoZoom:1,music:1,haptics:1,detail:0};
+const CFG_DEF={autoAb:1,nums:1,radar:1,simple:1,smooth:1,colors:'clear',fx:1,autoPick:0,mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:.4,autoZoom:1,music:1,haptics:1,detail:0};
 let CFG=Object.assign({},CFG_DEF);
 try{const c=JSON.parse(localStorage.getItem('overkill-run-controls')||'null');if(c)CFG=Object.assign(CFG,c);if(CFG.cfgV!==2){CFG.cfgV=2;if(!CFG.nums)CFG.nums=1}}catch(e){}
 function saveCfg(){try{localStorage.setItem('overkill-run-controls',JSON.stringify(CFG))}catch(e){}}
@@ -870,7 +872,8 @@ function nearest(x,y,range,exclude){
 const hpScale=()=>1+G.threat*.32+G.threat*G.threat*.03+Math.pow(Math.max(0,G.threat-10),3)*.02;   // late threats keep up with maxed builds (x24 -> x68 at threat 23)
 const eDmgScale=()=>1+G.threat*.12;
 const spawnRate=()=>1.1+G.threat*.85+Math.min(3,G.time/100);
-const maxAlive=()=>Math.min(420,55+G.threat*24);
+const PHONE=matchMedia('(pointer: coarse)').matches,FIREFOX=/Firefox\//.test(navigator.userAgent);
+const maxAlive=()=>PHONE?Math.min(170,45+G.threat*13):Math.min(420,55+G.threat*24);
 const TPK=45;const tpFor=n=>TPK*n*(n+1)/2;
 function luck(){return G.threat*.7+Math.min(8,G.streak/30)}
 function dmgMul(){
@@ -902,7 +905,7 @@ function spawnEnemy(type,x,y,o={}){
   const T=ET[type];
   const eliteCh=Math.min(G.threat>15?Math.min(.45,.3+(G.threat-15)*.02):.3,Math.max(0,(G.threat-1)*.025)+Math.min(.05,G.streak/2000));
   const elite=o.elite??(type!=='boss'&&type!=='mini'&&R()<eliteCh+DF().elite+(dm('elite')?.15:0));
-  const hp=T.hp*hpScale()*(elite?3.5:1)*(o.hpMul||1)*DF().hp*(type==='boss'?1:(dm('armored')?1.3:1)*(dm('glass')?.6:1));
+  const hp=T.hp*hpScale()*(elite?3.5:1)*(o.hpMul||1)*DF().hp*(PHONE&&type!=='boss'?1.15:1)*(type==='boss'?1:(dm('armored')?1.3:1)*(dm('glass')?.6:1));
   const shift=biomeOf(G.threat).b.eh;
   const h=(T.hue+(T.fixedHue?0:shift)+720)%360;
   const e={uid:++UID,type,x,y,vx:0,vy:0,hp,max:hp,r:T.r,spd:T.spd*(1+Math.min(.5,G.threat*.035))*(elite?1.1:1),dmg:T.dmg*eDmgScale()*(elite?1.4:1)*DF().dmg*(dm('glass')&&type!=='boss'?1.4:1),
@@ -997,7 +1000,7 @@ function fxFilterOK(){if(FX.ok===null){try{const c=document.createElement('canva
 function postFx(dt){
   G.chroma=Math.max(0,(G.chroma||0)-dt);
   if(!CFG.fx||G.lowFx)return;
-  if(isTouch&&(E.length>140||PB.length+EB.length>260))return;         // phones: skip the glow while the screen is crowded
+  if(isTouch&&(FIREFOX||E.length>90||PB.length+EB.length>200))return;         // phones: skip the glow while the screen is crowded
   const W0=cv.width,H0=cv.height;
   ctx.save();ctx.setTransform(1,0,0,1,0,0);
   // glow: half-size copy, keep only the bright parts, blur, add back on top
@@ -1922,7 +1925,11 @@ function updateAbility(dt){
   G.ab=G.ab||{cd:8,t:0};const a=G.ab,A=abil();
   if(a.cd>0)a.cd=Math.max(0,a.cd-dt);
   if(a.t>0){a.t-=dt;if(A.tick)A.tick(dt)}
-  if(a.cd<=0&&!a.readyShown){a.readyShown=1;if(!G.hinted.abReady){G.hinted.abReady=1;toast(2,A.name+' is ready: '+(isTouch?'tap the small button by Dash':'press E')+'. '+A.desc)}}
+  // auto: fire it when it would actually help (Options: ABILITY AUTO / MANUAL)
+  if(CFG.autoAb&&a.cd<=0&&G.state==='play'&&G.time>3){let near=0;query(P.x,P.y,70,()=>near++);
+    const heal=G.char==='wanderer'||G.char==='medic',want=heal?P.hp<P.max*.4:G.char==='scout'?(P.hp<P.max*.5&&near>=6):(near>=10||(G.boss&&Math.hypot(G.boss.x-P.x,G.boss.y-P.y)<130));
+    if(want){useAbility();return}}
+  if(a.cd<=0&&!a.readyShown){a.readyShown=1;if(!G.hinted.abReady){G.hinted.abReady=1;toast(2,A.name+(CFG.autoAb?' fires by itself when it would help (switch to manual in Options). ':' is ready: '+(isTouch?'tap the gold button by Dash':'press E')+'. ')+A.desc)}}
   if(a.cd>0)a.readyShown=0;
 }
 
@@ -2083,7 +2090,7 @@ function updateLull(dt){
       banner(fast?'FAST CHECKPOINT':'CHECKPOINT','+'+heal+' HP · '+lv+' levels · if you fall, you come back here once');
     }else if(L.t>=L.limit){
       L.phase='done';L.t=0;G.lullLog.push({threat:G.threat,reached:false});
-      for(let i=0;i<4;i++){const a=i/4*TAU+R()*.5,dd=Math.hypot(LW,LH)/2+10,type=chooseType();for(let k=0;k<squadSize()+2;k++)spawnEnemy(R()<.75?type:null,P.x+Math.cos(a)*dd+rnd(-14,14),P.y+Math.sin(a)*dd+rnd(-14,14))}
+      const sides=G.threat<6?2:4;for(let i=0;i<sides;i++){const a=i/sides*TAU+R()*.5,dd=Math.hypot(LW,LH)/2+10,type=chooseType();for(let k=0;k<squadSize()+2;k++)spawnEnemy(R()<.75?type:null,P.x+Math.cos(a)*dd+rnd(-14,14),P.y+Math.sin(a)*dd+rnd(-14,14))}
       banner('TOO SLOW','The horde comes from every side');G.shake=Math.max(G.shake,2);snd('boss');
     }else{
       // the horde starts regathering after 40% of the time: small packs close in from behind, faster and faster
@@ -3033,7 +3040,7 @@ function update(dt){
     switch(e.ai){
       case 'shooter':
         if(d<60){tx=-tx;ty=-ty}else if(d<92){const ox=tx;tx=-ty;ty=ox;s*=.6}
-        e.cd-=dt;e.tele=e.cd<.5&&d<170;if(e.cd<=0&&d<170){e.cd=2.6;const a=Math.atan2(dy,dx);for(const off of [-.25,0,.25])EB.push({x:e.x,y:e.y,vx:Math.cos(a+off)*62,vy:Math.sin(a+off)*62,life:3,dmg:e.dmg*.6,from:'a Spitter'})}
+        e.cd-=dt;e.tele=e.cd<.5&&d<170;if(e.cd<=0&&d<170){e.cd=G.threat<6?3.4:2.6;const a=Math.atan2(dy,dx),sp=G.threat<6?52:62;for(const off of [-.25,0,.25])EB.push({x:e.x,y:e.y,vx:Math.cos(a+off)*sp,vy:Math.sin(a+off)*sp,life:3,dmg:e.dmg*.6,from:'a Spitter'})}
         break;
       case 'frost':
         if(d<70){tx=-tx;ty=-ty}else if(d<95){const ox=tx;tx=-ty;ty=ox;s*=.5}
@@ -3530,7 +3537,7 @@ function render(){
     if(x<-20||y<-20||x>LW+20||y>LH+20)continue;
     if(e.sub){if(e.ai==='burrow'){ctx.fillStyle='#5a4632';ctx.fillRect(RK(e.x-ox-3),RK(e.y-oy+1),7,2);ctx.fillStyle='#8a6a4a';ctx.fillRect(RK(e.x-ox-2),RK(e.y-oy),5,1);if(e.pop>0)tele(e.x-ox,e.y-oy,16,1-e.pop/.55,true)}continue}   // submerged: only the ripples show
     if(e.type==='ufo'){drawUfo(e,ox,oy);continue}
-    ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+1,y+s.height-1,s.width-2,2);
+    if(!(isTouch&&E.length>70))ctx.fillStyle='rgba(0,0,0,.3)',ctx.fillRect(x+1,y+s.height-1,s.width-2,2);
     if(e.elite){ctx.globalAlpha=.55+.45*Math.sin(G.time*8+e.t);ctx.drawImage(enemySprite(e.spr||e.type,e.shift,false,true),x-1,y-1);ctx.globalAlpha=1}
     if(e.champ){ctx.globalAlpha=.35+.25*Math.sin(G.time*6);ring(e.x-ox,e.y-oy,e.r+4,e.col);ctx.globalAlpha=1}
     if(e.phase>0){ctx.globalAlpha=.25+.1*Math.sin(G.time*20);ctx.drawImage(s,x,y);ctx.globalAlpha=1}else ctx.drawImage(s,x,y);
@@ -3658,7 +3665,7 @@ function updateHud(){
   const mw=$('modeWrap');if(G.mode){const M=MODES[G.mode.id];mw.hidden=false;mw.style.setProperty('--mc',M.col);hT('modeName',M.name+' '+Math.ceil(G.mode.t)+'s');hW('modeFill',G.mode.t/G.mode.max*100)}else mw.hidden=true;
   const bw=$('bossWrap');if(G.boss){bw.hidden=false;hW('bossFill',Math.max(0,G.boss.hp/G.boss.max*100))}else bw.hidden=true;
   $('dashBtn').classList.toggle('cd',P.dashes<=0);
-  if(G.ab){const A=abil(),p=G.ab.cd>0?1-G.ab.cd/A.cd:1,pr=Math.round(p*40)/40;if(_hc.abP!==pr){_hc.abP=pr;$('abBtn').style.setProperty('--p',pr)}hT('abCd',G.ab.t>0?Math.ceil(G.ab.t)+'s':G.ab.cd>0?Math.ceil(G.ab.cd):'');$('abBtn').classList.toggle('ready',G.ab.cd<=0)}
+  if(G.ab){const A=abil(),p=G.ab.cd>0?1-G.ab.cd/A.cd:1,pr=Math.round(p*40)/40;if(_hc.abP!==pr){_hc.abP=pr;$('abBtn').style.setProperty('--p',pr)}hT('abCd',G.ab.t>0?Math.ceil(G.ab.t)+'s':G.ab.cd>0?Math.ceil(G.ab.cd):'');$('abBtn').classList.toggle('ready',G.ab.cd<=0);$('abBtn').classList.toggle('cdn',G.ab.cd>0||G.ab.t>0)}
   if(G.hudDirty){
     G.hudDirty=false;
     $('wList').innerHTML=W.map(w=>`<span class="wi" style="--c:${WDEF[w.id].col}" title="${WDEF[w.id].name}"><img src="${iconURL('w:'+w.id,WDEF[w.id].col)}" alt="${WDEF[w.id].name}"><b>${w.evo?'★':w.lvl}</b></span>`).join('');
@@ -3846,7 +3853,7 @@ function applyControls(){
   const inGame=!$('hud').hidden&&G.state!=='over'&&G.state!=='title';
   const vis=placing||(showSticks()&&inGame);
   dashBtn.hidden=!vis;
-  const ab=$('abBtn');ab.hidden=!(inGame||placing);ab.classList.toggle('desk',!vis);if(vis){const d0=dashCenter(),sz=36*CFG.dsize;ab.style.left=clamp(d0.x-sz*1.25,30,innerWidth-30)+'px';ab.style.top=clamp(d0.y-sz*1.55,30,innerHeight-30)+'px'}else{ab.style.left='';ab.style.top=''}
+  const ab=$('abBtn');ab.hidden=!(inGame||placing);ab.classList.toggle('desk',!vis);if(vis){const d0=dashCenter(),sz=36*CFG.dsize;ab.style.left=clamp(d0.x+(d0.x<innerWidth/2?1:-1)*sz*1.25,30,innerWidth-30)+'px';ab.style.top=clamp(d0.y-sz*1.55,30,innerHeight-30)+'px'}else{ab.style.left='';ab.style.top=''}
   try{$('abName').textContent=(isTouch&&vis?'':'E · ')+abil().name.toUpperCase()}catch(_){}
   stickEl.hidden=!(placing||(vis&&(CFG.mode==='fixed'||joy.on)));
   const d=dashCenter();dashBtn.style.left=d.x+'px';dashBtn.style.top=d.y+'px';
@@ -3884,7 +3891,7 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 let optsFrom=null;
 function syncOpts(){
   const mark=(id,v)=>$(id).querySelectorAll('button').forEach(b=>b.classList.toggle('sel',b.dataset.v===String(v)));
-  mark('optMode',CFG.mode);mark('optUI',CFG.ui);mark('optTap',CFG.tapDash);mark('optShake',CFG.shake);mark('optDetail',CFG.detail);mark('optNums',CFG.nums);mark('optRadar',CFG.radar);mark('optZoom',CFG.autoZoom);mark('optMusic',CFG.music);mark('optHap',CFG.haptics);mark('optAuto',CFG.autoPick);mark('optFx',CFG.fx);mark('optColors',CFG.colors);mark('optSimple',CFG.simple);mark('optSmooth',CFG.smooth);
+  mark('optMode',CFG.mode);mark('optUI',CFG.ui);mark('optTap',CFG.tapDash);mark('optShake',CFG.shake);mark('optDetail',CFG.detail);mark('optNums',CFG.nums);mark('optAutoAb',CFG.autoAb);mark('optRadar',CFG.radar);mark('optZoom',CFG.autoZoom);mark('optMusic',CFG.music);mark('optHap',CFG.haptics);mark('optAuto',CFG.autoPick);mark('optFx',CFG.fx);mark('optColors',CFG.colors);mark('optSimple',CFG.simple);mark('optSmooth',CFG.smooth);
   $('optJs').value=Math.round(CFG.jsize*100);$('optJsV').textContent=Math.round(CFG.jsize*100)+'%';
   $('optDead').value=Math.round(CFG.dead*100);$('optDeadV').textContent=Math.round(CFG.dead*100)+'%';
   $('optDs').value=Math.round(CFG.dsize*100);$('optDsV').textContent=Math.round(CFG.dsize*100)+'%';
@@ -3897,7 +3904,7 @@ function openOpts(){
 function closeOpts(){saveCfg();$('opts').hidden=true;$(optsFrom||'title').hidden=false;applyControls()}
 document.querySelectorAll('.optBtn').forEach(b=>b.onclick=openOpts);
 const pickHandler=(id,key,num)=>$(id).addEventListener('click',e=>{const b=e.target.closest('button[data-v]');if(!b)return;CFG[key]=num?+b.dataset.v:b.dataset.v;saveCfg();syncOpts();applyControls()});
-pickHandler('optMode','mode');pickHandler('optUI','ui');pickHandler('optTap','tapDash',1);pickHandler('optShake','shake',1);pickHandler('optDetail','detail',1);pickHandler('optNums','nums',1);pickHandler('optRadar','radar',1);pickHandler('optZoom','autoZoom',1);pickHandler('optMusic','music',1);pickHandler('optHap','haptics',1);pickHandler('optAuto','autoPick',1);pickHandler('optFx','fx',1);pickHandler('optColors','colors');pickHandler('optSimple','simple',1);pickHandler('optSmooth','smooth',1);$('optSmooth').addEventListener('click',()=>{K_LOW=false;applyView(true)});
+pickHandler('optMode','mode');pickHandler('optUI','ui');pickHandler('optTap','tapDash',1);pickHandler('optShake','shake',1);pickHandler('optDetail','detail',1);pickHandler('optNums','nums',1);pickHandler('optAutoAb','autoAb',1);pickHandler('optRadar','radar',1);pickHandler('optZoom','autoZoom',1);pickHandler('optMusic','music',1);pickHandler('optHap','haptics',1);pickHandler('optAuto','autoPick',1);pickHandler('optFx','fx',1);pickHandler('optColors','colors');pickHandler('optSimple','simple',1);pickHandler('optSmooth','smooth',1);$('optSmooth').addEventListener('click',()=>{K_LOW=false;applyView(true)});
 const sliderHandler=(id,key)=>$(id).addEventListener('input',e=>{CFG[key]=+e.target.value/100;syncOpts();applyControls()});
 sliderHandler('optJs','jsize');sliderHandler('optDead','dead');sliderHandler('optDs','dsize');sliderHandler('optOp','op');
 $('optDone').onclick=closeOpts;
@@ -3976,7 +3983,7 @@ function frame(now){
   if(G.state==='title')titleDemo(now/1000);
   else{
     if(G.state==='play'){
-      if(raw>0&&raw<1){G.frames++;G.ftSum+=raw;G.fpsWin.push(raw);if(G.fpsWin.length>60)G.fpsWin.shift();if(G.frames>120&&G.fpsWin.length===60){const f=curFps();if(f<G.fpsMin)G.fpsMin=f;G.lowFx=G.lowFx?f<(isTouch?54:52):f<(isTouch?46:40);if(G.lowFx&&!K_LOW&&K>1){K_LOW=true;applyView(true)}}}
+      if(raw>0&&raw<1){G.frames++;G.ftSum+=raw;G.fpsWin.push(raw);if(G.fpsWin.length>60)G.fpsWin.shift();if(G.frames>120&&G.fpsWin.length===60){const f=curFps();if(f<G.fpsMin)G.fpsMin=f;G.lowFx=G.lowFx?f<(isTouch?57:52):f<(isTouch?52:40);if(G.lowFx&&!K_LOW&&K>1){K_LOW=true;applyView(true)}}}
       G.rdt=dt;
       if(G.stop>0)G.stop-=dt;else update(dt*timeScale(dt));
     }else if(G.state==='over'){for(const p of PT){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt}PT=PT.filter(p=>p.life>0);G.flash=Math.max(0,G.flash-dt)}
