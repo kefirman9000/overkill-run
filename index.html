@@ -104,6 +104,15 @@ details.story summary{font-family:var(--font-d);font-size:12px;cursor:pointer;co
 details.story p{margin:6px 0}
 details.story .dim{opacity:.45}
 #cardPrev{display:block;width:100%;max-width:520px;margin:10px auto 0;border:2px solid #2a2440;image-rendering:auto}
+#codex .card{max-height:88vh;overflow:auto;max-width:min(980px,96vw);width:100%}
+#codex h3{margin:14px 0 6px}
+#codex h3 .dim{color:var(--dim);font-size:.8em}
+.cxg{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px}
+.cx{display:flex;gap:8px;align-items:flex-start;background:#1a1628;border:2px solid #2a2440;padding:6px 8px;font-size:16px;line-height:1.15}
+.cx img{width:32px;height:32px;image-rendering:pixelated;flex:none}
+.cx b{display:block;font-family:var(--font-d);font-size:11px;margin-bottom:2px}
+.cx span{color:var(--dim)}
+.cx.off{opacity:.4}
 #bossCard{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
 #bossCard .lb{position:absolute;left:0;right:0;height:11vh;background:#000;transition:transform .3s steps(6)}
 #bossCard .lb.top{top:0;transform:translateY(-100%)}
@@ -260,12 +269,20 @@ details.story .dim{opacity:.45}
   </div>
 </div>
 
+<div class="ov" id="codex" hidden>
+  <div class="card wide">
+    <h2>CODEX</h2>
+    <p class="note">Everything you have found, across all your runs.</p>
+    <div id="codexBody"></div>
+    <div class="btns"><button class="go" id="codexClose">BACK</button></div>
+  </div>
+</div>
 <div class="ov" id="pause" hidden>
   <div class="card">
     <h2>PAUSED</h2>
     <dl class="stats" id="buildStats"></dl>
     <label class="notes" for="notesPause"><span>Notes for Claude (optional, goes into the run report)</span><textarea id="notesPause" class="notesIn" rows="3" placeholder="What felt good, bad, too easy, too hard?"></textarea></label>
-    <div class="btns"><button class="go" id="resumeBtn">RESUME</button><button class="optBtn">OPTIONS</button><button class="repBtn">COPY RUN REPORT</button><button class="saveBtn">SAVE REPORT FILE</button><button id="quitBtn">QUIT TO TITLE</button></div>
+    <div class="btns"><button class="go" id="resumeBtn">RESUME</button><button id="codexBtn">CODEX</button><button class="optBtn">OPTIONS</button><button class="repBtn">COPY RUN REPORT</button><button class="saveBtn">SAVE REPORT FILE</button><button id="quitBtn">QUIT TO TITLE</button></div>
     <div class="note repNote"></div>
   </div>
 </div>
@@ -338,7 +355,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.21.1';
+const VERSION='1.22.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -683,7 +700,7 @@ function reset(opts){
   G={state:'play',daily,seedStr,char:opts.char||'wanderer',startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,lvCD:0,surges:0,cashedOut:0,autoPicked:0,
     threat:0,tp:0,biomeI:0,biomePrev:0,morph:1,streak:0,streakT:0,bestStreak:0,stop:0,shake:0,flash:0,hurt:0,spawnAcc:0,packT:12,hazT:6,
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
-    taken:{},hurtBy:{},allies:[],lms:new Map(),lmSeed:(Math.random()*1e5)|0,startX:0,startY:0,clear:null,lull:null,lullAt:-1,check:null,lullLog:[],checksUsed:0,decoy:null,staticT:0,fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,campK:null,lastCampK:null,cloud:null,worms:[],thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
+    taken:{},hurtBy:{},novice:meta.bestThreat<10,curios:new Map(),pet:null,allies:[],lms:new Map(),lmSeed:(Math.random()*1e5)|0,startX:0,startY:0,clear:null,lull:null,lullAt:-1,check:null,lullLog:[],checksUsed:0,decoy:null,staticT:0,fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,campK:null,lastCampK:null,cloud:null,worms:[],thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
   P={bootsT:0,armorT:0,guardT:0,shield:0,shieldT:0,frenzy:0,bubble:0,x:0,y:0,vx:0,vy:0,hp:100,max:100,inv:0,face:1,moving:false,dashes:1,dashCd:0,dashT:0,ddx:1,ddy:0,chill:0,lx:0,ly:0};
   S={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,regen:0,multi:0,pierce:0,bounce:0,rear:0,circle:0,split:0,grow:0,burn:0,freeze:0,frostKill:0,chainKill:0,
     trail:0,dashMax:1,dashShock:0,orbitShots:0,nuke:0,pulse:0,hole:0,momentum:0,scorch:0,double:0,stasis:0,killNeedle:0,horizonDash:0,
@@ -987,6 +1004,7 @@ const CAMP_KINDS=['ufo','worm'];                                      // 1.18: t
 function updateCamp(dt){
   P.abd=Math.max(0,(P.abd||0)-dt*.6);
   updateCampFx(dt);
+  if(!sysOn('camp')){G.campT=0;return}
   if(G.arena||G.clear||G.lull){G.campT=0;G.campK=null;return}
   const dx=P.x-G.campX,dy=P.y-G.campY;
   if(dx*dx+dy*dy>CAMP_R*CAMP_R){G.campX=P.x;G.campY=P.y;G.campT=0;G.campK=null;return}
@@ -1124,6 +1142,7 @@ function drawUfo(e,ox,oy){
 }
 /* Soul Thief: shows up now and then, runs from you dropping souls, and pays out big if you catch it */
 function updateThief(dt){
+  if(!sysOn('thief'))return;
   if(G.arena||G.clear||G.lull)return;
   G.thiefT-=dt;if(G.thiefT>0)return;
   if(!evFree()){G.thiefT=1;return}
@@ -1370,6 +1389,150 @@ function storyBeat(i){
   return null;
 }
 
+/* ================= onboarding =================
+   Newer players (best threat under 10) meet the game's systems one at a time instead of all at once. */
+const SYS_AT={landmarks:1,shrine:1,thief:2,camp:2,crate:2,curio2:2,allies:3,giant:3,calm:8};
+function sysOn(k){return !G.novice||G.threat>=(SYS_AT[k]||0)}
+/* ================= curios: small things to find while exploring =================
+   Smaller and more common than landmarks. Some help, some are just there. */
+const CURIO_CHUNK=300;
+const CURIOS={
+  pack:{name:'Abandoned pack',w:16,desc:'Somebody dropped this running. A few souls inside.'},
+  sign:{name:'Old signpost',w:14,desc:'Someone had something to say.'},
+  grave:{name:'Grave',w:12,desc:'Here lies a runner. Usually quiet.'},
+  shrooms:{name:'Mushroom ring',w:12,desc:'Step in and something happens. Probably.'},
+  cart:{name:'Broken cart',w:10,desc:'Mostly junk.'},
+  statue:{name:'Watching statue',w:8,desc:'It turns to look at you. That is all it does.'},
+  campfire:{name:'Campfire',w:8,desc:'A quiet spot. Rest here with no enemies close to heal.'},
+  map:{name:'Treasure map',w:6,desc:'Points to something buried nearby.',lvl:'curio2'},
+  merchant:{name:'Wandering merchant',w:5,desc:'Trades a rare card for a fifth of your HP.',lvl:'curio2'},
+  well:{name:'Wishing well',w:5,desc:'Throw in some souls and make a wish.',lvl:'curio2'},
+  dog:{name:'Lost dog',w:4,desc:'Follows you and fetches souls.'},
+  giant:{name:'Sleeping giant',w:4,desc:'A huge golem, fast asleep. It carries a lot.',lvl:'giant'},
+};
+const SIGNS=['TURN BACK. — The Management','Next town: 0 km. There are no towns.','You are here. Unfortunately.','DANGER: everything.','Beware of the dog. (It\'s a nice dog.)',
+  'Free souls ahead*  (*not free)','The Hollow is not a myth. Please stop asking.','Stand still for a moment. Go on. (Don\'t.)','Lost: one runner. Answers to anything.','This sign is a sign.'];
+const EPITAPHS=['"Stood still for one second too long."','"Thought the bomb was a pickup."','"Picked Glass Cannon. Twice."','"Ran the wrong way in the ring of fire."','"Got abducted. Never came back. Is fine, probably."','"Was the Medic. Healed everyone but himself."'];
+function curioKind(h){const L=Object.entries(CURIOS);let tot=0;for(const [,c] of L)tot+=c.w;let r=h%tot;for(const [k,c] of L){if(r<c.w)return k;r-=c.w}return 'pack'}
+function curioFound(c,txt,rare){if(!c.found){c.found=1;codexAdd('l','c:'+c.kind);G.curioN=G.curioN||{};G.curioN[c.kind]=(G.curioN[c.kind]||0)+1}if(txt)toast(rare?2:0,txt)}
+function updateCurios(dt){
+  const cx0=Math.floor(P.x/CURIO_CHUNK),cy0=Math.floor(P.y/CURIO_CHUNK);
+  for(let cy=cy0-2;cy<=cy0+2;cy++)for(let cx=cx0-2;cx<=cx0+2;cx++){const key=cx+','+cy;if(G.curios.has(key))continue;
+    const h=hash(cx*31+G.lmSeed,cy*17+G.lmSeed*3);let c=null;
+    if(h%100<26){const x=cx*CURIO_CHUNK+30+(h>>>8)%(CURIO_CHUNK-60),y=cy*CURIO_CHUNK+30+(h>>>16)%(CURIO_CHUNK-60);if(Math.hypot(x-G.startX,y-G.startY)>120)c={kind:curioKind(h>>>3),x,y,st:'idle',t:0,h}}
+    G.curios.set(key,c)}
+  if(G.arena&&G.arena.wall>0)return;
+  for(const c of G.curios.values()){
+    if(!c||c.st==='done')continue;const K=CURIOS[c.kind];if(K.lvl&&!sysOn(K.lvl))continue;
+    const d=Math.hypot(P.x-c.x,P.y-c.y);if(d>260&&!(c.kind==='map'&&c.st==='dig'))continue;
+    switch(c.kind){
+      case 'pack':if(d<10){c.st='done';for(let i=0;i<5;i++)PU.push({kind:'gem',tier:R()<.3?1:0,x:c.x,y:c.y,t:0,vx:rnd(-60,60),vy:rnd(-60,60)});curioFound(c,'An abandoned pack. A few souls inside.')}break;
+      case 'cart':if(d<11){c.st='done';for(let i=0;i<3;i++)PU.push({kind:'gem',tier:0,x:c.x,y:c.y,t:0,vx:rnd(-50,50),vy:rnd(-50,50)});curioFound(c,pick(['A broken cart. Mostly junk.','Splinters and a bent wheel.','Someone\'s whole life, in a cart. Three souls.']))}break;
+      case 'sign':if(d<14&&!c.read){c.read=1;curioFound(c,'The sign says: '+SIGNS[c.h%SIGNS.length])}break;
+      case 'statue':if(d<40&&!c.read){c.read=1;curioFound(c,'The statue turns to watch you. That\'s all it does.')}break;
+      case 'grave':if(d<12){c.st='done';if(R()<.25){const w=spawnEnemy('wraith',c.x,c.y-6,{elite:true});w.flash=.3;curioFound(c,'Something climbs out of the grave!',true)}else curioFound(c,'The grave reads: '+EPITAPHS[c.h%EPITAPHS.length])}break;
+      case 'shrooms':if(d<11){c.st='done';const r=Math.floor(R()*5);
+        if(r===0){P.hp=Math.min(P.max,P.hp+P.max*.2);curioFound(c,'The mushrooms heal you a little.')}
+        else if(r===1){P.bootsT=8;curioFound(c,'The mushrooms make your feet feel light.')}
+        else if(r===2){P.frenzy=Math.max(P.frenzy,6);curioFound(c,'The mushrooms make your trigger finger itch. Frenzy!')}
+        else if(r===3){for(let i=0;i<8;i++)PU.push({kind:'gem',tier:1,x:c.x,y:c.y,t:0,vx:rnd(-70,70),vy:rnd(-70,70)});curioFound(c,'Souls were hiding under the mushrooms.')}
+        else curioFound(c,'Nothing happens. You feel slightly judged.')}
+        break;
+      case 'campfire':if(d<18){let q=true;for(const e of E){if(!e.dead&&e.dmg>0&&Math.abs(e.x-P.x)<100&&Math.abs(e.y-P.y)<100){q=false;break}}
+        if(!c.read){c.read=1;curioFound(c,'A campfire. Rest here when it\'s quiet.')}
+        if(q&&P.hp<P.max){P.hp=Math.min(P.max,P.hp+P.max*.05*dt);G.campT=0;if(R()<.1)PT.push({x:P.x+rnd(-4,4),y:P.y,vx:0,vy:-14,life:.4,max:.4,c:'#ffd166',s:1})}}
+        break;
+      case 'map':
+        if(c.st==='idle'&&d<10){c.st='dig';const a=R()*TAU,r=rnd(250,350);c.dx=c.x+Math.cos(a)*r;c.dy=c.y+Math.sin(a)*r;c.dig=0;curioFound(c,'A treasure map! X marks a spot nearby.',true)}
+        else if(c.st==='dig'){const dd=Math.hypot(P.x-c.dx,P.y-c.dy);if(dd>40)edgeMark(Math.atan2(c.dy-P.y,c.dx-P.x),'#ffd84a',2);
+          if(dd<10){c.dig+=dt;if(R()<.3)PT.push({x:c.dx+rnd(-4,4),y:c.dy,vx:rnd(-20,20),vy:-20,life:.4,max:.4,c:'#8a6a42',s:1});
+            if(c.dig>=2){c.st='done';const tier=Math.min(4,1+Math.floor(G.threat/6));for(let i=0;i<10;i++){const a=i/10*TAU;PU.push({kind:'gem',tier,x:c.dx,y:c.dy,t:0,vx:Math.cos(a)*80,vy:Math.sin(a)*80})}
+              PU.push({kind:R()<.35?'maxhp':randomPickup(),x:c.dx,y:c.dy,t:0,vx:0,vy:-30});toast(2,'You dig up a buried chest!');snd('level')}}else c.dig=Math.max(0,c.dig-dt)}
+        break;
+      case 'merchant':
+        if(d<16){if(!c.read){c.read=1;curioFound(c,'Merchant: "A rare card, for a fifth of your blood. Stand with me to trade."',true)}
+          c.t+=dt;if(c.t>=2){c.st='done';P.hp=Math.max(1,P.hp-P.max*.2);G.hurt=.4;
+            const pool=CARDS.filter(k=>k.r>=2&&!k.cost&&!k.evo&&cardRelevant(k)&&!(k.max&&(G.taken[k.id]||0)>=k.max));
+            if(pool.length){const k=pick(pool);takeCard(k,[k.name+' (merchant)'],true);toast(k.r,'Merchant: "Pleasure." You got '+k.name+'.')}}}
+        else c.t=Math.max(0,c.t-dt*2);
+        break;
+      case 'well':
+        if(d<10){if(!c.read){c.read=1;curioFound(c,'A wishing well. Stand at it to throw in some souls.')}
+          c.t+=dt;if(c.t>=1.5){c.st='done';const cost=Math.floor(G.need*.3);
+            if(G.xp<cost){toast(0,'You have nothing to wish with. The well is unimpressed.');c.st='idle';c.t=-3;break}
+            G.xp-=cost;const r=R();
+            if(r<.45){G.level++;G.pendingLv++;G.need=xpNeed(G.level);G.lvCD=.5;toast(2,'Your wish is granted: a free level!')}
+            else if(r<.75){for(let i=0;i<12;i++)PU.push({kind:'gem',tier:Math.min(3,1+Math.floor(G.threat/8)),x:c.x,y:c.y,t:0,vx:rnd(-80,80),vy:rnd(-80,80)});toast(1,'The well spits your souls back, with interest.')}
+            else toast(0,'Plop. Nothing. Wells are like that.');snd('pick',1)}}
+        else c.t=Math.max(0,c.t-dt*2);
+        break;
+      case 'dog':if(d<12&&!G.pet){c.st='done';G.pet={x:c.x,y:c.y,face:1,t:0};curioFound(c,'A lost dog! It follows you now and fetches souls.',true)}break;
+      case 'giant':
+        if(!(c.e&&!c.e.dead)&&!c.killed&&d<240){const g=spawnEnemy('golem',c.x,c.y,{elite:true,hpMul:3});g.sleep=true;g.giant=c;g.r+=2;c.e=g}
+        if(d<120&&!c.read){c.read=1;curioFound(c,'A sleeping giant. It carries a lot. Wake it if you dare.')}
+        break;
+    }
+  }
+}
+function giantDown(e){const c=e.giant;if(c){c.killed=1;c.st='done'}
+  const tier=Math.min(4,1+Math.floor(G.threat/6));for(let i=0;i<16;i++){const a=i/16*TAU;PU.push({kind:'gem',tier,x:e.x,y:e.y,t:0,vx:Math.cos(a)*90,vy:Math.sin(a)*90})}
+  PU.push({kind:'maxhp',x:e.x,y:e.y,t:0,vx:-20,vy:-30});PU.push({kind:randomPickup(),x:e.x,y:e.y,t:0,vx:20,vy:-30});toast(2,'The giant falls. It really did carry a lot.')}
+function updatePet(dt){
+  const p=G.pet;if(!p)return;p.t+=dt;
+  const tx=P.x-(P.face||1)*14,ty=P.y+6,dx=tx-p.x,dy=ty-p.y,d=Math.hypot(dx,dy);
+  if(d>400){p.x=P.x;p.y=P.y}else if(d>3){const s=Math.min(110,d*4);p.x+=dx/d*s*dt;p.y+=dy/d*s*dt;if(Math.abs(dx)>2)p.face=dx>0?1:-1}
+  for(const q of PU)if(q.kind==='gem'&&!q.vac&&Math.abs(q.x-p.x)<70&&Math.abs(q.y-p.y)<70)q.vac=true;      // fetch
+}
+function drawCurios(ox,oy){
+  for(const c of G.curios.values()){
+    if(!c)continue;const K=CURIOS[c.kind];if(K.lvl&&!sysOn(K.lvl))continue;
+    const x=RK(c.x-ox),y=RK(c.y-oy);if(x<-20||y<-30||x>LW+20||y>LH+20){continue}
+    const sh=(w)=>{ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(x-w,y+2,w*2+1,2)};
+    switch(c.kind){
+      case 'pack':if(c.st!=='done'){sh(4);ctx.fillStyle='#6b4a2b';ctx.fillRect(x-3,y-5,7,7);ctx.fillStyle='#8a6a42';ctx.fillRect(x-3,y-5,7,2);ctx.fillStyle='#3a2a1a';ctx.fillRect(x,y-3,1,2)}break;
+      case 'cart':sh(6);ctx.fillStyle=c.st==='done'?'#4a3420':'#6b4a2b';ctx.fillRect(x-6,y-5,11,4);ctx.fillStyle='#3a2a1a';ctx.fillRect(x-5,y-1,3,3);ctx.fillRect(x+2,y,2,2);ctx.fillRect(x+4,y-7,1,3);break;
+      case 'sign':sh(3);ctx.fillStyle='#5a4028';ctx.fillRect(x,y-9,1,11);ctx.fillStyle='#8a6a42';ctx.fillRect(x-5,y-10,11,5);ctx.fillStyle='#3a2a1a';ctx.fillRect(x-3,y-8,7,1);break;
+      case 'statue':{sh(4);const f=P.x<c.x?-1:1;ctx.fillStyle='#6a6a7a';ctx.fillRect(x-3,y-10,7,12);ctx.fillStyle='#8a8a9a';ctx.fillRect(x-2,y-13,5,4);ctx.fillStyle='#14101c';ctx.fillRect(x+(f>0?1:-1),y-12,1,1);ctx.fillStyle='#4a4a58';ctx.fillRect(x-4,y+1,9,2);break}
+      case 'grave':sh(4);ctx.fillStyle=c.st==='done'?'#4a4a58':'#7a7a8a';ctx.fillRect(x-3,y-9,7,10);ctx.fillRect(x-2,y-10,5,1);ctx.fillStyle='#4a4a58';ctx.fillRect(x-1,y-7,3,1);ctx.fillRect(x,y-8,1,4);if(c.st==='done'){ctx.fillStyle='#3a2a1a';ctx.fillRect(x-3,y+1,7,3)}break;
+      case 'shrooms':if(c.st!=='done')for(let i=0;i<6;i++){const a=i/6*TAU,px=x+Math.round(Math.cos(a)*7),py=y+Math.round(Math.sin(a)*4);ctx.fillStyle='#e8e0d0';ctx.fillRect(px,py-1,1,2);ctx.fillStyle=i%2?'#ff5e5b':'#c792ea';ctx.fillRect(px-1,py-2,3,1)}break;
+      case 'campfire':{sh(5);ctx.fillStyle='#5a4028';ctx.fillRect(x-5,y,11,2);ctx.fillRect(x-3,y-1,7,1);const f=Math.floor(G.time*10)%3;ctx.fillStyle=['#ff5e3a','#ff9f43','#ffd166'][f];ctx.fillRect(x-2,y-4,5,3);ctx.fillStyle='#ffd166';ctx.fillRect(x-1,y-6+((f&1)?1:0),3,2);
+        if(R()<.15)PT.push({x:c.x+rnd(-2,2),y:c.y-6,vx:rnd(-4,4),vy:-18,life:.6,max:.6,c:'#ffd166',s:1});break}
+      case 'map':if(c.st==='idle'){sh(3);ctx.fillStyle='#e8d8a0';ctx.fillRect(x-4,y-4,9,6);ctx.fillStyle='#ff4d6d';ctx.fillRect(x+1,y-2,1,1);ctx.fillRect(x+2,y-1,1,1);ctx.fillRect(x+2,y-3,1,1);ctx.fillRect(x+3,y-2,1,1)}
+        else if(c.st==='dig'){const dx=RK(c.dx-ox),dy=RK(c.dy-oy);ctx.fillStyle='#ff4d6d';for(let i=-3;i<=3;i++){ctx.fillRect(dx+i,dy+i,1,1);ctx.fillRect(dx+i,dy-i,1,1)}if(c.dig>0)tele(dx,dy,10,c.dig/2,false)}break;
+      case 'merchant':if(c.st!=='done'){sh(4);ctx.fillStyle='#5a3a6a';ctx.fillRect(x-3,y-8,7,9);ctx.fillStyle='#ffd6a5';ctx.fillRect(x-2,y-11,5,3);ctx.fillStyle='#3a2a4a';ctx.fillRect(x-3,y-12,7,2);ctx.fillStyle='#ffd84a';ctx.fillRect(x+3,y-5,3,3);if(c.t>0)tele(x,y-2,14,c.t/2,false)}break;
+      case 'well':sh(6);ctx.fillStyle='#6a6a7a';ctx.fillRect(x-6,y-4,13,6);ctx.fillStyle='#1a2a4a';ctx.fillRect(x-4,y-3,9,3);ctx.fillStyle='#5a4028';ctx.fillRect(x-6,y-12,1,8);ctx.fillRect(x+6,y-12,1,8);ctx.fillRect(x-6,y-13,13,1);if(c.t>0)tele(x,y,12,c.t/1.5,false);break;
+      case 'dog':if(c.st!=='done')drawDog(x,y,1,G.time);break;
+      case 'giant':break;
+    }
+  }
+  if(G.pet)drawDog(RK(G.pet.x-ox),RK(G.pet.y-oy),G.pet.face,G.pet.t);
+}
+function drawDog(x,y,f,t){const b=Math.floor(t*8)%2;ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(x-4,y+1,9,1);
+  ctx.save();ctx.translate(x,y);ctx.scale(f,1);ctx.fillStyle='#b8834a';ctx.fillRect(-4,-4,7,3);ctx.fillRect(2,-6,3,3);ctx.fillStyle='#6b4a2b';ctx.fillRect(3,-7,1,2);ctx.fillRect(-5,-5+b,1,2);
+  ctx.fillStyle='#14101c';ctx.fillRect(4,-5,1,1);ctx.fillStyle='#b8834a';ctx.fillRect(-4,-1,1,1+b);ctx.fillRect(2,-1,1,2-b);ctx.restore()}
+/* ================= codex =================
+   Everything you've met, kept across runs. Open it from the pause menu. */
+const E_DESC={chaser:'Runs straight at you. There are always more.',swarmer:'Small, fast, and arrives in packs.',tank:'Slow and thick. Kite it.',shooter:'Keeps its distance and spits at you.',
+  exploder:'Rushes in and blows up. Kill it early.',shaman:'Heals and shields the enemies around it.',brood:'Bursts into Crawlers when it dies.',mini:'Tiny and quick. Comes from Broodmothers, nests and bosses.',
+  ember:'Leaves fire behind it. Burning Forest.',frostling:'Its shots slow you. Frozen Wastes.',bloater:'Pops into poison gas. Toxic Swamp.',golem:'Heavy crystal brute. Crystal Caves.',
+  stalker:'Blinks next to you. The Void.',wraith:'Phases through your shots now and then.',lancer:'Lines up and charges.',mortar:'Lobs shells where you are going.',
+  splitter:'Splits in two when it dies.',shard:'What a Splitter leaves behind.',sniper:'Aims a long laser first. Get out of the line.',jugg:'Enormous and relentless.',
+  thief:'Runs away dropping souls. Catch it.',ufo:'Comes for anyone standing still in a fight.',nest:'Spawns Crawlers until you destroy it.',pylon:'Shields the Prism Colossus.'};
+function codexAdd(sec,id){const C=meta.codex||(meta.codex={e:{},b:{},l:{},c:{},v:{}});if(!C[sec])C[sec]={};if(!C[sec][id]){C[sec][id]=1;G.codexNew=(G.codexNew||0)+1}}
+function codexHTML(){
+  const C=meta.codex||{e:{},b:{},l:{},c:{},v:{}};
+  const sec=(title,items)=>{const n=items.filter(i=>i.on).length;return `<h3>${esc(title)} <span class="dim">${n}/${items.length}</span></h3><div class="cxg">`+items.map(i=>i.on?`<div class="cx">${i.img?`<img src="${i.img}" alt="">`:''}<div><b>${esc(i.name)}</b><span>${esc(i.desc)}</span></div></div>`:`<div class="cx off"><div><b>???</b><span>Not found yet.</span></div></div>`).join('')+'</div>'};
+  const enemyIds=Object.keys(NAMES).filter(k=>E_DESC[k]);
+  const img=(spr)=>{try{return enemySprite(spr,0,false).toDataURL()}catch(_){return ''}};
+  return sec('Enemies',enemyIds.map(k=>({on:C.e&&C.e[k],name:NAMES[k],desc:E_DESC[k],img:img(k)})))
+    +sec('Bosses',BOSSES.map(B=>({on:C.b&&C.b[B.name],name:B.name,desc:B.title+'. '+{arena:'Fought in a walled arena.',inferno:'Fought inside a closing ring of fire.',floe:'Fought on a shrinking ice floe.',submerge:'Dives and resurfaces.',pylons:'Shielded until its pylons break.',hunt:'Stalks you unseen.'}[B.fmt],img:img(B.spr)})))
+    +sec('Places',[...Object.keys(LM_NAMES).map(k=>({on:C.l&&C.l['l:'+k],name:{spring:'Healing spring',obelisk:'Obelisk',vault:'Vault',nest:'Nest',camp:'Ally camp'}[k],desc:{spring:'Stand in it to heal until it runs dry.',obelisk:'Touch it to wake a super mode.',vault:'Guarded loot. Clear the guards first.',nest:'Spawns Crawlers until destroyed.',camp:'Free the ally inside. Up to two follow you.'}[k]})),
+      ...Object.keys(CURIOS).map(k=>({on:C.l&&C.l['c:'+k],name:CURIOS[k].name,desc:CURIOS[k].desc}))])
+    +sec('Evolutions',Object.keys(EVO).map(k=>({on:C.v&&C.v[EVO[k].name],name:EVO[k].name,desc:WDEF[k].name+' at Lv 6 + '+EVO[k].mutName+'. '+EVO[k].desc})))
+    +sec('Cards',CARDS.filter(c=>!c.cost).map(c=>({on:C.c&&C.c[c.id],name:c.name,desc:c.desc+(FLAVOR[c.id]?' — '+FLAVOR[c.id]:'')})));
+}
+function openCodex(){$('codexBody').innerHTML=codexHTML();$('pause').hidden=true;$('codex').hidden=false;$('codex').scrollTop=0;saveMeta()}
+
 /* ================= event coordinator =================
    Only one special event at a time (shrine, supply crate, Soul Thief, vault guards, calm/beacon), with at least
    20 s of plain fighting between them. Bosses and clear-outs always happen; they just make the others wait. */
@@ -1387,6 +1550,7 @@ const LM_CHUNK=520,LM_KINDS=[['spring',26],['obelisk',22],['vault',22],['nest',1
 const LM_COL={camp:'#9be15d',spring:'#6be0ff',obelisk:'#c792ea',vault:'#ffd84a',nest:'#ff5e7a'};
 function lmKind(h){let r=h%100;for(const [k,w] of LM_KINDS){if(r<w)return k;r-=w}return 'spring'}
 function updateLandmarks(dt){
+  if(!sysOn('landmarks'))return;
   const cx0=Math.floor(P.x/LM_CHUNK),cy0=Math.floor(P.y/LM_CHUNK);
   for(let cy=cy0-1;cy<=cy0+1;cy++)for(let cx=cx0-1;cx<=cx0+1;cx++){
     const key=cx+','+cy;if(G.lms.has(key))continue;
@@ -1398,8 +1562,9 @@ function updateLandmarks(dt){
   if(G.arena&&G.arena.wall>0)return;
   for(const lm of G.lms.values()){
     if(!lm||lm.state==='done')continue;
+    if(lm.kind==='camp'&&!sysOn('allies'))continue;
     const d=Math.hypot(P.x-lm.x,P.y-lm.y);if(d>420)continue;
-    if(!lm.seen){lm.seen=1;G.lmSeen=(G.lmSeen||0)+1;const how={camp:'stand by the cage to free them',spring:'stand in it to heal',obelisk:'touch it to wake its power',vault:'clear the guards, then open it',nest:'destroy it before it fills the area'}[lm.kind];
+    if(!lm.seen){lm.seen=1;G.lmSeen=(G.lmSeen||0)+1;codexAdd('l','l:'+lm.kind);const how={camp:'stand by the cage to free them',spring:'stand in it to heal',obelisk:'touch it to wake its power',vault:'clear the guards, then open it',nest:'destroy it before it fills the area'}[lm.kind];
       toast(G.hinted['lm:'+lm.kind]?0:1,(lm.name||'A landmark')+' nearby'+(G.hinted['lm:'+lm.kind]?'':': '+how+'.'));G.hinted['lm:'+lm.kind]=1}
     switch(lm.kind){
       case 'spring':
@@ -1442,8 +1607,9 @@ function nestDown(e){
   PU.push({kind:randomPickup(),x:e.x,y:e.y,t:0,vx:0,vy:-30});banner('NEST DESTROYED','Souls everywhere');G.shake=Math.max(G.shake,2);
 }
 function drawLandmarks(ox,oy){
+  if(!sysOn('landmarks'))return;
   for(const lm of G.lms.values()){
-    if(!lm)continue;const x=RK(lm.x-ox),y=RK(lm.y-oy);
+    if(!lm||(lm.kind==='camp'&&!sysOn('allies')))continue;const x=RK(lm.x-ox),y=RK(lm.y-oy);
     const on=x>-30&&y>-40&&x<LW+30&&y<LH+30,p=.5+.5*Math.sin(G.time*4);
     if(on)switch(lm.kind){
       case 'spring':{const dry=lm.state==='done',f=dry?0:Math.max(.3,lm.water/(P.max*.6)||1);
@@ -1480,7 +1646,7 @@ function drawLandmarks(ox,oy){
      Reach it in time: heal, two free levels, and a checkpoint (if you die later, you come back there once).
      Too slow: the horde comes back from every side at once. */
 const CLEAR_RUSH=12,CLEAR_MAX=30,LULL_LIMIT=22;
-const countsForClear=e=>!e.dead&&e.type!=='crate'&&e.type!=='nest'&&e.type!=='thief'&&e.type!=='ufo'&&e.type!=='pylon'&&e.type!=='boss';
+const countsForClear=e=>!e.dead&&!e.giant&&e.type!=='crate'&&e.type!=='nest'&&e.type!=='thief'&&e.type!=='ufo'&&e.type!=='pylon'&&e.type!=='boss';
 function eventBar(txt){const el=$('eventBar');if(!txt){if(!el.hidden)el.hidden=true;return}if(el.hidden)el.hidden=false;if(el.textContent!==txt)el.textContent=txt}
 function startClear(){
   G.clear={t:0,rushed:false};G.lull=null;
@@ -1969,6 +2135,8 @@ function kill(e,src){
   else if(e.type==='pylon')pylonDown(e);
   else if(e.type==='thief')thiefDown(e);
   else if(e.type==='nest')nestDown(e);
+  codexAdd('e',e.type);if(e.type==='boss')codexAdd('b',bossOf(e).name);
+  if(e.giant)giantDown(e);
   else if(e.elite){G.stop=Math.max(G.stop,.05)}
   // mutations on kill
   if(S.frostKill){query(e.x,e.y,26,o=>{o.slow=Math.max(o.slow,1.6)});if(R()<.3)RINGS.push({x:e.x,y:e.y,r:0,max:24,life:.2,t:0,c:'#a6f0ff',noFill:1})}
@@ -2216,6 +2384,7 @@ $('cashBtn').onclick=()=>cashOut();
 $('cards').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(b)chooseCard(+b.dataset.i)});
 function takeCard(c,offerNames,silent){
   if(G.char==='medic'&&G.state!=='title')P.hp=Math.min(P.max,P.hp+P.max*.1);
+  if(!c.cost&&!c.evo)codexAdd('c',c.id);if(c.evo)codexAdd('v',c.name);
   c.apply();if(!c.cost)G.taken[c.id]=(G.taken[c.id]||0)+1;G.hudDirty=true;
   G.log.push({t:Math.round(G.time),lv:G.level-G.pendingLv+1,pick:c.name,rarity:c.cost?'SURGE':RN[c.r],offered:offerNames});
   if(!silent)toast(c.r,c.name);
@@ -2371,8 +2540,8 @@ function update(dt){
   }
 
   // ---- threat, hazards, spawns
-  updateRank();updateLandmarks(dt);updateAllies(dt);updateFronts(dt);updateCamp(dt);updateThief(dt);updateDecoy(dt);updatePassives(dt);
-  if(G.threat%5>=3&&G.lullAt!==G.threat-G.threat%5&&G.state==='play'&&evFree())startLull();
+  updateRank();updateLandmarks(dt);updateCurios(dt);updatePet(dt);updateAllies(dt);updateFronts(dt);updateCamp(dt);updateThief(dt);updateDecoy(dt);updatePassives(dt);
+  if(G.threat%5>=3&&G.lullAt!==G.threat-G.threat%5&&G.state==='play'&&evFree()&&sysOn('calm'))startLull();
   if(G.arena)updateArena(dt);
   else if(G.clear)updateClear(dt);                                   // clear-out: no spawns, no hazards, no threat climb
   else if(G.lull)updateLull(dt);                                     // calm: the same, while you run for the beacon                                       // boss arena: no horde, no land hazards, no threat climb
@@ -2391,6 +2560,7 @@ function update(dt){
   const fdt=dt;G.fc++;
   for(const e of E){
     if(e.dead)continue;
+    if(e.sleep){if(Math.hypot(P.x-e.x,P.y-e.y)<34||e.hp<e.max){e.sleep=false;e.flash=.2;toast(1,'The giant wakes up!')}else{e.vx=e.vy=0;if(R()<.02)PT.push({x:e.x+3,y:e.y-8,vx:3,vy:-8,life:.8,max:.8,c:'#ffffff',s:1});continue}}
     if(e.leaveT!==undefined){e.leaveT-=fdt;if(e.leaveT<=0){e.dead=true;if(PT.length<500)burst(e.x,e.y,e.col,3,30,.3);continue}}
     // enemies well off screen think every other frame to save phone CPU
     if(isMode('timestop'))continue;
@@ -2626,7 +2796,7 @@ function update(dt){
   TURRETS=TURRETS.filter(t=>t.t>0);
   // ---- shrines: stand on one for 1.6s to trigger a super mode
   if(!G.arena)G.shrineT-=dt;
-  if(G.shrineT<=0&&!evFree())G.shrineT=1;
+  if(G.shrineT<=0&&(!evFree()||!sysOn('shrine')))G.shrineT=1;
   if(G.shrineT<=0){G.shrineT=rnd(45,65);evStart();const a=R()*TAU,d=rnd(50,Math.min(LW,LH)*.42);SHRINES.push({x:P.x+Math.cos(a)*d,y:P.y+Math.sin(a)*d,t:22,prog:0});toast(2,'A power shrine appeared. Stand on it.')}
   for(const sh of SHRINES){
     sh.t-=dt;const dd=Math.hypot(P.x-sh.x,P.y-sh.y);
@@ -2636,7 +2806,7 @@ function update(dt){
   SHRINES=SHRINES.filter(sh=>sh.t>0);
   // ---- supply crates drop in
   if(!G.arena)G.crateT-=dt;
-  if(G.crateT<=0&&!evFree())G.crateT=1;
+  if(G.crateT<=0&&(!evFree()||!sysOn('crate')))G.crateT=1;
   if(G.crateT<=0){G.crateT=rnd(40,60);evStart();const a=R()*TAU,d=rnd(50,Math.min(LW,LH)*.45);addZone('drop',P.x+Math.cos(a)*d,P.y+Math.sin(a)*d,7,.9)}
   ambient(dt);
   // ---- pickups
@@ -2840,7 +3010,7 @@ function render(){
     if(cl&&K2.friendly&&!K2.hostile){ctx.save();ctx.globalAlpha=.5;drawZone(z,ox,oy);ctx.restore();ctx.globalAlpha=1;continue}
     drawZone(z,ox,oy);
     if(cl&&K2.hostile&&z.r>=10&&z.kind!=='spike'&&z.kind!=='ftrail'){ctx.globalAlpha=.3+.15*Math.sin(G.time*5);ring(z.x-ox,z.y-oy,z.kind==='pit'?z.r+2:z.r,'#ff3b5c');ctx.globalAlpha=1}}}
-  drawLandmarks(ox,oy);drawBossMarks(ox,oy);drawAllies(ox,oy);drawCampGround(ox,oy);drawDecoy(ox,oy);drawCampWarning(ox,oy);
+  drawLandmarks(ox,oy);drawCurios(ox,oy);drawBossMarks(ox,oy);drawAllies(ox,oy);drawCampGround(ox,oy);drawDecoy(ox,oy);drawCampWarning(ox,oy);
   for(const sh of SHRINES){const x=RK(sh.x-ox),y=RK(sh.y-oy),c=`hsl(${(G.time*120)%360},90%,62%)`;
     ctx.globalAlpha=Math.min(1,sh.t/2);ctx.fillStyle='#3a3150';ctx.fillRect(x-6,y-3,13,7);ctx.fillStyle='#5a4f78';ctx.fillRect(x-6,y-3,13,1);
     ctx.fillStyle=c;ctx.fillRect(x-2,y-1,5,3);ctx.globalAlpha=Math.min(1,sh.t/2)*(.25+.1*Math.sin(G.time*5));ctx.fillRect(x-1,y-30,3,28);ctx.globalAlpha=1;
@@ -3009,7 +3179,7 @@ function buildReport(){
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
     mode:G.daily?'daily '+G.seedStr:'normal',character:CHARS[G.char].name,startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.victory?'won':G.won?(G.state==='over'?'won, then died in endless':'won, in endless'):G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
-      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,rank:RANKS[G.rank||0].name,closestCall:G.lowHp!==undefined?Math.round(G.lowHp*100)+'%':null,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),allies:{joined:G.alliesJoined||0,lost:G.alliesLost||0,now:G.allies.map(a=>ALLY[a.kind].name+' '+Math.ceil(a.hp)+'/'+a.max)},checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
+      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,curios:G.curioN||{},pet:!!G.pet,novice:!!G.novice,rank:RANKS[G.rank||0].name,closestCall:G.lowHp!==undefined?Math.round(G.lowHp*100)+'%':null,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),allies:{joined:G.alliesJoined||0,lost:G.alliesLost||0,now:G.allies.map(a=>ALLY[a.kind].name+' '+Math.ceil(a.hp)+'/'+a.max)},checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
     damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
@@ -3076,6 +3246,8 @@ function buildTitle(){
 }
 $('wPick').addEventListener('click',e=>{const b=e.target.closest('button[data-w]');if(b&&!b.disabled){chosenW=b.dataset.w;buildTitle()}});
 $('cardBtn').addEventListener('click',saveRunCard);
+$('codexBtn').addEventListener('click',openCodex);
+$('codexClose').addEventListener('click',()=>{$('codex').hidden=true;if(G.state==='pause')$('pause').hidden=false});
 $('autoBtn').addEventListener('click',autoPickOne);
 $('autoAlwaysBtn').addEventListener('click',autoPickAlways);
 $('endlessBtn').addEventListener('click',()=>{$('win').hidden=true;G.endless=true;G.state='play';applyControls();banner('ENDLESS','The second lap begins',true)});

@@ -107,6 +107,18 @@ The world is dotted with places worth a detour, with markers at the screen edge 
 - **Nest:** spawns minis while you're near. Destroy it for a big payout.
 - **Ally camp:** someone is caged here. Stand by the cage for a moment to free them, and they join you.
 
+### Curios
+
+Smaller things turn up while you explore, some useful and some just there: abandoned packs, broken carts, old signposts, graves (usually quiet), mushroom rings (something happens, probably), watching statues, campfires (heal when it's quiet), treasure maps (dig up the chest), a wandering merchant (a rare card for a fifth of your HP), wishing wells (throw in souls, make a wish), a lost dog that follows you and fetches souls, and sleeping giants carrying a lot of loot.
+
+### Codex
+
+The pause menu's **Codex** lists every enemy, boss, place, curio, evolution and card you've found across all your runs.
+
+### New players
+
+Until you've reached threat 10 once, the game introduces its systems gradually: landmarks and shrines from threat 1, Soul Thieves, crates and standing-still threats from 2, allies and sleeping giants from 3, and the first calm at threat 8.
+
 ### Allies
 
 Up to two allies follow you at once: the **Gunner** shoots whatever is closest, the **Field Medic** heals you and your other ally while close, and the **Knight** charges enemies near you and draws attackers off you onto itself. Allies have their own HP and heal slowly; if they go down, they're gone. They follow you into boss fights and catch up if you're teleported.
