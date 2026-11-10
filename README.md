@@ -125,6 +125,14 @@ The world is dotted with places worth a detour, with markers at the screen edge 
 
 Smaller things turn up while you explore, some useful and some just there: abandoned packs, broken carts, old signposts, graves (usually quiet), mushroom rings (something happens, probably), watching statues, campfires (heal when it's quiet, until the fuel runs out), treasure maps (dig up the chest), a wandering merchant (a rare card for a fifth of your HP), wishing wells (throw in souls, make a wish), a lost dog that follows you and fetches souls, and sleeping giants carrying a lot of loot.
 
+### Difficulty and champions
+
+Pick **Easy**, **Normal** or **Nightmare** on the title screen (tap the Difficulty box to cycle). Each keeps its own best. Nightmare enemies are tougher and hit harder, elites get two tricks, champions show up twice as often, and every boss is mutated from the first lap. Daily runs are always Normal.
+
+**Champions** are rare named elites (like *Vexa the Volatile*) with a crown and one mutation: Swift, Armored, Volatile, Brooding, Undying or Blinking. Kill one for a free level, a heart and a pickup.
+
+New enemies: the **Shielder** (enemies near it take far less damage), the **Burrower** (digs under and bursts out where you stand) and the **Medic** (heals hurt enemies near it).
+
 ### Options worth knowing
 
 Damage numbers are off by default; turn them on for big hits only or for every hit (hits on the same enemy add up into one number). A small radar in the top-right corner shows the beacon, the boss, shrines, nearby landmarks and where enemies are bunching up. The end-of-run screen breaks down where your damage came from, what hurt you, how much you healed, beacons reached and each boss's fight time and mutations.
