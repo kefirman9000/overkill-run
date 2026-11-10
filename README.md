@@ -100,6 +100,8 @@ Pick a character on the title screen: **Wanderer** (no tricks), **Medic** (every
 
 The Hollow at the end of the first Void is the **final boss**. Beat it to win the run, then end there or keep going in endless mode.
 
+In **endless mode** bosses come back changed. Each lap they get stranger colours (shifted, then neon, then a cycling rainbow) and one more random mutation, up to four: Swift, Armored, Volatile, Brooding, Regenerating, Chaotic (steals another boss's attack), Colossal and Vampiric. The boss card names them.
+
 ### Pacing
 
 Only one special event runs at a time (shrine, supply crate, Soul Thief, vault guards, calm), with at least 20 seconds of plain fighting between them. Super modes come from shrines, obelisks and the Overkill meter, roughly one every couple of minutes. Heart Containers are capped at 10 per run.
@@ -107,7 +109,7 @@ Only one special event runs at a time (shrine, supply crate, Soul Thief, vault g
 ### Clear-outs, calms and checkpoints
 
 - **Clear-out:** when a boss is due, the horde stops coming. Kill everything that's left (a counter shows how many) and the boss arrives. After 12 seconds the stragglers rush you, and after 30 anything left dissolves.
-- **Calm:** midway between bosses the horde melts away and a beacon lights up some distance off, with a trail of souls leading to it. Reach it within 22 seconds for a heal, two free levels and a **checkpoint**: if you die later, you come back there once at half HP. Too slow, and the horde returns from every side.
+- **Calm:** midway between bosses the horde melts away and a beacon lights up some distance off, with a trail of souls leading to it. Reach it within 26 seconds for a heal, two free levels and a **checkpoint**: if you die later, you come back there once at half HP. Get there in the first half of the time for a **fast bonus** (an extra level and a bigger heal). Dawdle and stragglers start closing in from behind, and the last ten seconds tick down with a red pulse. Too slow, and the horde returns from every side.
 
 ### Landmarks
 

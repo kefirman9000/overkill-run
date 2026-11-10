@@ -97,6 +97,8 @@ body.simple #banner .big{font-size:clamp(20px,4.6vw,36px)}
 #banner.show{animation:ban 2.4s steps(12) forwards}
 #banner .big{font-size:clamp(26px,7vw,54px);font-weight:700;color:var(--threat);text-shadow:4px 4px 0 #000}
 #banner .sub{font-size:clamp(11px,2.4vw,15px);margin-top:6px}
+#eventBar.urg{color:#ff5a6e;border-color:#ff5a6e;animation:urgB .5s steps(2) infinite}
+@keyframes urgB{50%{background:rgba(120,10,30,.85)}}
 #eventBar{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 62px);font-family:var(--font-d);font-size:13px;color:#9be1ff;text-shadow:2px 2px 0 #000;background:rgba(13,11,20,.75);padding:4px 10px;border:2px solid #9be1ff;pointer-events:none;white-space:nowrap}
 body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
 details.story{margin:8px 0 2px;font-size:17px;line-height:1.25}
@@ -375,7 +377,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.23.1';
+const VERSION='1.24.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -488,13 +490,13 @@ const ET={
 const NAMES={nest:'Nest',ufo:'UFO',thief:'Soul Thief',pylon:'Crystal Pylon',chaser:'Chaser',swarmer:'Swarmer',tank:'Tank',shooter:'Spitter',exploder:'Exploder',shaman:'Shaman',brood:'Broodmother',mini:'Crawler',ember:'Ember',frostling:'Frostling',bloater:'Bloater',golem:'Crystal Golem',stalker:'Stalker',wraith:'Wraith',lancer:'Lancer',mortar:'Mortar',splitter:'Splitter',shard:'Shard',sniper:'Sniper',jugg:'Juggernaut',boss:'Warden',crate:'Supply Crate'};
 const sprCache=new Map();
 function enemySprite(type,shift,white,outline){
-  const T=ET[type],sh=T.fixedHue?0:shift;
+  const T=ET[type],forced=shift>=1000,sh=forced?shift%1000:T.fixedHue?0:shift,neon=shift>=2000;
   const key=type+'|'+sh+'|'+(white?1:0)+'|'+(outline?1:0);
   let s=sprCache.get(key);if(s)return s;
   if(outline){s=outlineOf(enemySprite(type,shift,false,false),'#ffe066');sprCache.set(key,s);return s}
   const h=(T.hue+sh+720)%360;
   const pal=white?{a:'#fff',b:'#fff',c:'#fff',d:'#fff',e:'#fff'}
-    :{a:`hsl(${h},${T.sat}%,58%)`,b:`hsl(${h},${Math.max(10,T.sat-10)}%,30%)`,c:'#fff',d:'#14101c',e:`hsl(${(h+40)%360},90%,76%)`};
+    :{a:`hsl(${h},${neon?100:T.sat}%,${neon?60:58}%)`,b:`hsl(${h},${neon?90:Math.max(10,T.sat-10)}%,${neon?28:30}%)`,c:'#fff',d:'#14101c',e:`hsl(${(h+(neon?160:40))%360},${neon?100:90}%,${neon?70:76}%)`};
   s=makeSprite(T.rows,pal);sprCache.set(key,s);return s;
 }
 const ICONS={
@@ -902,7 +904,7 @@ function drawDecoy(ox,oy){
 }
 /* card passives that run every frame */
 function updatePassives(dt){
-  G.rxB=Math.min(14,(G.rxB||0)+dt*30);
+  G.rxB=Math.min(10,(G.rxB||0)+dt*16);
   if(S.staticF){G.staticT=(G.staticT||0)-dt;if(G.staticT<=0){G.staticT=1.3/S.staticF;const t=nearest(P.x,P.y,75);if(t){chainZap(t,P,1+S.staticF,20*dmgMul(),'static',false);snd('zap')}}}
   if(S.frostAura){const r=30+S.frostAura*10;query(P.x,P.y,r,e=>{if(e.type!=='boss'&&Math.hypot(e.x-P.x,e.y-P.y)<r)e.slow=Math.max(e.slow,.3)});
     if(R()<.3){const a=R()*TAU;PT.push({x:P.x+Math.cos(a)*r,y:P.y+Math.sin(a)*r,vx:0,vy:-6,life:.4,max:.4,c:'#a6f0ff',s:1})}}
@@ -924,9 +926,9 @@ function updateExtraModes(dt){
 
 /* ================= presentation: boss intro cards, land wipes, screen effects ================= */
 /* boss intro: letterbox bars slide in, a band with the boss's portrait, name and title, and a moment of slow motion */
-function showBossCard(B){
+function showBossCard(B,shift){
   const el=$('bossCard');el.style.setProperty('--bc',B.col);
-  $('bcImg').src=enemySprite(B.spr,0,false).toDataURL();$('bcName').textContent=B.name.toUpperCase();$('bcTitle').textContent=B.title;
+  $('bcImg').src=enemySprite(B.spr,shift||0,false).toDataURL();$('bcName').textContent=B.name.toUpperCase();$('bcTitle').textContent=B.title;
   $('banner').classList.remove('show');
   el.hidden=false;el.classList.remove('on','out');void el.offsetWidth;el.classList.add('on');
   G.slowT=RM?0:1.5;G.chroma=Math.max(G.chroma||0,.5);
@@ -1615,12 +1617,49 @@ function reaction(kind,e,dmg){
   if((G.rxB||0)<1)return;G.rxB-=1;
   const k=(S.rxMul||1);G.rx=G.rx||{};G.rx[kind]=(G.rx[kind]||0)+1;
   if(!G.hinted['rx:'+kind]){G.hinted['rx:'+kind]=1;toast(2,RX_HINT[kind])}
-  if(kind==='steam'){e.slow=0;e.burn=0;const r=18*S.area;query(e.x,e.y,r+6,o=>{if(Math.hypot(o.x-e.x,o.y-e.y)<r+o.r)hurt(o,dmg*.8*k,{silent:true,src:'reaction',elem:'reaction'})});
+  if(kind==='steam'){e.slow=0;e.burn=0;const r=18*S.area;query(e.x,e.y,r+6,o=>{if(Math.hypot(o.x-e.x,o.y-e.y)<r+o.r)hurt(o,dmg*.5*k,{silent:true,src:'reaction',elem:'reaction'})});
     RINGS.push({x:e.x,y:e.y,r:0,max:r,life:.3,t:0,c:'#e8f6ff',noFill:1});burst(e.x,e.y,'#e8f6ff',10,50,.4)}
-  else if(kind==='gas'){e.pois=0;const r=24*S.area;query(e.x,e.y,r+6,o=>{if(Math.hypot(o.x-e.x,o.y-e.y)<r+o.r)hurt(o,dmg*1.1*k,{silent:true,src:'reaction',elem:'reaction',ignite:1})});
+  else if(kind==='gas'){e.pois=0;const r=24*S.area;query(e.x,e.y,r+6,o=>{if(Math.hypot(o.x-e.x,o.y-e.y)<r+o.r)hurt(o,dmg*.7*k,{silent:true,src:'reaction',elem:'reaction',ignite:1})});
     RINGS.push({x:e.x,y:e.y,r:0,max:r,life:.35,t:0,c:'#9be15d',noFill:1});burst(e.x,e.y,'#ff9f43',14,70,.4);burst(e.x,e.y,'#9be15d',8,50,.4);G.shake=Math.max(G.shake,.8)}
-  else if(kind==='toxicshock'){let prev=e,n=0;for(const o of E){if(n>=4)break;if(o===e||o.dead||!(o.pois>0)||Math.hypot(o.x-e.x,o.y-e.y)>80)continue;ARCS.push({x1:prev.x,y1:prev.y,x2:o.x,y2:o.y,life:.2});hurt(o,dmg*.9*k,{silent:true,src:'reaction',elem:'reaction'});prev=o;n++}
+  else if(kind==='toxicshock'){let prev=e,n=0;for(const o of E){if(n>=4)break;if(o===e||o.dead||!(o.pois>0)||Math.hypot(o.x-e.x,o.y-e.y)>80)continue;ARCS.push({x1:prev.x,y1:prev.y,x2:o.x,y2:o.y,life:.2});hurt(o,dmg*.6*k,{silent:true,src:'reaction',elem:'reaction'});prev=o;n++}
     burst(e.x,e.y,'#c6f06a',8,50,.3)}
+}
+
+/* ================= endless bosses =================
+   Every lap after the first, bosses come back recoloured (shifted on lap 2, neon on lap 3, cycling rainbow
+   from lap 4) and with random mutations, one more per lap (up to four). */
+const BOSS_MODS={
+  swift:{name:'Swift',desc:'faster attacks and movement'},
+  armored:{name:'Armored',desc:'takes 30% less damage until it enrages'},
+  volatile:{name:'Volatile',desc:'every attack also fires a ring of shots'},
+  brood:{name:'Brooding',desc:'keeps spawning crawlers'},
+  regen:{name:'Regenerating',desc:'heals when you stop hitting it'},
+  chaotic:{name:'Chaotic',desc:'steals an attack from another boss'},
+  colossal:{name:'Colossal',desc:'50% more HP'},
+  vampiric:{name:'Vampiric',desc:'heals whenever it hits you'},
+};
+const STEAL=['ring','spiral','rubble','lavarain','frostfan','spores','gasring','prismburst','eruption','singularity','twinspiral','crossfire','icewall'];
+function bossLook(b,lap){
+  if(lap<=0)return 0;
+  if(lap===1)return 1000+120;                                           // shifted colours
+  if(lap===2)return 2000+240;                                           // neon
+  return 2000+((Math.floor((G.time||0)*8)*30)%360);                     // rainbow, cycling
+}
+function bossHueCol(spr,shift){const T=ET[spr];const h=(T.hue+(shift%1000)+720)%360;return shift>=2000?`hsl(${h},100%,62%)`:`hsl(${h},85%,62%)`}
+function mutateBoss(b,lap){
+  b.lap=lap;b.mods=[];if(lap<=0)return;
+  const pool=Object.keys(BOSS_MODS);
+  while(b.mods.length<Math.min(4,lap)){const m=pick(pool);if(!b.mods.includes(m))b.mods.push(m)}
+  if(b.mods.includes('colossal')){b.max*=1.5;b.hp=b.max}
+  if(b.mods.includes('swift')){b.rage+=1;b.spd*=1.3}
+  if(b.mods.includes('chaotic')){const own=bossOf(b).pats;const p=STEAL.filter(k=>!own.includes(k));b.extra=[pick(p)]}
+  b.shift=bossLook(b,lap);b.col=bossHueCol(b.spr,b.shift);
+}
+function bossModsTick(e,dt){
+  if(e.lap>=3)e.shift=bossLook(e,e.lap);
+  if(!e.mods||!e.mods.length)return;
+  if(e.mods.includes('brood')){e.broodT=(e.broodT??5)-dt;if(e.broodT<=0){e.broodT=6;for(let i=0;i<3;i++){const m=spawnEnemy('mini',e.x+rnd(-8,8),e.y+rnd(-8,8),{elite:false});m.vx=rnd(-60,60);m.vy=rnd(-60,60)}}}
+  if(e.mods.includes('regen')&&G.time-(e.hitT||0)>2&&e.hp<e.max){e.hp=Math.min(e.max,e.hp+e.max*.012*dt);if(R()<.1)PT.push({x:e.x+rnd(-6,6),y:e.y-4,vx:0,vy:-14,life:.4,max:.4,c:'#9be15d',s:1})}
 }
 
 /* ================= event coordinator =================
@@ -1735,9 +1774,9 @@ function drawLandmarks(ox,oy){
    Calm: midway between bosses (threat 3, 8, 13, ...) the horde melts away and a beacon lights up some distance off.
      Reach it in time: heal, two free levels, and a checkpoint (if you die later, you come back there once).
      Too slow: the horde comes back from every side at once. */
-const CLEAR_RUSH=12,CLEAR_MAX=30,LULL_LIMIT=22;
+const CLEAR_RUSH=12,CLEAR_MAX=30,LULL_LIMIT=26;
 const countsForClear=e=>!e.dead&&!e.giant&&e.type!=='crate'&&e.type!=='nest'&&e.type!=='thief'&&e.type!=='ufo'&&e.type!=='pylon'&&e.type!=='boss';
-function eventBar(txt){const el=$('eventBar');if(!txt){if(!el.hidden)el.hidden=true;return}if(el.hidden)el.hidden=false;if(el.textContent!==txt)el.textContent=txt}
+function eventBar(txt,urg){const el=$('eventBar');el.classList.toggle('urg',!!urg);if(!txt){if(!el.hidden)el.hidden=true;return}if(el.hidden)el.hidden=false;if(el.textContent!==txt)el.textContent=txt}
 function startClear(){
   G.clear={t:0,rushed:false};G.lull=null;
   banner('THE HORDE STOPS','Clear them all out and the boss will come');snd('boss');
@@ -1756,7 +1795,7 @@ function updateClear(dt){
 }
 function startLull(){
   G.lullAt=G.threat-G.threat%5;evStart();
-  const a=R()*TAU,d=rnd(420,520),bx=P.x+Math.cos(a)*d,by=P.y+Math.sin(a)*d;
+  const a=R()*TAU,d=rnd(320,400),bx=P.x+Math.cos(a)*d,by=P.y+Math.sin(a)*d;
   G.lull={phase:'calm',t:0,x:bx,y:by,limit:LULL_LIMIT,start:G.time};
   // the horde melts away, nearest last, and their shots go with them
   for(const e of E){if(!countsForClear(e))continue;e.leaveT=.2+Math.hypot(e.x-P.x,e.y-P.y)/160}
@@ -1770,18 +1809,31 @@ function updateLull(dt){
   const L=G.lull;L.t+=dt;
   if(L.phase==='calm'){
     const d=Math.hypot(P.x-L.x,P.y-L.y),left=Math.max(0,Math.ceil(L.limit-L.t));
+    const fast=L.t<=L.limit*.5;
     if(d<14){
       L.phase='done';L.t=0;G.check={x:L.x,y:L.y};
-      const heal=Math.round(P.max*.3);P.hp=Math.min(P.max,P.hp+heal);
-      G.level+=2;G.pendingLv+=2;G.lvCD=1.2;G.need=xpNeed(G.level);
+      const lv=fast?3:2,heal=Math.round(P.max*(fast?.45:.3));P.hp=Math.min(P.max,P.hp+heal);
+      G.level+=lv;G.pendingLv+=lv;G.lvCD=1.2;G.need=xpNeed(G.level);
       RINGS.push({x:L.x,y:L.y,r:0,max:60,life:.6,t:0,c:'#9be1ff',noFill:1});burst(L.x,L.y,'#9be1ff',40,90,.6,2);G.flash=Math.max(G.flash,.4);snd('level');
-      G.lullLog.push({threat:G.threat,reached:true,seconds:Math.round(G.time-L.start)});
-      banner('CHECKPOINT','+'+heal+' HP · 2 levels · if you fall, you come back here once');
+      G.lullLog.push({threat:G.threat,reached:true,fast,seconds:Math.round(G.time-L.start)});
+      banner(fast?'FAST CHECKPOINT':'CHECKPOINT','+'+heal+' HP · '+lv+' levels · if you fall, you come back here once');
     }else if(L.t>=L.limit){
       L.phase='done';L.t=0;G.lullLog.push({threat:G.threat,reached:false});
       for(let i=0;i<4;i++){const a=i/4*TAU+R()*.5,dd=Math.hypot(LW,LH)/2+10,type=chooseType();for(let k=0;k<squadSize()+2;k++)spawnEnemy(R()<.75?type:null,P.x+Math.cos(a)*dd+rnd(-14,14),P.y+Math.sin(a)*dd+rnd(-14,14))}
       banner('TOO SLOW','The horde comes from every side');G.shake=Math.max(G.shake,2);snd('boss');
-    }else eventBar('BEACON · '+left+'s');
+    }else{
+      // the horde starts regathering after 40% of the time: small packs close in from behind, faster and faster
+      const f=L.t/L.limit;
+      if(f>.4){
+        if(!L.warned){L.warned=1;toast(1,'The horde is regathering. Move!')}
+        L.sq=(L.sq??0)-dt;
+        if(L.sq<=0){L.sq=3.2-2.2*(f-.4)/.6;
+          const away=Math.atan2(P.y-L.y,P.x-L.x)+rnd(-.9,.9),dd=Math.hypot(LW,LH)/2+8,type=chooseType(),n=2+Math.floor(f*3);
+          for(let k=0;k<n;k++){const m=spawnEnemy(type,P.x+Math.cos(away)*dd+rnd(-10,10),P.y+Math.sin(away)*dd+rnd(-10,10),{elite:false});m.spd*=1.25}}
+      }
+      if(left<=10&&left!==L.tick){L.tick=left;snd('beat');if(left<=5)G.shake=Math.max(G.shake,.6)}
+      eventBar('BEACON · '+Math.round(d/10)+'m · '+left+'s'+(fast?' · FAST BONUS':''),left<=10);
+    }
   }
   if(L.phase==='done'){eventBar(null);if(L.t>1.5){G.lull=null;G.spawnAcc=0;G.packT=Math.max(G.packT,6)}}
 }
@@ -1798,7 +1850,7 @@ function tryCheckpoint(){
 function drawEvents(ox,oy){
   const L=G.lull;
   if(L&&L.phase==='calm'){
-    const x=RK(L.x-ox),y=RK(L.y-oy),p=.5+.5*Math.sin(G.time*5);
+    const x=RK(L.x-ox),y=RK(L.y-oy),p=.5+.5*Math.sin(G.time*(L.limit-L.t<10?12:5));
     ctx.globalAlpha=.18+.12*p;ctx.fillStyle='#9be1ff';ctx.fillRect(x-3,y-80,7,80);ctx.globalAlpha=.5+.3*p;ctx.fillRect(x-1,y-80,3,80);
     ctx.globalAlpha=.8;ring(x,y,12+p*2,'#9be1ff');ctx.globalAlpha=.4;ring(x,y,16+p*3,'#9be1ff');ctx.globalAlpha=1;
     ctx.fillStyle='#fff';ctx.fillRect(x-1,y-3,3,3);
@@ -1882,6 +1934,7 @@ function spawnBoss(){
   const hm=(1+G.threat*.3)*ARENA_HP*bossEarly()*(A.final?1.5:1);
   const b=spawnEnemy('boss',x,y,{elite:false,hpMul:hm});
   b.bk=A.bi;b.spr=B.spr;b.col=B.col;b.cd=1.6;b.pat=-1;b.q=[];b.sum=6;b.rage=0;G.boss=b;
+  mutateBoss(b,biomeOf(G.threat).lap);
   if(A.fmt==='pylons'){
     b.shieldN=4;b.pylons=[];
     for(let i=0;i<4;i++){const a=i/4*TAU+R(),pl=spawnEnemy('pylon',x+Math.cos(a)*80,y+Math.sin(a)*80,{elite:false,hpMul:hm});pl.owner=b;b.pylons.push(pl)}
@@ -1889,7 +1942,8 @@ function spawnBoss(){
   if(A.fmt==='submerge')b.cd=2.4;
   RINGS.push({x,y,r:0,max:40,life:.5,t:0,c:B.col});burst(x,y,B.col,40,90,.6,2);G.shake=Math.max(G.shake,2.5);
   $('bossName').textContent=B.name.toUpperCase();
-  showBossCard(A.final?Object.assign({},B,{title:'FINAL BOSS · '+B.title}):B);snd('boss');
+  showBossCard(A.final?Object.assign({},B,{title:'FINAL BOSS · '+B.title}):b.mods.length?Object.assign({},B,{col:b.col,title:'Lap '+(b.lap+1)+' · '+b.mods.map(m=>BOSS_MODS[m].name).join(' · ')}):B,b.shift||0);snd('boss');
+  if(b.mods.length)setTimeout(()=>toast(3,'Mutations: '+b.mods.map(m=>BOSS_MODS[m].name+' ('+BOSS_MODS[m].desc+')').join(', ')),2400);
 }
 function pylonDown(pl){
   const b=pl.owner;if(!b||b.dead)return;
@@ -1902,7 +1956,7 @@ function arenaWon(e){
   const A=G.arena,B=bossOf(e),F=FMT[A.fmt];if(!A)return;
   A.phase='out';A.t=0;A.won=true;
   giveTrophy(B);
-  G.bossLog.push({boss:B.name,fight:A.fmt,phase2:!!e.p2,threat:G.threat,fightSeconds:Math.round(G.time-A.fightStart),hpLeft:Math.ceil(P.hp)+'/'+P.max});
+  G.bossLog.push({boss:B.name,fight:A.fmt,phase2:!!e.p2,mods:(e.mods||[]).join(',')||undefined,threat:G.threat,fightSeconds:Math.round(G.time-A.fightStart),hpLeft:Math.ceil(P.hp)+'/'+P.max});
   // in a walled fight everything the boss brought goes with it; in the open the horde stays
   for(const o of E)if(!o.dead&&o!==e){o.dead=true;burst(o.x,o.y,o.col,4,40,.3)}
   EB.length=0;Z=Z.filter(z=>{const k=ZK[z.kind];return k&&(k.friendly&&!k.hostile)});
@@ -2044,7 +2098,8 @@ function bossMove(e,dx,dy,d){
   return null;
 }
 function bossThink(e,dt,dx,dy,d){
-  const B=bossOf(e),A=G.arena,pats=e.p2?B.pats.concat(BOSS_P2[B.name]||[]):B.pats;
+  const B=bossOf(e),A=G.arena,pats=(e.p2?B.pats.concat(BOSS_P2[B.name]||[]):B.pats).concat(e.extra||[]);
+  bossModsTick(e,dt);
   for(const q of e.q)q.t-=dt;
   for(let i=0;i<e.q.length;i++)if(e.q[i].t<=0){const q=e.q.splice(i--,1)[0];q.fn()}
   // mid-attack movement overrides
@@ -2078,7 +2133,7 @@ function bossThink(e,dt,dx,dy,d){
   // after a full cycle of attacks the boss stops to catch its breath: it takes extra damage, and a heart drops
   if(e.pat===pats.length-1&&!e.rested&&!(e.sub||e.phase>0||e.stalk>0||e.charge>0||e.spiral>0)){e.rested=true;bossRest(e);return [0,0,0]}
   e.rested=false;
-  e.pat=(e.pat+1)%pats.length;
+  e.pat=(e.pat+1)%pats.length;if(e.mods&&e.mods.includes('volatile'))bLater(e,.35,()=>bRing(e,10,45,.35));
   const T=G.threat,f=bossFaster(e),aim=Math.atan2(dy,dx);
   switch(next){
     // --- the Warden (ruins arena)
@@ -2179,6 +2234,7 @@ function burst(x,y,col,n,sp=50,life=.4,size=1){
 }
 function hurt(e,dmg,o={}){
   if(e.restT>G.time)dmg*=1.25;
+  if(e.mods&&e.type==='boss'){e.hitT=G.time;if(!e.p2&&e.mods.includes('armored'))dmg*=.7}
   if(e.type==='boss'&&!e.p2&&!e.dead&&e.q&&e.hp-dmg<e.max*.5&&!(e.shieldN>0)&&!(e.phase>0)){bossPhase2(e);dmg=Math.max(0,e.hp-e.max*.5)}
   if(e.type==='boss'&&!e.dead&&!(e.phase>0)&&!(e.shieldN>0)&&dmg>=e.max*.008&&!(G.hsT>G.time)){G.hsT=G.time+.3;G.stop=Math.max(G.stop,.035)}
   if(e.dead||e.phase>0||e.type==='ufo')return;                       // UFOs fly too high to hit
@@ -2293,6 +2349,7 @@ function tryPhoenix(){
   S.phoenix=0;P.hp=Math.round(P.max*.5);P.inv=2;G.flash=.8;G.stop=.2;pulse();banner('REBORN','Phoenix Feather spent');buzz(120);return true;
 }
 function hurtPlayer(d,cause){
+  if(G.boss&&G.boss.mods&&G.boss.mods.includes('vampiric')&&cause===bossOf(G.boss).name&&P.inv<=0&&G.state==='play'){G.boss.hp=Math.min(G.boss.max,G.boss.hp+G.boss.max*.03);burst(G.boss.x,G.boss.y,'#ff3b5c',6,40,.3)}
   if(P.inv>0||G.state!=='play'||P.bubble>0||isMode('titan'))return;
   if(P.shield>0){P.shield--;P.shieldT=Math.max(P.shieldT,8/Math.max(1,S.shieldMax));P.inv=.5;burst(P.x,P.y,'#6be0ff',12,60,.35);snd('zap');buzz(15);G.hudDirty=true;return}
   if(S.armor)d*=Math.max(.5,1-S.armor);if(P.armorT>0)d*=.5;
@@ -3230,6 +3287,7 @@ function render(){
   postFx(G.rdt||0);
   ctx.setTransform(K,0,0,K,0,0);                                    // screen overlays stay put
   drawWipe(G.rdt||0);drawVignette();
+  if(G.lull&&G.lull.phase==='calm'&&G.lull.limit-G.lull.t<10){const k=(1-(G.lull.limit-G.lull.t)/10)*(.5+.5*Math.sin(G.time*12));ctx.globalAlpha=.12+.3*k;ctx.fillStyle='#ff2a44';const w=3+Math.round(4*k);ctx.fillRect(0,0,LW,w);ctx.fillRect(0,LH-w,LW,w);ctx.fillRect(0,0,w,LH);ctx.fillRect(LW-w,0,w,LH);ctx.globalAlpha=1}
   // offscreen boss arrow
   if(G.boss){const b=G.boss,bx=b.x-ox,by=b.y-oy;if(bx<0||by<0||bx>LW||by>LH){const a=Math.atan2(b.y-P.y,b.x-P.x);
     const x=clamp(LW/2+Math.cos(a)*(LW/2-10),8,LW-8),y=clamp(LH/2+Math.sin(a)*(LH/2-10),8,LH-8);ctx.fillStyle=Math.floor(G.time*4)%2?'#c45cff':'#fff';
