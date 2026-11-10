@@ -325,7 +325,7 @@ body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
 
 <script>
 'use strict';
-const VERSION='1.18.0';
+const VERSION='1.18.1';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -910,8 +910,8 @@ function postFx(dt){
   if(!RM){
     // heat shimmer: rows wobble sideways the closer you are to the fire wall
     const A=G.arena;
-    if(A&&A.fmt==='escape'&&A.fireA>0){
-      const dist=P.x*A.dx+P.y*A.dy-A.fs,amp=Math.max(0,Math.min(1,1-dist/130))*1.4*A.fireA;
+    if(A&&A.fmt==='inferno'&&A.fireA>0){
+      const dist=A.r-Math.hypot(P.x-A.x,P.y-A.y),amp=Math.max(0,Math.min(1,1-dist/60))*1.4*A.fireA;
       if(amp>.3){FX.tmp=fxCanvas(FX.tmp,W0,H0);const t=FX.tmp.getContext('2d');t.clearRect(0,0,W0,H0);t.drawImage(cv,0,0);
         const st=2*K;for(let y=0;y<H0;y+=st){const off=Math.round(Math.sin(y/K*.3+G.time*9)*amp*K);if(off)ctx.drawImage(FX.tmp,0,y,W0,st,off,y,W0,st)}}
     }
@@ -1338,26 +1338,28 @@ function drawEvents(ox,oy){
      arena    walls rise around you, the horde dissolves, just you and the boss (the Warden)
      floe     like the arena, but the floor is all ice and the edge cracks away as the fight goes on (Glacial Maw)
      hunt     no walls, the horde keeps coming; the Hollow stalks you unseen and can only be hurt when it shows itself
-     escape   a wall of fire sweeps across the map; the Cinder King rides just ahead of it
+     inferno  a ring of fire closes in around you until it's a small arena; the Cinder King fights you inside it
      pylons   a stationary, shielded colossus powered by crystal pylons you have to break first
      submerge the Bog Mother dives and surfaces somewhere else; bubbles show where, a second early
    Threat doesn't climb and land hazards stop during a fight. Win: heal 35% and a Power Surge (3 banked levels). */
 const ARENA_R=115;            // arena radius in world pixels
-const FLOE_R0=140,FLOE_R1=72; // the ice floe starts this big and cracks down to this
+const FLOE_R0=140,FLOE_R1=72;
+const INF_R0=270,INF_R1=115,INF_SPD=7;  // ring of fire: starts this big, closes this fast (px/s) down to this // the ice floe starts this big and cracks down to this
 const ARENA_HP=8;                                                     // v1.16.2: 5 -> 8 (fights were 17-19 s)
-const BOSS_DMG=1.25;                                                   // boss shots and shells hit 40% harder             // boss HP multiplier for boss fights (tune with the run report's bossFights)
+const BOSS_DMG=1.25;
+const bossEarly=()=>Math.min(1,.6+G.threat*.027);                   // threat 5: 73%, 10: 87%, 15+: full                                                   // boss shots and shells hit 40% harder             // boss HP multiplier for boss fights (tune with the run report's bossFights)
 const FMT={
   arena:   {walls:1,floor:1,horde:0,  zoom:2*ARENA_R,big:'BOSS ARENA',  sub:'Just you and it'},
   floe:    {walls:1,floor:1,horde:0,  zoom:2*FLOE_R0,big:'THIN ICE',    sub:'The floe is breaking up'},
   hunt:    {walls:0,floor:0,horde:0, zoom:50,       big:'THE HUNT',    sub:'Something is stalking you'},
-  escape:  {walls:0,floor:0,horde:0, zoom:90,       big:'RUN',         sub:'The forest is burning behind you'},
+  inferno: {walls:0,floor:0,horde:0, zoom:130,      big:'RING OF FIRE',sub:'The forest is burning in on you'},
   pylons:  {walls:0,floor:0,horde:0,zoom:70,       big:'SHIELDED',    sub:'Break the pylons to expose it'},
   submerge:{walls:0,floor:0,horde:0, zoom:40,       big:'THE BOG STIRS',sub:'Hit her when she surfaces'},
 };
 const BOSSES=[
   {name:'The Warden',title:'Keeper of the Ruins',fmt:'arena',spr:'boss',col:'#ff5e7a',bul:'#ff3fa4',summon:'mini',
     pats:['ring','spiral','rubble','summon']},
-  {name:'Cinder King',title:'Lord of the Burning Forest',fmt:'escape',spr:'b_fire',col:'#ff7a2a',bul:'#ff9f43',summon:'ember',
+  {name:'Cinder King',title:'Lord of the Burning Forest',fmt:'inferno',spr:'b_fire',col:'#ff7a2a',bul:'#ff9f43',summon:'ember',
     pats:['lavarain','firespiral','flamedash','summon']},
   {name:'Glacial Maw',title:'Hunger of the Frozen Wastes',fmt:'floe',spr:'b_ice',col:'#a6f0ff',bul:'#a6f0ff',summon:'frostling',
     pats:['frostfan','avalanche','icefield','avalanche','summon']},
@@ -1382,7 +1384,7 @@ const fmtOf=()=>G.arena?FMT[G.arena.fmt]:null;
 function startArena(){
   const bi=biomeOf(G.threat).i%BIOMES.length,B=BOSSES[bi],F=FMT[B.fmt];
   const fin=bi===5&&!G.won;
-  const A=G.arena={final:fin,x:P.x,y:P.y,r:B.fmt==='floe'?FLOE_R0:ARENA_R,fmt:B.fmt,phase:'in',t:0,bi,wall:0,start:G.time,fireA:0,fireT:0};
+  const A=G.arena={final:fin,x:P.x,y:P.y,r:B.fmt==='floe'?FLOE_R0:B.fmt==='inferno'?INF_R0:ARENA_R,fmt:B.fmt,phase:'in',t:0,bi,wall:0,start:G.time,fireA:0,fireT:0};
   // the horde dissolves for every boss fight: no souls, no kills, just gone. Only the boss and what it summons remain.
   for(const e of E){if(e.dead)continue;e.dead=true;if(PT.length<500)burst(e.x,e.y,e.col,3,35,.35)}
   BOOMQ.length=0;if(F.walls)SHRINES=[];
@@ -1390,7 +1392,6 @@ function startArena(){
   if(F.floor){G.arenaPrevG=BIOMES[G.biomeI%BIOMES.length];G.arenaG=ARENA_G[bi];G.morph=0;G.morphSp=1.4;landWipe(B.col)}
   // enemy shots and the land's own hazards stop for every kind of fight
   EB.length=0;Z=Z.filter(z=>{const k=ZK[z.kind];return k&&k.friendly&&!k.hostile});
-  if(B.fmt==='escape'){const a=R()*TAU;A.dx=Math.cos(a);A.dy=Math.sin(a);A.fs=P.x*A.dx+P.y*A.dy-150;A.fv=30}
   RINGS.push({x:P.x,y:P.y,r:0,max:F.walls?A.r:80,life:.9,t:0,c:B.col,noFill:1});
   G.flash=Math.max(G.flash,.6);G.shake=Math.max(G.shake,2);buzz(80);snd('boss');
   banner(F.big,F.sub);
@@ -1398,10 +1399,10 @@ function startArena(){
 function spawnBoss(){
   const A=G.arena,B=BOSSES[A.bi];
   let x,y;
-  if(A.fmt==='escape'){x=P.x+A.dx*95;y=P.y+A.dy*95}
+  if(A.fmt==='inferno'){const a=R()*TAU;x=A.x+Math.cos(a)*90;y=A.y+Math.sin(a)*90}
   else if(A.fmt==='pylons'||A.fmt==='hunt'){const a=R()*TAU;x=P.x+Math.cos(a)*110;y=P.y+Math.sin(a)*110}
   else{const a=Math.atan2(P.y-A.y,P.x-A.x)+Math.PI+rnd(-.6,.6),d=A.r*.6;x=A.x+Math.cos(a)*d;y=A.y+Math.sin(a)*d}
-  const hm=(1+G.threat*.3)*ARENA_HP*(A.final?1.5:1);
+  const hm=(1+G.threat*.3)*ARENA_HP*bossEarly()*(A.final?1.5:1);
   const b=spawnEnemy('boss',x,y,{elite:false,hpMul:hm});
   b.bk=A.bi;b.spr=B.spr;b.col=B.col;b.cd=1.6;b.pat=-1;b.q=[];b.sum=6;b.rage=0;G.boss=b;
   if(A.fmt==='pylons'){
@@ -1463,14 +1464,15 @@ function updateArena(dt){
     A.r=nr;
     if(Math.hypot(P.x-A.x,P.y-A.y)>A.r-7)P.chill=Math.max(P.chill,.6);
   }
-  // escape: the fire wall advances and burns whatever falls behind it
-  if(A.fmt==='escape'){
-    if(A.phase==='fight'){A.fv=Math.min(52,30+(G.time-A.fightStart)*.5);A.fs+=A.fv*dt}
+  // ring of fire: closes in, burns whatever is outside it; the King stays inside
+  if(A.fmt==='inferno'){
+    if(A.phase==='fight')A.r=Math.max(INF_R1,INF_R0-(G.time-A.fightStart)*INF_SPD);
+    const b=G.boss;if(b&&!b.dead){const dx=b.x-A.x,dy=b.y-A.y,d=Math.hypot(dx,dy);if(d>A.r-10){b.x=A.x+dx/d*(A.r-10);b.y=A.y+dy/d*(A.r-10);b.charge=0}}
     A.fireT-=dt;
     if(A.fireT<=0&&A.fireA>.5){A.fireT=.25;
-      if(P.x*A.dx+P.y*A.dy<A.fs){const was=P.inv;P.inv=0;hurtPlayerEnv(Math.max(4,P.max*.05),'the forest fire');P.inv=was;burst(P.x,P.y,'#ff9f43',4,30,.3)}
-      for(const e of E)if(!e.dead&&e.type!=='boss'&&e.x*A.dx+e.y*A.dy<A.fs-4)hurt(e,e.max*.35,{silent:true,src:'env',elem:'fire'});
-      for(const p of PU)if(p.x*A.dx+p.y*A.dy<A.fs)p.vac=true;              // souls don't burn, they come to you
+      if(Math.hypot(P.x-A.x,P.y-A.y)>A.r){const was=P.inv;P.inv=0;hurtPlayerEnv(Math.max(4,P.max*.05),'the forest fire');P.inv=was;burst(P.x,P.y,'#ff9f43',4,30,.3)}
+      for(const e of E)if(!e.dead&&e.type!=='boss'&&Math.hypot(e.x-A.x,e.y-A.y)>A.r+4)hurt(e,e.max*.35,{silent:true,src:'env',elem:'fire'});
+      for(const p of PU)if(Math.hypot(p.x-A.x,p.y-A.y)>A.r)p.vac=true;   // souls don't burn, they come to you
     }
   }
 }
@@ -1486,22 +1488,19 @@ function arenaClamp(o,r){
 function drawArena(ox,oy){
   const A=G.arena;if(!A)return;
   const B=BOSSES[A.bi];
-  if(A.fmt==='escape'&&A.fireA>0){
-    // the burned side: everything behind the line
-    const cx=cam.x,cy=cam.y,k=A.fs-(cx*A.dx+cy*A.dy),px=cx+A.dx*k,py=cy+A.dy*k,vx=-A.dy,vy=A.dx,L=900;
-    const pt=(a,b)=>[px+vx*a-A.dx*b-ox,py+vy*a-A.dy*b-oy];
-    ctx.save();ctx.globalAlpha=.55*A.fireA;ctx.fillStyle='#2a0a04';ctx.beginPath();
-    let q=pt(-L,0);ctx.moveTo(q[0],q[1]);q=pt(L,0);ctx.lineTo(q[0],q[1]);q=pt(L,L);ctx.lineTo(q[0],q[1]);q=pt(-L,L);ctx.lineTo(q[0],q[1]);ctx.fill();
-    ctx.globalAlpha=.5*A.fireA;ctx.fillStyle='#c8361a';ctx.beginPath();
-    q=pt(-L,0);ctx.moveTo(q[0],q[1]);q=pt(L,0);ctx.lineTo(q[0],q[1]);q=pt(L,14);ctx.lineTo(q[0],q[1]);q=pt(-L,14);ctx.lineTo(q[0],q[1]);ctx.fill();ctx.restore();
-    // flickering flame tongues along the front
-    const span=Math.hypot(LW,LH)/2+20;
-    for(let a=-span;a<span;a+=3){const fl=(Math.sin(a*.7+G.time*13)+Math.sin(a*.31-G.time*7))*2.5+5;const p=pt(a,-fl*A.fireA);const b=pt(a,0);
-      if(p[0]<-4||p[1]<-12||p[0]>LW+4||p[1]>LH+12)continue;
-      ctx.fillStyle=fl>7?'#ffd166':fl>4?'#ff9f43':'#ff5e3a';ctx.globalAlpha=A.fireA;ctx.fillRect(RK(p[0]),RK(p[1]),2,2);
-      ctx.fillStyle='#ff7a2a';ctx.fillRect(RK((p[0]+b[0])/2),RK((p[1]+b[1])/2),2,2)}
+  if(A.fmt==='inferno'&&A.fireA>0){
+    const cx=A.x-ox,cy=A.y-oy,f=A.fireA;
+    // scorched ground outside the ring, a glowing band at its edge
+    ctx.save();ctx.globalAlpha=.55*f;ctx.fillStyle='#2a0a04';ctx.beginPath();ctx.rect(-2,-2,LW+4,LH+4);ctx.arc(cx,cy,A.r+6,0,TAU);ctx.fill('evenodd');
+    ctx.globalAlpha=.45*f;ctx.fillStyle='#c8361a';ctx.beginPath();ctx.arc(cx,cy,A.r+6,0,TAU);ctx.arc(cx,cy,A.r,0,TAU,true);ctx.fill();ctx.restore();
+    // flickering flame tongues around the edge (only where they're on screen)
+    const n=Math.round(A.r*TAU/3);
+    for(let i=0;i<n;i++){const a=i/n*TAU,ex=cx+Math.cos(a)*A.r,ey=cy+Math.sin(a)*A.r;
+      if(ex<-4||ey<-14||ex>LW+4||ey>LH+4)continue;
+      const fl=(Math.sin(i*.7+G.time*13)+Math.sin(i*.31-G.time*7))*2.5+5;
+      ctx.globalAlpha=f;ctx.fillStyle=fl>7?'#ffd166':fl>4?'#ff9f43':'#ff5e3a';ctx.fillRect(RK(ex),RK(ey-fl),2,2);ctx.fillStyle='#ff7a2a';ctx.fillRect(RK(ex),RK(ey-fl/2),2,2)}
     ctx.globalAlpha=1;
-    if(R()<.6){const a=rnd(-span,span),p=pt(a,0);PT.push({x:p[0]+ox,y:p[1]+oy,vx:A.dx*15,vy:A.dy*15-20,life:.6,max:.6,c:pick(['#ffd166','#ff9f43']),s:1})}
+    if(R()<.6){const a=R()*TAU;PT.push({x:A.x+Math.cos(a)*A.r,y:A.y+Math.sin(a)*A.r,vx:0,vy:-22,life:.6,max:.6,c:pick(['#ffd166','#ff9f43']),s:1})}
   }
   if(A.wall<=0)return;
   const w=A.wall,cx=A.x-ox,cy=A.y-oy;
@@ -1543,21 +1542,15 @@ function drawBossMarks(ox,oy){
 }
 
 /* ---- boss attacks ---- */
-function bShot(e,a,spd,dmgK,o){dmgK*=BOSS_DMG;const B=bossOf(e);EB.push(Object.assign({x:e.x,y:e.y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:4,dmg:e.dmg*dmgK,from:B.name,col:B.bul},o||{}))}
+function bShot(e,a,spd,dmgK,o){dmgK*=BOSS_DMG*bossEarly();const B=bossOf(e);EB.push(Object.assign({x:e.x,y:e.y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:4,dmg:e.dmg*dmgK,from:B.name,col:B.bul},o||{}))}
 function bRing(e,n,spd,dmgK,o){const off=R();for(let i=0;i<n;i++)bShot(e,(i/n+off)*TAU,spd,dmgK,o)}
 function bLater(e,t,fn){e.q.push({t,fn})}
-function bShell(e,x,y,r,after){addZone('shell',x,y,r,1.1,{boom:{r,dmg:0,pd:e.dmg*1.1*BOSS_DMG,col:bossOf(e).col,src:'boss',hostile:true,cause:bossOf(e).name,after}})}
+function bShell(e,x,y,r,after){addZone('shell',x,y,r,1.1,{boom:{r,dmg:0,pd:e.dmg*1.1*BOSS_DMG*bossEarly(),col:bossOf(e).col,src:'boss',hostile:true,cause:bossOf(e).name,after}})}
 const bossFaster=e=>Math.max(.5,.88-G.threat*.012)*Math.pow(.88,e.rage||0);   // quicker at higher threat, and when enraged
 /* how the boss moves between attacks, by fight type (null = walk toward you) */
 function bossMove(e,dx,dy,d){
   const A=G.arena;if(!A)return null;
   if(A.fmt==='pylons')return [0,0,0];
-  if(A.fmt==='escape'){
-    // ride along just ahead of the fire, level with you
-    const along=A.fs+70,lat=P.x*-A.dy+P.y*A.dx,tx=A.dx*along-A.dy*lat,ty=A.dy*along+A.dx*lat;
-    const ex=tx-e.x,ey=ty-e.y,l=Math.hypot(ex,ey);if(l<4)return [0,0,0];
-    return [ex/l,ey/l,Math.min(l*3,Math.max(e.spd,A.fv*1.6))];
-  }
   return null;
 }
 function bossThink(e,dt,dx,dy,d){
@@ -1601,7 +1594,7 @@ function bossThink(e,dt,dx,dy,d){
     case 'rubble':e.cd=2.4*f;{const n=4+Math.floor(T/6);for(let i=0;i<n;i++){const a=R()*TAU,r=i?rnd(16,42):0;bShell(e,P.x+P.vx*.7+Math.cos(a)*r,P.y+P.vy*.7+Math.sin(a)*r,15)}}break;
     case 'summon':e.cd=2.4*f;{const n=Math.min(8,(B.summon==='golem'||B.summon==='bloater'?1:3)+Math.floor(T/8));for(let i=0;i<n;i++){const m=spawnEnemy(B.summon,e.x+rnd(-10,10),e.y+rnd(-10,10),{elite:false,hpMul:.8});m.vx=rnd(-60,60);m.vy=rnd(-60,60)}
       RINGS.push({x:e.x,y:e.y,r:0,max:26,life:.3,t:0,c:B.col,noFill:1})}break;
-    // --- Cinder King (escape): lava rain, fire spirals, a charge that leaves fire
+    // --- Cinder King (ring of fire): lava rain, fire spirals, a charge that leaves fire
     case 'lavarain':e.cd=2.6*f;{const n=5+Math.floor(T/5);for(let i=0;i<n;i++){const a=R()*TAU,r=i?rnd(18,50):0;
       bShell(e,P.x+P.vx*.7+Math.cos(a)*r,P.y+P.vy*.7+Math.sin(a)*r,14,q=>addZone('lava',q.x,q.y,11,7,{pd:10*(1+T*.06),ed:0}))}}break;
     case 'flamedash':e.cd=1.6*f;e.wind=.75;e.aimA=aim;e.onWind=()=>{e.charge=.7;e.chargeK=7;e.cx=Math.cos(e.aimA);e.cy=Math.sin(e.aimA);

@@ -24,7 +24,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 - Tougher enemies join as the threat climbs: Wraiths (turn ghostly, threat 9), Lancers (telegraphed charges, 11), Mortars (shell where you're heading, 13), Splitters (burst into shards, 15), Snipers (long aim line, 18) and Juggernauts (bullet-resistant, ring-of-shots stomp, 20).
 - Every 5 threat levels the land's boss arrives, and each one is a different kind of fight:
   - **The Warden** (Grassy Ruins): an arena. The horde vanishes, walls rise, and it's you against it.
-  - **Cinder King** (Burning Forest): an escape. A wall of fire sweeps the map and he rides just ahead of it.
+  - **Cinder King** (Burning Forest): a ring of fire. It starts wide around you and closes in to a small arena, burning anything outside it.
   - **Glacial Maw** (Frozen Wastes): thin ice. An all-ice arena whose edge cracks away during the fight.
   - **Bog Mother** (Toxic Swamp): she dives and resurfaces elsewhere, and bubbles show where a second early.
   - **Prism Colossus** (Crystal Caves): shielded. Break its four pylons first, and each one enrages it.
