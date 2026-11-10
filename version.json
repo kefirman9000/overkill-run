@@ -1,1 +1,1 @@
-{"version":"1.27.1","notes":"Damage numbers are on by default (big hits). Phones get a lighter glow pass, less work for off-screen enemies, fewer leftover decals and numbers, and the HUD only redraws what changed."}
+{"version":"1.28.0","notes":"Character abilities (E or the gold button), a new land, Storm Peaks, with gusts, Harpies and a new boss, the Tempest. More phone speed-ups: a 60 fps cap on 120 Hz screens, cached damage numbers and radar, no glow when crowded."}

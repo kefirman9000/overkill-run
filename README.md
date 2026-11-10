@@ -7,7 +7,8 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 ## How it plays
 
 - **Move** with WASD or the arrow keys. On a phone, drag anywhere on the screen.
-- **Dash** with Space or Shift, or the DASH button on touch screens. It's your only defensive move, and it gives a moment of invulnerability.
+- **Dash** with Space or Shift, or the DASH button on touch screens. It gives a moment of invulnerability.
+- **Ability** with E (or the small gold button next to Dash): each character has one, on a cooldown. Wanderer: Second Wind (heal and a moment untouchable). Medic: Triage (heal over time, allies fully healed). Berserker: Rampage (+60% damage, faster weapons). Scout: Smoke Bomb (a decoy that explodes). Tinker: Overclock (every weapon fires at once, then recharges much faster).
 - **Level up** by collecting souls. Pick one of three cards with 1, 2, 3 or a tap.
 - **Power Surge**: level-ups that come faster than one every few seconds (or during a super mode) are banked. Three or more open one Power Surge screen: spend banked levels on a hand of cards or on surge cards (Overcharge a weapon +2 levels, Fast Evolution, a boosted Legendary), or cash the rest out for overkill meter and HP. The upgrade picker has **AUTO-PICK (Q)** (take the card auto-pick would choose) and **ALWAYS AUTO-PICK** (stop showing the picker; turn it back off in Options). Options also has auto-pick: at 5+ banked levels, or always (you never see the pick screen; it takes evolutions, then mutations that finish an evolution, defense when you're hurt, weapon upgrades and the rarest cards).
 - **Pause** with P or Esc to see your build.
@@ -19,7 +20,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 - Keep moving in a fight: stand in one spot for a few seconds with enemies close around you and something comes for you, either a **UFO** that beams you up and drops you elsewhere, or a **sandworm** that burrows over and erupts beneath you. Red marks close in around you first. In quiet spots, with few enemies nearby, you can stand still as long as you like. None of them can be shot; they all give up once you move. Souls and pickups left on the ground also fade away (they blink first).
 - A **Soul Thief** turns up every minute or so. It runs from you dropping souls; catch it within 14 seconds for a burst of rare souls and a pickup (often a Heart Container).
 - The threat meter rises with kills and time. It drives spawn rate, enemy toughness and elite chance.
-- Six lands, each with its own enemies and hazards: Grassy Ruins, Burning Forest (lava), Frozen Wastes (ice you slide on), Toxic Swamp (poison clouds), Crystal Caves (eruptions), The Void (black holes). After the Void, the cycle repeats harder.
+- Seven lands, each with its own enemies and hazards: Grassy Ruins, Burning Forest (lava), Frozen Wastes (ice you slide on), Toxic Swamp (poison clouds), Crystal Caves (eruptions), Storm Peaks (gusts that shove you, with streaks showing the direction), The Void (black holes). After the Void, the cycle repeats harder.
 - Orbit Blades block enemy shots (evolved Saw Ring sends them back) and each Drone Minion can soak a shot every second.
 - Tougher enemies join as the threat climbs: Wraiths (turn ghostly, threat 9), Lancers (telegraphed charges, 11), Mortars (shell where you're heading, 13), Splitters (burst into shards, 15), Snipers (long aim line, 18) and Juggernauts (bullet-resistant, ring-of-shots stomp, 20).
 - Every 5 threat levels the land's boss arrives, and each one is a different kind of fight:
@@ -28,6 +29,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
   - **Glacial Maw** (Frozen Wastes): thin ice. An all-ice arena whose edge cracks away during the fight.
   - **Bog Mother** (Toxic Swamp): she dives and resurfaces elsewhere, and bubbles show where a second early.
   - **Prism Colossus** (Crystal Caves): shielded. Break its four pylons first, and each one enrages it.
+  - **Tempest** (Storm Peaks): blows you around with gusts, calls down lightning where you're heading, and in phase two sends rings of wind in from the arena wall. Beat it for the **Storm Vane** (+15% speed, dashes throw lightning).
   - **The Hollow** (The Void): a hunt. It stalks you unseen and can only be hurt when it shows itself.
 - During every boss fight only the boss and whatever it summons are on the field.
 - Later bosses fight in tighter arenas (down to 80% size). Every boss stops to catch its breath after each full cycle of attacks: for a couple of seconds it takes extra damage and a heart drops near you.
@@ -144,6 +146,10 @@ Each daily run has two mutations that apply to every enemy that day, the same fo
 ### Options worth knowing
 
 Damage numbers are off by default; turn them on for big hits only or for every hit (hits on the same enemy add up into one number). A small radar in the top-right corner shows the beacon, the boss, shrines, nearby landmarks and where enemies are bunching up. The end-of-run screen breaks down where your damage came from, what hurt you, how much you healed, beacons reached and each boss's fight time and mutations.
+
+### Phones
+
+On touch screens the game caps itself at 60 fps (120 Hz phones otherwise do twice the work for no gain), keeps the canvas smaller, skips the glow when the screen is crowded, lets far-off enemies think less often, and draws the radar and damage numbers from cached images.
 
 ### Codex
 
