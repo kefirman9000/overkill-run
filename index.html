@@ -140,6 +140,24 @@ details.story .dim{opacity:.45}
 .ladder{display:flex;gap:6px;flex-wrap:wrap;font-family:var(--font-d);font-size:9px}
 .ladder span{padding:3px 6px;color:#0d0b14}
 .pickrow{display:flex;flex-wrap:wrap;gap:8px}
+#title .card{max-width:min(560px,94vw)}
+#title h1{margin-bottom:10px}
+.tStart{margin:6px 0 12px}
+.tStart button{flex:1 1 0}
+.tStart #startBtn{font-size:16px;padding:14px 10px}
+.loadout{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.loadout .lo{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:8px 10px;text-align:left;min-width:0}
+.loadout .lo small{font-size:9px;color:var(--dim)}
+.loadout .lo b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.loadout .lo.open{box-shadow:0 0 0 2px var(--threat),3px 3px 0 #000}
+.sheet{background:#1a1628;border:2px solid #2a2440;padding:8px;margin-bottom:8px;max-height:46vh;overflow:auto}
+.sheet .pickrow button{width:100%;justify-content:flex-start;text-align:left}
+#wSheet .pickrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+#wSheet .pickrow button{font-size:9px}
+#cSheet .pickrow button span{color:var(--dim);font-family:var(--font-b);font-size:15px;display:block;margin-top:2px}
+.sheetDone{margin-top:8px}
+.tSmall button{font-size:9px;padding:7px 9px}
+@media (max-width:520px){.loadout{grid-template-columns:1fr}.loadout .lo{flex-direction:row;justify-content:space-between;align-items:center}}
 .pickrow button{font-size:10px;padding:8px 10px;display:flex;align-items:center;gap:6px;box-shadow:0 0 0 2px var(--edge),3px 3px 0 #000}
 .pickrow button img{width:16px;height:16px;image-rendering:pixelated}
 .pickrow button.sel{box-shadow:0 0 0 2px var(--threat),3px 3px 0 #000;color:var(--threat)}
@@ -238,26 +256,27 @@ details.story .dim{opacity:.45}
 <div class="ov" id="title">
   <div class="card">
     <h1>OVERKILL<br><span>RUN</span></h1>
-    <p>You steer and dodge. Your guns fire on their own. Kills drop souls, souls level you up, and every level is a pick of three. The threat only goes up.</p>
-    <div class="ladder" aria-label="Rarity ladder">
-      <span style="background:var(--r0)">COMMON</span><span style="background:var(--r1)">RARE</span><span style="background:var(--r2)">EPIC</span><span style="background:var(--r3)">LEGENDARY</span><span style="background:var(--r4)">MYTHIC</span>
+    <div class="btns tStart"><button class="go" id="startBtn">START RUN</button><button id="dailyBtn">DAILY RUN</button></div>
+    <div class="loadout">
+      <button class="lo" data-sheet="cSheet"><small>CHARACTER</small><b id="loC"></b></button>
+      <button class="lo" data-sheet="wSheet"><small>WEAPON</small><b id="loW"></b></button>
+      <button class="lo" data-sheet="rSheet"><small>RELICS</small><b id="loR"></b></button>
     </div>
-    <details class="story"><summary>THE STORY SO FAR</summary><div id="storyBox"></div></details>
-    <h3>CHARACTER</h3>
-    <div class="pickrow" id="cPick"></div>
-    <h3>STARTING WEAPON</h3>
-    <div class="pickrow" id="wPick"></div>
-    <h3>RELICS <span class="dim" style="font-size:.8em">(pick up to 2)</span></h3>
-    <div class="note" id="comboNote"></div>
-    <div class="pickrow" id="rPick"></div>
-    <div class="keys">
-      <kbd>WASD / ARROWS</kbd><span>move (touch: drag anywhere)</span>
-      <kbd>SPACE / SHIFT</kbd><span>dash (touch: DASH button)</span>
-      <kbd>1 2 3</kbd><span>pick an upgrade</span>
-      <kbd>P / ESC</kbd><span>pause, build, run report</span>
-    </div>
+    <div class="sheet" id="cSheet" hidden><div class="pickrow" id="cPick"></div></div>
+    <div class="sheet" id="wSheet" hidden><div class="pickrow" id="wPick"></div></div>
+    <div class="sheet" id="rSheet" hidden><div class="note">Pick up to 2. <span id="comboNote"></span></div><div class="pickrow" id="rPick"></div><button class="sheetDone">DONE</button></div>
     <div class="note" id="bestTitle"></div>
-    <div class="btns"><button class="go" id="startBtn">START RUN</button><button id="dailyBtn">DAILY RUN</button><button class="optBtn">OPTIONS</button><button id="updBtn">CHECK FOR UPDATE</button><button id="installBtn">INSTALL APP</button></div>
+    <details class="story"><summary>HOW TO PLAY</summary>
+      <p>You steer and dodge. Your guns fire on their own. Kills drop souls, souls level you up, and every level is a pick of three. The threat only goes up.</p>
+      <div class="keys">
+        <kbd>WASD / ARROWS</kbd><span>move (touch: drag anywhere)</span>
+        <kbd>SPACE / SHIFT</kbd><span>dash (touch: DASH button)</span>
+        <kbd>1 2 3 / ← → ↑</kbd><span>pick an upgrade</span>
+        <kbd>P / ESC</kbd><span>pause, build, codex, run report</span>
+      </div>
+    </details>
+    <details class="story"><summary>THE STORY SO FAR</summary><div id="storyBox"></div></details>
+    <div class="btns tSmall"><button class="optBtn">OPTIONS</button><button id="updBtn">CHECK FOR UPDATE</button><button id="installBtn">INSTALL APP</button></div>
     <div class="note" id="updTxt"></div>
   </div>
 </div>
@@ -356,7 +375,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.23.0';
+const VERSION='1.23.1';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -3330,15 +3349,16 @@ function buildTitle(){
     return `<button data-w="${id}" class="${id===chosenW?'sel':''}" ${ok?'':'disabled'} title="${ok?esc(WDEF[id].desc):'Unlock: '+UNLOCK[id].req}"><img src="${iconURL('w:'+id,ok?WDEF[id].col:'#555')}" alt="">${ok?esc(WDEF[id].name):'Locked: '+UNLOCK[id].req}</button>`}).join('');
   $('storyBox').innerHTML=storyHTML();
   if(!CHARS[chosenC].ok())chosenC='wanderer';
-  {const cs=activeCombos([...chosenR]);$('comboNote').textContent=cs.length?'Combo: '+cs.map(c=>c.name+' ('+c.desc+')').join(' · '):'Some pairs of relics combine into a bonus.'}
+  {const cs=activeCombos([...chosenR]);$('comboNote').textContent=cs.length?'Combo: '+cs.map(c=>c.name+' ('+c.desc+')').join(' · '):'Some pairs combine into a bonus.'}
   $('cPick').innerHTML=Object.keys(CHARS).map(id=>{const c=CHARS[id],ok=c.ok();
-    return `<button data-c="${id}" class="${id===chosenC?'sel':''}" ${ok?'':'disabled'}>${ok?esc(c.name)+': '+esc(c.desc):'Locked ('+esc(c.name)+'): '+esc(c.req)}</button>`}).join('');
+    return `<button data-c="${id}" class="${id===chosenC?'sel':''}" ${ok?'':'disabled'}><div><b>${esc(c.name)}</b><span>${ok?esc(c.desc):'Locked: '+esc(c.req)}</span></div></button>`}).join('');
+  $('loC').textContent=CHARS[chosenC].name;$('loW').textContent=WDEF[chosenW].name;$('loR').textContent=chosenR.size?[...chosenR].map(r=>RELICS[r].name).join(' + '):'None';
   $('rPick').innerHTML=Object.keys(RELICS).map(id=>{const r=RELICS[id],ok=r.ok();if(!ok)chosenR.delete(id);
     return `<button data-r="${id}" class="${chosenR.has(id)?'sel':''}" ${ok?'':'disabled'}>${ok?esc(r.name)+': '+esc(r.desc):'Locked: '+esc(r.req)}</button>`}).join('');
   const today=new Date().toLocaleDateString('en-CA');
   $('dailyBtn').textContent=meta.daily[today]?`DAILY RUN (best ${meta.daily[today]})`:'DAILY RUN';
 }
-$('wPick').addEventListener('click',e=>{const b=e.target.closest('button[data-w]');if(b&&!b.disabled){chosenW=b.dataset.w;buildTitle()}});
+$('wPick').addEventListener('click',e=>{const b=e.target.closest('button[data-w]');if(b&&!b.disabled){chosenW=b.dataset.w;buildTitle();closeSheets()}});
 $('cardBtn').addEventListener('click',saveRunCard);
 $('codexBtn').addEventListener('click',openCodex);
 $('codexClose').addEventListener('click',()=>{$('codex').hidden=true;if(G.state==='pause')$('pause').hidden=false});
@@ -3346,7 +3366,10 @@ $('autoBtn').addEventListener('click',autoPickOne);
 $('autoAlwaysBtn').addEventListener('click',autoPickAlways);
 $('endlessBtn').addEventListener('click',()=>{$('win').hidden=true;G.endless=true;G.state='play';applyControls();banner('ENDLESS','The second lap begins',true)});
 $('endWinBtn').addEventListener('click',()=>{$('win').hidden=true;G.victory=true;gameOver()});
-$('cPick').addEventListener('click',e=>{const b=e.target.closest('button[data-c]');if(b&&!b.disabled){chosenC=b.dataset.c;try{localStorage.setItem('overkill-run-char',chosenC)}catch(_){}buildTitle()}});
+$('cPick').addEventListener('click',e=>{const b=e.target.closest('button[data-c]');if(b&&!b.disabled){chosenC=b.dataset.c;try{localStorage.setItem('overkill-run-char',chosenC)}catch(_){}buildTitle();closeSheets()}});
+document.querySelectorAll('#title .lo').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.sheet,open=$(id).hidden;['cSheet','wSheet','rSheet'].forEach(k=>$(k).hidden=true);document.querySelectorAll('#title .lo').forEach(x=>x.classList.remove('open'));if(open){$(id).hidden=false;b.classList.add('open')}}));
+function closeSheets(){['cSheet','wSheet','rSheet'].forEach(k=>$(k).hidden=true);document.querySelectorAll('#title .lo').forEach(x=>x.classList.remove('open'))}
+document.querySelector('#rSheet .sheetDone').addEventListener('click',closeSheets);
 $('rPick').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(b&&!b.disabled){const id=b.dataset.r;if(chosenR.has(id))chosenR.delete(id);else{if(chosenR.size>=RELIC_MAX)chosenR.delete([...chosenR][0]);chosenR.add(id)}buildTitle()}});
 function start(daily){
   try{$('eventBar').hidden=true}catch(_){}

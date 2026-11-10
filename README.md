@@ -92,6 +92,8 @@ Heart Containers raise max HP (bosses always drop one, elites sometimes do). Car
 - Your look grows with you: **Veteran** at level 10 (armor, gold belt, scarf), **Champion** at 25 (gold helm, crown, cape) and **Legend** at 40 (glowing eyes and outline). Each character has its own colours.
 - The game-over screen shows highlights (MVP weapon, closest call, best streak, fastest boss, allies, landmarks, rank) and a **run card** image you can save or share.
 
+The title screen keeps it short: START RUN and DAILY RUN up top, then one row showing your character, weapon and relics. Tap any of them to change it. How to play and the story are folded away underneath.
+
 ### Characters and the ending
 
 Pick a character on the title screen: **Wanderer** (no tricks), **Medic** (every upgrade pick heals 10%, -10% damage; unlock at threat 8), **Berserker** (up to +60% damage the lower your HP, -20 max HP; threat 12), **Scout** (faster, extra dash, double soul reach, -15 max HP; claim 10 landmarks) or **Tinker** (starts with a second random weapon, weapons recharge 10% slower; win a run).
