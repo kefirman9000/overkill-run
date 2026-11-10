@@ -247,7 +247,8 @@ details.story .dim{opacity:.45}
     <div class="pickrow" id="cPick"></div>
     <h3>STARTING WEAPON</h3>
     <div class="pickrow" id="wPick"></div>
-    <h3>RELICS</h3>
+    <h3>RELICS <span class="dim" style="font-size:.8em">(pick up to 2)</span></h3>
+    <div class="note" id="comboNote"></div>
     <div class="pickrow" id="rPick"></div>
     <div class="keys">
       <kbd>WASD / ARROWS</kbd><span>move (touch: drag anywhere)</span>
@@ -355,7 +356,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.22.0';
+const VERSION='1.23.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -586,6 +587,7 @@ const CARDS=[
   {id:'bounty',r:2,name:'Bounty Hunter',icon:'crit',desc:'Every elite you kill drops a pickup',max:1,apply:()=>{S.bounty=1}},
   {id:'frostaura',r:1,tag:'DEFENSE',name:'Frost Aura',icon:'freeze',desc:'Enemies that get close to you are slowed. Stacks wider.',max:2,apply:()=>{S.frostAura=(S.frostAura||0)+1}},
   {id:'glass',r:3,tag:'EXTREME',name:'Glass Cannon',icon:'dmg',desc:'+60% damage, but 30% less max HP',max:1,apply:()=>{S.dmg+=.6;P.max=Math.max(20,Math.round(P.max*.7));P.hp=Math.min(P.hp,P.max)}},
+  {id:'toxic',r:1,tag:'MUTATION',name:'Venom Rounds',icon:'burn',desc:'+15% chance for hits to poison. Fire and blasts make poisoned enemies explode.',max:3,apply:()=>{S.poison=(S.poison||0)+.15}},
   {id:'ironheart',r:2,tag:'DEFENSE',name:'Iron Heart',icon:'maxhp',desc:'+50 max HP and heal to full',max:3,apply:()=>{P.max+=50;P.hp=P.max}},
   {id:'plating',r:1,tag:'DEFENSE',name:'Plating',icon:'shield',desc:'Take 12% less damage from everything',max:3,apply:()=>{S.armor=(S.armor||0)+.12}},
   {id:'secondheart',r:3,tag:'EXTREME',name:'Giant\'s Blood',icon:'heal',desc:'+40% max HP and heal 30%',max:1,apply:()=>{P.max=Math.round(P.max*1.4);P.hp=Math.min(P.max,P.hp+P.max*.3)}},
@@ -649,6 +651,14 @@ const RELICS={
   magnet:{name:'Lodestone Charm',desc:'Double pickup reach',ok:()=>meta.bestThreat>=5,req:'reach threat 5'},
   mutagen:{name:'Mutagen',desc:'Start with a random epic mutation',ok:()=>meta.totalKills>=2500,req:'2,500 lifetime kills'},
   wind:{name:'Running Shoes',desc:'Start with 2 dash charges',ok:()=>meta.bestThreat>=8,req:'reach threat 8'},
+  idol:{name:'Gilded Idol',desc:'Souls are worth 25% more',ok:()=>meta.bestThreat>=15,req:'reach threat 15',apply:()=>{S.soulMul=(S.soulMul||1)*1.25}},
+  hourglass:{name:'Hourglass',desc:'Super modes last 40% longer',ok:()=>(meta.wins||0)>=1,req:'win a run',apply:()=>{S.modeDur=(S.modeDur||1)*1.4}},
+  seal:{name:'Warden\'s Seal',desc:'Start with +1 dash; dashes throw enemies aside',ok:()=>!!(meta.relicsWon||{}).seal,req:'beat the Warden',apply:()=>TROPHY['The Warden'].apply()},
+  crown:{name:'Cinder Crown',desc:'+20% chance to set enemies on fire',ok:()=>!!(meta.relicsWon||{}).crown,req:'beat the Cinder King',apply:()=>TROPHY['Cinder King'].apply()},
+  frostheart:{name:'Frost Heart',desc:'+15% slow chance; kills freeze nearby',ok:()=>!!(meta.relicsWon||{}).frostheart,req:'beat the Glacial Maw',apply:()=>TROPHY['Glacial Maw'].apply()},
+  bladder:{name:'Bog Bladder',desc:'30% of kills leave poison clouds',ok:()=>!!(meta.relicsWon||{}).bladder,req:'beat the Bog Mother',apply:()=>TROPHY['Bog Mother'].apply()},
+  lens:{name:'Prism Lens',desc:'+1 projectile per volley',ok:()=>!!(meta.relicsWon||{}).lens,req:'beat the Prism Colossus',apply:()=>TROPHY['Prism Colossus'].apply()},
+  core:{name:'Hollow Core',desc:'Every dash leaves a black hole',ok:()=>!!(meta.relicsWon||{}).core,req:'beat the Hollow',apply:()=>TROPHY['The Hollow'].apply()},
 };
 let chosenW='pea';const chosenR=new Set();
 
@@ -681,7 +691,7 @@ function endMode(){
 }
 function startMode(id,from){
   endMode();
-  const M=MODES[id];G.mode={id,t:M.dur,max:M.dur,cd:0};G.lastMode=id;
+  const M=MODES[id],md=M.dur*(S.modeDur||1);G.mode={id,t:md,max:md,cd:0};G.lastMode=id;
   if(id==='overdrive'){G.mode.tmp=W.filter(w=>!w.evo);for(const w of G.mode.tmp)w.evo=1}
   if(id==='turret')TURRETS.push({x:P.x,y:P.y,t:M.dur,cd:0});
   if(id==='titan')P.inv=Math.max(P.inv,.3);
@@ -700,7 +710,7 @@ function reset(opts){
   G={state:'play',daily,seedStr,char:opts.char||'wanderer',startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,lvCD:0,surges:0,cashedOut:0,autoPicked:0,
     threat:0,tp:0,biomeI:0,biomePrev:0,morph:1,streak:0,streakT:0,bestStreak:0,stop:0,shake:0,flash:0,hurt:0,spawnAcc:0,packT:12,hazT:6,
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
-    taken:{},hurtBy:{},novice:meta.bestThreat<10,curios:new Map(),pet:null,allies:[],lms:new Map(),lmSeed:(Math.random()*1e5)|0,startX:0,startY:0,clear:null,lull:null,lullAt:-1,check:null,lullLog:[],checksUsed:0,decoy:null,staticT:0,fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,campK:null,lastCampK:null,cloud:null,worms:[],thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
+    taken:{},hurtBy:{},novice:meta.bestThreat<10,curios:new Map(),pet:null,trophies:[],rx:{},rxB:12,allies:[],lms:new Map(),lmSeed:(Math.random()*1e5)|0,startX:0,startY:0,clear:null,lull:null,lullAt:-1,check:null,lullLog:[],checksUsed:0,decoy:null,staticT:0,fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,campK:null,lastCampK:null,cloud:null,worms:[],thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
   P={bootsT:0,armorT:0,guardT:0,shield:0,shieldT:0,frenzy:0,bubble:0,x:0,y:0,vx:0,vy:0,hp:100,max:100,inv:0,face:1,moving:false,dashes:1,dashCd:0,dashT:0,ddx:1,ddy:0,chill:0,lx:0,ly:0};
   S={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,regen:0,multi:0,pierce:0,bounce:0,rear:0,circle:0,split:0,grow:0,burn:0,freeze:0,frostKill:0,chainKill:0,
     trail:0,dashMax:1,dashShock:0,orbitShots:0,nuke:0,pulse:0,hole:0,momentum:0,scorch:0,double:0,stasis:0,killNeedle:0,horizonDash:0,
@@ -711,6 +721,8 @@ function reset(opts){
   applyChar();
   if(G.relics.includes('magnet'))S.magnet*=2;
   if(G.relics.includes('wind')){S.dashMax=2;P.dashes=2}
+  for(const r of G.relics)if(RELICS[r]&&RELICS[r].apply)RELICS[r].apply();
+  for(const c of activeCombos(G.relics)){c.apply();G.combos=(G.combos||[]).concat(c.name)}
   if(G.relics.includes('mutagen')){const pool=CARDS.filter(c=>c.r===2&&c.id!=='dash'&&cardRelevant(c));const c=pool[Math.floor(cardRand()*pool.length)];takeCard(c,[c.name],true)}
   $('toasts').innerHTML='';
 }
@@ -871,6 +883,7 @@ function drawDecoy(ox,oy){
 }
 /* card passives that run every frame */
 function updatePassives(dt){
+  G.rxB=Math.min(14,(G.rxB||0)+dt*30);
   if(S.staticF){G.staticT=(G.staticT||0)-dt;if(G.staticT<=0){G.staticT=1.3/S.staticF;const t=nearest(P.x,P.y,75);if(t){chainZap(t,P,1+S.staticF,20*dmgMul(),'static',false);snd('zap')}}}
   if(S.frostAura){const r=30+S.frostAura*10;query(P.x,P.y,r,e=>{if(e.type!=='boss'&&Math.hypot(e.x-P.x,e.y-P.y)<r)e.slow=Math.max(e.slow,.3)});
     if(R()<.3){const a=R()*TAU;PT.push({x:P.x+Math.cos(a)*r,y:P.y+Math.sin(a)*r,vx:0,vy:-6,life:.4,max:.4,c:'#a6f0ff',s:1})}}
@@ -1269,7 +1282,7 @@ const FLAVOR={
   dashvolley:'Every exit is also an entrance.',bounty:'The big ones always carry something.',glass:'Hit like a truck. Break like a window.',
   ironheart:'It beats slower, and it does not stop.',plating:'Bolted on in a hurry. Holds anyway.',secondheart:'Bigger than you should be. Bigger than they are.',
   multi:'Why aim once?',pierce:'The first one was just in the way.',bounce:'Every miss gets a second opinion.',rear:'Never turn your back. Shoot it instead.',
-  burn:'A little fire goes a long way, mostly toward them.',freeze:'Cold makes everything slow down and think.',dashshock:'Excuse me.',
+  burn:'A little fire goes a long way, mostly toward them.',freeze:'Cold makes everything slow down and think.',dashshock:'Excuse me.',toxic:'It\'s not personal. It\'s chemical.',
   split:'One shot, several apologies.',grow:'Bullets that learn on the way.',circle:'Every sixth one is for the ones behind you.',
   frostkill:'Their friends freeze when they fall. Grief, probably.',chainkill:'Some of them were always going to explode.',trail:'Leave something for the ones following you.',
   dash:'A second chance, every few seconds.',barrier:'One free mistake, on a timer.',leech:'Take a little back from every one of them.',
@@ -1403,7 +1416,7 @@ const CURIOS={
   shrooms:{name:'Mushroom ring',w:12,desc:'Step in and something happens. Probably.'},
   cart:{name:'Broken cart',w:10,desc:'Mostly junk.'},
   statue:{name:'Watching statue',w:8,desc:'It turns to look at you. That is all it does.'},
-  campfire:{name:'Campfire',w:8,desc:'A quiet spot. Rest here with no enemies close to heal.'},
+  campfire:{name:'Campfire',w:8,desc:'A quiet spot. Rest here with no enemies close to heal, until its fuel runs out.'},
   map:{name:'Treasure map',w:6,desc:'Points to something buried nearby.',lvl:'curio2'},
   merchant:{name:'Wandering merchant',w:5,desc:'Trades a rare card for a fifth of your HP.',lvl:'curio2'},
   well:{name:'Wishing well',w:5,desc:'Throw in some souls and make a wish.',lvl:'curio2'},
@@ -1438,9 +1451,10 @@ function updateCurios(dt){
         else if(r===3){for(let i=0;i<8;i++)PU.push({kind:'gem',tier:1,x:c.x,y:c.y,t:0,vx:rnd(-70,70),vy:rnd(-70,70)});curioFound(c,'Souls were hiding under the mushrooms.')}
         else curioFound(c,'Nothing happens. You feel slightly judged.')}
         break;
-      case 'campfire':if(d<18){let q=true;for(const e of E){if(!e.dead&&e.dmg>0&&Math.abs(e.x-P.x)<100&&Math.abs(e.y-P.y)<100){q=false;break}}
+      case 'campfire':if(c.fuel===undefined)c.fuel=P.max*.4;if(c.fuel<=0){c.st='done';toast(0,'The campfire burns out.');break}
+        if(d<18){let q=true;for(const e of E){if(!e.dead&&e.dmg>0&&Math.abs(e.x-P.x)<100&&Math.abs(e.y-P.y)<100){q=false;break}}
         if(!c.read){c.read=1;curioFound(c,'A campfire. Rest here when it\'s quiet.')}
-        if(q&&P.hp<P.max){P.hp=Math.min(P.max,P.hp+P.max*.05*dt);G.campT=0;if(R()<.1)PT.push({x:P.x+rnd(-4,4),y:P.y,vx:0,vy:-14,life:.4,max:.4,c:'#ffd166',s:1})}}
+        if(q&&P.hp<P.max){const h=Math.min(P.max*.05*dt,P.max-P.hp,c.fuel);P.hp+=h;c.fuel-=h;G.campT=0;if(R()<.1)PT.push({x:P.x+rnd(-4,4),y:P.y,vx:0,vy:-14,life:.4,max:.4,c:'#ffd166',s:1})}}
         break;
       case 'map':
         if(c.st==='idle'&&d<10){c.st='dig';const a=R()*TAU,r=rnd(250,350);c.dx=c.x+Math.cos(a)*r;c.dy=c.y+Math.sin(a)*r;c.dig=0;curioFound(c,'A treasure map! X marks a spot nearby.',true)}
@@ -1495,7 +1509,7 @@ function drawCurios(ox,oy){
       case 'statue':{sh(4);const f=P.x<c.x?-1:1;ctx.fillStyle='#6a6a7a';ctx.fillRect(x-3,y-10,7,12);ctx.fillStyle='#8a8a9a';ctx.fillRect(x-2,y-13,5,4);ctx.fillStyle='#14101c';ctx.fillRect(x+(f>0?1:-1),y-12,1,1);ctx.fillStyle='#4a4a58';ctx.fillRect(x-4,y+1,9,2);break}
       case 'grave':sh(4);ctx.fillStyle=c.st==='done'?'#4a4a58':'#7a7a8a';ctx.fillRect(x-3,y-9,7,10);ctx.fillRect(x-2,y-10,5,1);ctx.fillStyle='#4a4a58';ctx.fillRect(x-1,y-7,3,1);ctx.fillRect(x,y-8,1,4);if(c.st==='done'){ctx.fillStyle='#3a2a1a';ctx.fillRect(x-3,y+1,7,3)}break;
       case 'shrooms':if(c.st!=='done')for(let i=0;i<6;i++){const a=i/6*TAU,px=x+Math.round(Math.cos(a)*7),py=y+Math.round(Math.sin(a)*4);ctx.fillStyle='#e8e0d0';ctx.fillRect(px,py-1,1,2);ctx.fillStyle=i%2?'#ff5e5b':'#c792ea';ctx.fillRect(px-1,py-2,3,1)}break;
-      case 'campfire':{sh(5);ctx.fillStyle='#5a4028';ctx.fillRect(x-5,y,11,2);ctx.fillRect(x-3,y-1,7,1);const f=Math.floor(G.time*10)%3;ctx.fillStyle=['#ff5e3a','#ff9f43','#ffd166'][f];ctx.fillRect(x-2,y-4,5,3);ctx.fillStyle='#ffd166';ctx.fillRect(x-1,y-6+((f&1)?1:0),3,2);
+      case 'campfire':{sh(5);ctx.fillStyle='#5a4028';ctx.fillRect(x-5,y,11,2);ctx.fillRect(x-3,y-1,7,1);if(c.st==='done'){ctx.fillStyle='#4a4a58';ctx.fillRect(x-2,y-2,5,1);break}const fz=Math.max(.35,(c.fuel===undefined?1:c.fuel/(P.max*.4)));const f=Math.floor(G.time*10)%3;ctx.fillStyle=['#ff5e3a','#ff9f43','#ffd166'][f];ctx.fillRect(x-2,y-Math.round(4*fz),5,Math.max(1,Math.round(3*fz)));ctx.fillStyle='#ffd166';if(fz>.6)ctx.fillRect(x-1,y-6+((f&1)?1:0),3,2);
         if(R()<.15)PT.push({x:c.x+rnd(-2,2),y:c.y-6,vx:rnd(-4,4),vy:-18,life:.6,max:.6,c:'#ffd166',s:1});break}
       case 'map':if(c.st==='idle'){sh(3);ctx.fillStyle='#e8d8a0';ctx.fillRect(x-4,y-4,9,6);ctx.fillStyle='#ff4d6d';ctx.fillRect(x+1,y-2,1,1);ctx.fillRect(x+2,y-1,1,1);ctx.fillRect(x+2,y-3,1,1);ctx.fillRect(x+3,y-2,1,1)}
         else if(c.st==='dig'){const dx=RK(c.dx-ox),dy=RK(c.dy-oy);ctx.fillStyle='#ff4d6d';for(let i=-3;i<=3;i++){ctx.fillRect(dx+i,dy+i,1,1);ctx.fillRect(dx+i,dy-i,1,1)}if(c.dig>0)tele(dx,dy,10,c.dig/2,false)}break;
@@ -1532,6 +1546,63 @@ function codexHTML(){
     +sec('Cards',CARDS.filter(c=>!c.cost).map(c=>({on:C.c&&C.c[c.id],name:c.name,desc:c.desc+(FLAVOR[c.id]?' — '+FLAVOR[c.id]:'')})));
 }
 function openCodex(){$('codexBody').innerHTML=codexHTML();$('pause').hidden=true;$('codex').hidden=false;$('codex').scrollTop=0;saveMeta()}
+
+/* ================= boss phase 2 and trophies =================
+   At half HP every boss enrages: a short shockwave, faster attacks and one new attack added to its rotation.
+   Beating a boss gives its trophy for the rest of the run, and the first win unlocks it as a starting relic. */
+const BOSS_P2={'The Warden':['crossfire'],'Cinder King':['meteorfall'],'Glacial Maw':['icewall'],'Bog Mother':['broodburst'],'Prism Colossus':['prismlaser'],'The Hollow':['eclipse']};
+const TROPHY={
+  'The Warden':{id:'seal',name:'Warden\'s Seal',desc:'+1 dash charge, and dashes throw enemies aside',apply:()=>{S.dashMax=(S.dashMax||1)+1;P.dashes=Math.min(S.dashMax,P.dashes+1);S.dashShock+=1}},
+  'Cinder King':{id:'crown',name:'Cinder Crown',desc:'+20% chance to set enemies on fire',apply:()=>{S.burn+=.2}},
+  'Glacial Maw':{id:'frostheart',name:'Frost Heart',desc:'+15% chance to slow, and kills freeze nearby enemies',apply:()=>{S.freeze+=.15;S.frostKill=Math.max(S.frostKill,1)}},
+  'Bog Mother':{id:'bladder',name:'Bog Bladder',desc:'30% of kills leave a cloud of poison',apply:()=>{S.toxicKill=(S.toxicKill||0)+.3}},
+  'Prism Colossus':{id:'lens',name:'Prism Lens',desc:'+1 projectile on every volley',apply:()=>{S.multi+=1}},
+  'The Hollow':{id:'core',name:'Hollow Core',desc:'Every dash leaves a black hole behind you',apply:()=>{S.horizonDash=1}},
+};
+function bossPhase2(e){
+  e.p2=true;e.rage=(e.rage||0)+1;e.cd=Math.min(e.cd,1.2);e.q.length=0;e.flash=.3;
+  const B=bossOf(e);EB.length=0;
+  RINGS.push({x:e.x,y:e.y,r:0,max:70,life:.5,t:0,c:'#ff3b5c',noFill:1});burst(e.x,e.y,'#ff3b5c',40,110,.6,2);G.shake=Math.max(G.shake,3);G.stop=Math.max(G.stop,.15);snd('boss');
+  const dx=P.x-e.x,dy=P.y-e.y,d=Math.hypot(dx,dy)||1;if(d<60){P.vx+=dx/d*220;P.vy+=dy/d*220}   // the shockwave pushes you back
+  banner(B.name.toUpperCase()+' ENRAGES','Phase two: faster, and a new attack',true);
+}
+function giveTrophy(B){
+  const T=TROPHY[B.name];if(!T)return;
+  T.apply();G.trophies.push(T.name);
+  toast(3,'Trophy: '+T.name+' ('+T.desc+')');
+  meta.relicsWon=meta.relicsWon||{};if(!meta.relicsWon[T.id]){meta.relicsWon[T.id]=1;saveMeta();setTimeout(()=>toast(3,'New starting relic unlocked: '+T.name),1500)}
+}
+/* ================= relic combos =================
+   Pick two relics on the title screen; some pairs add a named bonus. */
+const RELIC_MAX=2;
+const COMBOS=[
+  {a:'crown',b:'frostheart',name:'Steam Engine',desc:'Elemental reactions deal double damage',apply:()=>{S.rxMul=(S.rxMul||1)*2}},
+  {a:'crown',b:'bladder',name:'Wildfire',desc:'Shots also poison, and gas explosions spread fire',apply:()=>{S.poison=(S.poison||0)+.15;S.rxMul=(S.rxMul||1)*1.5}},
+  {a:'lens',b:'bladder',name:'Toxic Prism',desc:'+20% chance for shots to poison',apply:()=>{S.poison=(S.poison||0)+.2}},
+  {a:'seal',b:'core',name:'Blink Strider',desc:'+1 more dash, and dashes recharge 30% faster',apply:()=>{S.dashMax=(S.dashMax||1)+1;P.dashes=S.dashMax;S.dashCdMul=.7}},
+  {a:'seal',b:'wind',name:'Featherweight',desc:'+15% move speed',apply:()=>{S.move*=1.15}},
+  {a:'magnet',b:'idol',name:'Gold Rush',desc:'Souls are worth another 25%',apply:()=>{S.soulMul=(S.soulMul||1)*1.25}},
+  {a:'core',b:'hourglass',name:'Time Sink',desc:'Super modes last 40% longer again',apply:()=>{S.modeDur=(S.modeDur||1)*1.4}},
+  {a:'mutagen',b:'lens',name:'Mutant Lens',desc:'Start with a second random epic mutation',apply:()=>{const pool=CARDS.filter(c=>c.r===2&&c.id!=='dash'&&cardRelevant(c));const c=pool[Math.floor(cardRand()*pool.length)];if(c)takeCard(c,[c.name],true)}},
+];
+function activeCombos(rs){const set=new Set(rs);return COMBOS.filter(c=>set.has(c.a)&&set.has(c.b))}
+/* ================= poison and elemental reactions =================
+   Poison eats away at an enemy over time. Hitting an enemy that already carries one element with another causes a reaction:
+     steam          fire on a frozen enemy, or frost on a burning one: a burst that hurts everything close
+     gas explosion  fire or a blast on a poisoned enemy: a fiery explosion that spreads burning
+     toxic shock    lightning on a poisoned enemy: the shock jumps to other poisoned enemies */
+const RX_HINT={steam:'Steam! Fire and frost together burst.',gas:'Gas explosion! Fire or blasts set off poison.',toxicshock:'Toxic shock! Lightning jumps between poisoned enemies.'};
+function reaction(kind,e,dmg){
+  if((G.rxB||0)<1)return;G.rxB-=1;
+  const k=(S.rxMul||1);G.rx=G.rx||{};G.rx[kind]=(G.rx[kind]||0)+1;
+  if(!G.hinted['rx:'+kind]){G.hinted['rx:'+kind]=1;toast(2,RX_HINT[kind])}
+  if(kind==='steam'){e.slow=0;e.burn=0;const r=18*S.area;query(e.x,e.y,r+6,o=>{if(Math.hypot(o.x-e.x,o.y-e.y)<r+o.r)hurt(o,dmg*.8*k,{silent:true,src:'reaction',elem:'reaction'})});
+    RINGS.push({x:e.x,y:e.y,r:0,max:r,life:.3,t:0,c:'#e8f6ff',noFill:1});burst(e.x,e.y,'#e8f6ff',10,50,.4)}
+  else if(kind==='gas'){e.pois=0;const r=24*S.area;query(e.x,e.y,r+6,o=>{if(Math.hypot(o.x-e.x,o.y-e.y)<r+o.r)hurt(o,dmg*1.1*k,{silent:true,src:'reaction',elem:'reaction',ignite:1})});
+    RINGS.push({x:e.x,y:e.y,r:0,max:r,life:.35,t:0,c:'#9be15d',noFill:1});burst(e.x,e.y,'#ff9f43',14,70,.4);burst(e.x,e.y,'#9be15d',8,50,.4);G.shake=Math.max(G.shake,.8)}
+  else if(kind==='toxicshock'){let prev=e,n=0;for(const o of E){if(n>=4)break;if(o===e||o.dead||!(o.pois>0)||Math.hypot(o.x-e.x,o.y-e.y)>80)continue;ARCS.push({x1:prev.x,y1:prev.y,x2:o.x,y2:o.y,life:.2});hurt(o,dmg*.9*k,{silent:true,src:'reaction',elem:'reaction'});prev=o;n++}
+    burst(e.x,e.y,'#c6f06a',8,50,.3)}
+}
 
 /* ================= event coordinator =================
    Only one special event at a time (shrine, supply crate, Soul Thief, vault guards, calm/beacon), with at least
@@ -1811,7 +1882,8 @@ function pylonDown(pl){
 function arenaWon(e){
   const A=G.arena,B=bossOf(e),F=FMT[A.fmt];if(!A)return;
   A.phase='out';A.t=0;A.won=true;
-  G.bossLog.push({boss:B.name,fight:A.fmt,threat:G.threat,fightSeconds:Math.round(G.time-A.fightStart),hpLeft:Math.ceil(P.hp)+'/'+P.max});
+  giveTrophy(B);
+  G.bossLog.push({boss:B.name,fight:A.fmt,phase2:!!e.p2,threat:G.threat,fightSeconds:Math.round(G.time-A.fightStart),hpLeft:Math.ceil(P.hp)+'/'+P.max});
   // in a walled fight everything the boss brought goes with it; in the open the horde stays
   for(const o of E)if(!o.dead&&o!==e){o.dead=true;burst(o.x,o.y,o.col,4,40,.3)}
   EB.length=0;Z=Z.filter(z=>{const k=ZK[z.kind];return k&&(k.friendly&&!k.hostile)});
@@ -1921,6 +1993,7 @@ function drawBossMarks(ox,oy){
   const B=bossOf(b),x=b.x-ox,y=b.y-oy;
   if(b.pylons)for(const pl of b.pylons)if(!pl.dead){ctx.globalAlpha=.35+.25*Math.sin(G.time*9+pl.uid);line(pl.x-ox,pl.y-oy,x,y,'#6be0ff');ctx.globalAlpha=1}
   if(b.sub){const k=(G.time*1.5)%1;ctx.globalAlpha=.6*(1-k);ring(x,y+2,4+k*12,'#9ad13c');ctx.globalAlpha=.4;ring(x,y+2,3,'#c6f06a');ctx.globalAlpha=1;return}
+  if(b.p2&&!(b.restT>G.time)){ctx.globalAlpha=.35+.25*Math.sin(G.time*10);ring(x,y,b.r+4,'#ff3b5c');ctx.globalAlpha=1}
   if(b.restT>G.time){ctx.globalAlpha=.6+.3*Math.sin(G.time*8);ring(x,y,b.r+6,'#ffd84a');ctx.globalAlpha=1;if(R()<.2)PT.push({x:b.x+rnd(-5,5),y:b.y-b.r,vx:0,vy:-12,life:.5,max:.5,c:'#ffd84a',s:1})}
   const ghost=b.phase>0;
   ctx.globalAlpha=(ghost?.18:.5)+.15*Math.sin(G.time*6);ring(x,y+3,b.r+5+Math.sin(G.time*4),B.col);
@@ -1952,7 +2025,7 @@ function bossMove(e,dx,dy,d){
   return null;
 }
 function bossThink(e,dt,dx,dy,d){
-  const B=bossOf(e),A=G.arena;
+  const B=bossOf(e),A=G.arena,pats=e.p2?B.pats.concat(BOSS_P2[B.name]||[]):B.pats;
   for(const q of e.q)q.t-=dt;
   for(let i=0;i<e.q.length;i++)if(e.q[i].t<=0){const q=e.q.splice(i--,1)[0];q.fn()}
   // mid-attack movement overrides
@@ -1980,13 +2053,13 @@ function bossThink(e,dt,dx,dy,d){
   }
   if(e.ghost>0){e.ghost-=dt;return [0,0,0]}
   e.cd-=dt;
-  const next=B.pats[(e.pat+1)%B.pats.length];
+  const next=pats[(e.pat+1)%pats.length];
   e.tele=e.cd<.55&&next!=='dive'&&next!=='stalk';
   if(e.cd>0)return bossMove(e,dx,dy,d);
   // after a full cycle of attacks the boss stops to catch its breath: it takes extra damage, and a heart drops
-  if(e.pat===B.pats.length-1&&!e.rested&&!(e.sub||e.phase>0||e.stalk>0||e.charge>0||e.spiral>0)){e.rested=true;bossRest(e);return [0,0,0]}
+  if(e.pat===pats.length-1&&!e.rested&&!(e.sub||e.phase>0||e.stalk>0||e.charge>0||e.spiral>0)){e.rested=true;bossRest(e);return [0,0,0]}
   e.rested=false;
-  e.pat=(e.pat+1)%B.pats.length;
+  e.pat=(e.pat+1)%pats.length;
   const T=G.threat,f=bossFaster(e),aim=Math.atan2(dy,dx);
   switch(next){
     // --- the Warden (ruins arena)
@@ -2029,6 +2102,13 @@ function bossThink(e,dt,dx,dy,d){
         RINGS.push({x:e.x,y:e.y,r:0,max:30,life:.3,t:0,c:B.col,noFill:1});bLater(e,.35,()=>bRing(e,14+T,50,.45))});break;
     case 'singularity':e.cd=2.8*f;{const a=R()*TAU;addZone('hole',P.x+Math.cos(a)*30,P.y+Math.sin(a)*30,44,5.5,{pd:12*(1+T*.06)});e.spiral=1.6;e.arms=2;e.spinK=3;e.twin=0}break;
     case 'twinspiral':e.cd=2.8*f;e.spiral=2;e.arms=3;e.spinK=3.5;e.twin=1;break;
+    // --- phase-two attacks, one per boss
+    case 'crossfire':e.cd=2.4*f;for(const off of [0,Math.PI/4])bLater(e,off?.55:0,()=>{for(let k=0;k<4;k++){const a=off+k*Math.PI/2;for(let i=0;i<6;i++)bShot(e,a,40+i*11,.45)}});break;
+    case 'meteorfall':e.cd=2.8*f;{const Ar=A?A.r*.8:90,cx=A?A.x:P.x,cy=A?A.y:P.y;for(let i=0;i<10;i++){const a=R()*TAU,r=Math.sqrt(R())*Ar;bLater(e,i*.12,()=>bShell(e,cx+Math.cos(a)*r,cy+Math.sin(a)*r,16,q=>addZone('lava',q.x,q.y,10,5,{pd:10*(1+T*.06),ed:0})))}}break;
+    case 'icewall':e.cd=2.8*f;for(let w=0;w<3;w++)bLater(e,w*.6,()=>{const n=30,gap=R()*TAU;for(let i=0;i<n;i++){const a=i/n*TAU;const dd=Math.abs(Math.atan2(Math.sin(a-gap),Math.cos(a-gap)));if(dd<.35||Math.abs(dd-Math.PI)<.35)continue;bShot(e,a,36,.45,{chill:1,life:5})}});break;
+    case 'broodburst':e.cd=2.6*f;{for(let i=0;i<2;i++){const m=spawnEnemy('bloater',e.x+rnd(-10,10),e.y+rnd(-10,10),{elite:false,hpMul:.7});m.vx=rnd(-50,50);m.vy=rnd(-50,50)}for(let i=0;i<5;i++){const a=i/5*TAU;addZone('ppuddle',e.x+Math.cos(a)*26,e.y+Math.sin(a)*26,11,7,{pd:8*(1+T*.06)})}}break;
+    case 'prismlaser':e.cd=2.6*f;for(const rot of [0,Math.PI/4])bLater(e,rot?.8:0,()=>{for(let k=0;k<4;k++){const a=aim+rot+k*Math.PI/2;for(let i=1;i<=10;i++){const x=e.x+Math.cos(a)*i*13,y=e.y+Math.sin(a)*i*13;if(A&&A.wall>=.5&&Math.hypot(x-A.x,y-A.y)>A.r-6)break;addZone('spike',x,y,8,1.3,{arm:.7,pd:e.dmg*.8})}}});break;
+    case 'eclipse':e.cd=3*f;{const a=R()*TAU;for(const s2 of [-1,1])addZone('hole',P.x+Math.cos(a)*40*s2,P.y+Math.sin(a)*40*s2,40,5,{pd:12*(1+T*.06)});e.spiral=1.8;e.arms=3;e.spinK=3;e.twin=1}break;
   }
   return bossMove(e,dx,dy,d);
 }
@@ -2044,6 +2124,7 @@ const ZK={
   spike:{hostile:1,once:1},
   hole:{hostile:1,pullP:30,pullE:70},
   crack:{},
+  tcloud:{friendly:1,elem:'poison'},
   pit:{hostile:1,pullP:42,pullE:50},
   fhole:{friendly:1,pullE:150,elem:'blast'},
   ftrail:{hostile:1},
@@ -2079,6 +2160,7 @@ function burst(x,y,col,n,sp=50,life=.4,size=1){
 }
 function hurt(e,dmg,o={}){
   if(e.restT>G.time)dmg*=1.25;
+  if(e.type==='boss'&&!e.p2&&!e.dead&&e.q&&e.hp-dmg<e.max*.5&&!(e.shieldN>0)&&!(e.phase>0)){bossPhase2(e);dmg=Math.max(0,e.hp-e.max*.5)}
   if(e.type==='boss'&&!e.dead&&!(e.phase>0)&&!(e.shieldN>0)&&dmg>=e.max*.008&&!(G.hsT>G.time)){G.hsT=G.time+.3;G.stop=Math.max(G.stop,.035)}
   if(e.dead||e.phase>0||e.type==='ufo')return;                       // UFOs fly too high to hit
   if(e.shieldN>0){if(R()<.15)burst(e.x,e.y-2,'#a6f0ff',2,30,.2);return}             // shielded by its pylons                                       // a phased Wraith can't be hit
@@ -2091,6 +2173,14 @@ function hurt(e,dmg,o={}){
     if(S.freeze>0&&R()<S.freeze)e.slow=2;
   }
   if(o.ignite){e.burn=Math.max(e.burn,2);e.burnD=Math.max(e.burnD,dmg*.4)}
+  if(o.proc&&S.poison>0&&R()<S.poison){e.pois=4;e.poisD=Math.max(e.poisD||0,dmg*.6)}
+  if(el==='poison'){e.pois=4;e.poisD=Math.max(e.poisD||0,dmg*1.5)}
+  if(el!=='reaction'&&el!=='poisontick'&&(e.type!=='boss'||R()<.3)){
+    if((el==='fire'||o.ignite)&&e.slow>0)reaction('steam',e,dmg);
+    else if((el==='blast'||el==='fire')&&e.pois>0)reaction('gas',e,dmg);
+    else if(el==='shock'&&e.pois>0)reaction('toxicshock',e,dmg);
+    else if(o.proc&&e.burn>0&&e.slow>=2&&e.burnD>0)reaction('steam',e,dmg);
+  }
   const dealt=Math.min(d,Math.max(0,e.hp));
   e.hp-=d;e.flash=.06;
   const src=o.src||'other';G.dmgBy[src]=(G.dmgBy[src]||0)+dealt;
@@ -2104,6 +2194,7 @@ function kill(e,src){
   if(e.dead)return;e.dead=true;
   if(e.type==='crate'){burst(e.x,e.y,'#b8834a',20,70,.5,2);burst(e.x,e.y,'#ffe066',12,60,.5);snd('boom');PU.push({kind:randomPickup(),x:e.x,y:e.y,t:0,vx:-20,vy:-30});PU.push({kind:R()<.5?'heart':randomPickup(),x:e.x,y:e.y,t:0,vx:20,vy:-30});for(let i=0;i<6;i++){const a=i/6*TAU;PU.push({kind:'gem',tier:Math.min(3,1+Math.floor(G.threat/8)),x:e.x,y:e.y,t:0,vx:Math.cos(a)*70,vy:Math.sin(a)*70})}return}
   if(G.streak>=25&&!G.mode){G.okm++;if(G.okm>=600+G.okUses*300){G.okm=0;G.okUses++;startMode(pickMode(),'overkill meter')}}
+  if(S.toxicKill&&R()<S.toxicKill&&e.type!=='boss')addZone('tcloud',e.x,e.y,16*S.area,3,{ed:14*dmgMul(),src:'poison'});
   G.kills++;G.streak++;G.streakT=1.6;if(G.streak>G.bestStreak)G.bestStreak=G.streak;
   if(S.leech&&G.leechUsed<2+S.leech*4){P.hp=Math.min(P.max,P.hp+S.leech);G.leechUsed+=S.leech}
   if(G.streak%100===0&&G.rerolls<3){G.rerolls++;toast(2,'Streak '+G.streak+': reroll earned')}
@@ -2474,7 +2565,7 @@ function tryDash(){
   if(joy.on){dx=joy.dx;dy=joy.dy}
   if(Math.hypot(dx,dy)<.2){const v=Math.hypot(P.vx,P.vy);if(v>5){dx=P.vx;dy=P.vy}else{dx=P.face;dy=0}}
   const l=Math.hypot(dx,dy)||1;P.ddx=dx/l;P.ddy=dy/l;
-  if(!(P.bootsT>0))P.dashes--;if(P.dashCd<=0)P.dashCd=1.4;dashBarrage();P.dashT=.16;P.inv=Math.max(P.inv,.24);P.dashHit=new Set();
+  if(!(P.bootsT>0))P.dashes--;if(P.dashCd<=0)P.dashCd=1.4*(S.dashCdMul||1);dashBarrage();P.dashT=.16;P.inv=Math.max(P.inv,.24);P.dashHit=new Set();
   snd('dash');G.hudDirty=true;
   if(S.quickDraw)for(const w of W){if(w.id==='blade'||w.id==='oil'||w.id==='drone')continue;const c=fireWeapon(w);if(c)w.cd=c}
 }
@@ -2568,6 +2659,7 @@ function update(dt){
     if(e.type!=='boss'&&(Math.abs(e.x-P.x)>LW*.6+30||Math.abs(e.y-P.y)>LH*.6+30)){e.acc=(e.acc||0)+fdt;if((G.fc+e.uid)&1)continue;dt=e.acc;e.acc=0}
     else if(e.acc){dt+=e.acc;e.acc=0}
     e.t+=dt;e.flash-=dt;e.oc-=dt;e.tele=false;
+    if(e.pois>0){e.pois-=dt;e.poisTick=(e.poisTick||0)-dt;if(e.poisTick<=0){e.poisTick=.5;if(R()<.6)PT.push({x:e.x+rnd(-3,3),y:e.y-2,vx:0,vy:-12,life:.4,max:.4,c:'#9be15d',s:1});hurt(e,e.poisD*.5,{silent:true,src:'poison',elem:'poisontick'})}}
     if(e.burn>0){e.burn-=dt;e.burnTick-=dt;if(e.burnTick<=0){e.burnTick=.25;if(R()<.6)PT.push({x:e.x+rnd(-3,3),y:e.y-3,vx:0,vy:-20,life:.3,max:.3,c:pick(['#ff9f43','#ffd166','#ff5e5b']),s:1});hurt(e,e.burnD*.25,{silent:true,src:'burn',elem:'fire'});if(e.dead)continue}}
     let slow=1;if(e.slow>0){slow=.45;e.slow-=dt}
     let tgx=P.x,tgy=P.y;
@@ -2848,7 +2940,7 @@ function gainXp(v){
 }
 function collect(p){
   if(p.kind==='mode'){startMode(p.mode,'supply crate');return}
-  if(p.kind==='gem'){gainXp(GEMV[p.tier]*(isMode('soulrush')?3:1));snd('gem',p.tier);if(p.tier>=2)burst(p.x,p.y,RC[p.tier],4+p.tier*2,40,.3);return}
+  if(p.kind==='gem'){gainXp(GEMV[p.tier]*(isMode('soulrush')?3:1)*(S.soulMul||1));snd('gem',p.tier);if(p.tier>=2)burst(p.x,p.y,RC[p.tier],4+p.tier*2,40,.3);return}
   if(p.kind==='maxhp'&&(G.hearts||0)>=HEART_CAP){P.hp=Math.min(P.max,P.hp+P.max*.25);toast(0,'Heart Container ('+HEART_CAP+' max): healed instead');snd('pick',1);return}
   if(p.kind==='maxhp'){const v=10;P.max+=v;P.hp=Math.min(P.max,P.hp+v*2);G.hearts=(G.hearts||0)+1;toast(2,'Heart Container: +'+v+' max HP');snd('level');RINGS.push({x:P.x,y:P.y,r:0,max:30,life:.35,t:0,c:'#ff4d6d',noFill:1});G.hudDirty=true;return}
   if(p.kind==='decoy'){G.decoy={x:P.x,y:P.y,t:8};toast(1,'Decoy: enemies nearby go for it, then it blows up');snd('pick',2);return}
@@ -2981,6 +3073,7 @@ function drawZone(z,ox,oy){
       tele(x,y,z.r,k,true);break}
     case 'pit':disc(x,y,z.r+2,'#4a3420');disc(x,y,z.r,'#1a120c');disc(x,y,z.r*.55,'#0a0605');
       if(Math.random()<.4)PT.push({x:z.x+rnd(-z.r,z.r)*.8,y:z.y+rnd(-z.r,z.r)*.8,vx:0,vy:6,life:.4,max:.4,c:'#6b4a2b',s:1});break;
+    case 'tcloud':ctx.globalAlpha*=.35;disc(x,y,z.r,'#7ac23c');ctx.globalAlpha=Math.max(0,fade)*.5;disc(x+Math.sin(z.t*3)*2,y,z.r*.6,'#c6f06a');break;
     case 'ppuddle':ctx.globalAlpha*=.6;disc(x,y,z.r,'#6a8a2a');break;
     case 'spike':
       if(z.arm>0){if(!z.arm0)z.arm0=z.arm;tele(x,y,z.r,1-z.arm/z.arm0,true)}
@@ -3179,7 +3272,7 @@ function buildReport(){
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
     mode:G.daily?'daily '+G.seedStr:'normal',character:CHARS[G.char].name,startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.victory?'won':G.won?(G.state==='over'?'won, then died in endless':'won, in endless'):G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
-      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,curios:G.curioN||{},pet:!!G.pet,novice:!!G.novice,rank:RANKS[G.rank||0].name,closestCall:G.lowHp!==undefined?Math.round(G.lowHp*100)+'%':null,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),allies:{joined:G.alliesJoined||0,lost:G.alliesLost||0,now:G.allies.map(a=>ALLY[a.kind].name+' '+Math.ceil(a.hp)+'/'+a.max)},checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
+      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,curios:G.curioN||{},trophies:G.trophies,relicCombos:G.combos||[],reactions:G.rx,pet:!!G.pet,novice:!!G.novice,rank:RANKS[G.rank||0].name,closestCall:G.lowHp!==undefined?Math.round(G.lowHp*100)+'%':null,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),allies:{joined:G.alliesJoined||0,lost:G.alliesLost||0,now:G.allies.map(a=>ALLY[a.kind].name+' '+Math.ceil(a.hp)+'/'+a.max)},checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
     damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
@@ -3237,6 +3330,7 @@ function buildTitle(){
     return `<button data-w="${id}" class="${id===chosenW?'sel':''}" ${ok?'':'disabled'} title="${ok?esc(WDEF[id].desc):'Unlock: '+UNLOCK[id].req}"><img src="${iconURL('w:'+id,ok?WDEF[id].col:'#555')}" alt="">${ok?esc(WDEF[id].name):'Locked: '+UNLOCK[id].req}</button>`}).join('');
   $('storyBox').innerHTML=storyHTML();
   if(!CHARS[chosenC].ok())chosenC='wanderer';
+  {const cs=activeCombos([...chosenR]);$('comboNote').textContent=cs.length?'Combo: '+cs.map(c=>c.name+' ('+c.desc+')').join(' · '):'Some pairs of relics combine into a bonus.'}
   $('cPick').innerHTML=Object.keys(CHARS).map(id=>{const c=CHARS[id],ok=c.ok();
     return `<button data-c="${id}" class="${id===chosenC?'sel':''}" ${ok?'':'disabled'}>${ok?esc(c.name)+': '+esc(c.desc):'Locked ('+esc(c.name)+'): '+esc(c.req)}</button>`}).join('');
   $('rPick').innerHTML=Object.keys(RELICS).map(id=>{const r=RELICS[id],ok=r.ok();if(!ok)chosenR.delete(id);
@@ -3253,7 +3347,7 @@ $('autoAlwaysBtn').addEventListener('click',autoPickAlways);
 $('endlessBtn').addEventListener('click',()=>{$('win').hidden=true;G.endless=true;G.state='play';applyControls();banner('ENDLESS','The second lap begins',true)});
 $('endWinBtn').addEventListener('click',()=>{$('win').hidden=true;G.victory=true;gameOver()});
 $('cPick').addEventListener('click',e=>{const b=e.target.closest('button[data-c]');if(b&&!b.disabled){chosenC=b.dataset.c;try{localStorage.setItem('overkill-run-char',chosenC)}catch(_){}buildTitle()}});
-$('rPick').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(b&&!b.disabled){const id=b.dataset.r;chosenR.has(id)?chosenR.delete(id):chosenR.add(id);buildTitle()}});
+$('rPick').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(b&&!b.disabled){const id=b.dataset.r;if(chosenR.has(id))chosenR.delete(id);else{if(chosenR.size>=RELIC_MAX)chosenR.delete([...chosenR][0]);chosenR.add(id)}buildTitle()}});
 function start(daily){
   try{$('eventBar').hidden=true}catch(_){}
   initAudio();if(AC&&AC.state==='suspended')AC.resume();

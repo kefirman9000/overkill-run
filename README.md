@@ -31,6 +31,8 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
   - **The Hollow** (The Void): a hunt. It stalks you unseen and can only be hurt when it shows itself.
 - During every boss fight only the boss and whatever it summons are on the field.
 - Later bosses fight in tighter arenas (down to 80% size). Every boss stops to catch its breath after each full cycle of attacks: for a couple of seconds it takes extra damage and a heart drops near you.
+- At half HP every boss **enrages**: a shockwave pushes you back, it attacks faster, and it adds a new attack (Warden crossfire, Cinder King meteor fall, Glacial Maw ice walls, Bog Mother brood burst, Prism Colossus rotating lasers, Hollow eclipse).
+- Every boss drops its **trophy**, a power for the rest of the run, and the first win unlocks it as a starting relic.
 - Beating a boss heals you, banks a Power Surge and drops a Heart Container (+max HP).
 
 ### Weapons
@@ -71,6 +73,14 @@ Each boss arrives with a cinematic intro card and a moment of slow motion. Chang
 
 Colours follow one simple rule so busy fights stay readable: anything that can hurt you is red or pink (enemy shots are always pink-red, chilling shots just get an ice-blue centre, and big hazards get a faint red outline), your own shots are shades of gold, and every pickup has a gold frame. Souls keep their rarity colours. **Options → COLORS: VIVID** brings back the old, more colourful look.
 
+### Elements
+
+Hits can burn, slow, shock, blast and now **poison** (Venom Rounds, the Bog Bladder). Mixing elements causes reactions: **steam** (fire on a frozen enemy, or frost on a burning one) bursts on everything close, a **gas explosion** (fire or a blast on a poisoned enemy) spreads fire, and **toxic shock** (lightning on a poisoned enemy) jumps between poisoned enemies.
+
+### Relics
+
+Pick up to two on the title screen: Lodestone Charm, Mutagen, Running Shoes, Gilded Idol (+25% souls; threat 15), Hourglass (super modes last longer; win a run), and one per boss trophy (Warden's Seal, Cinder Crown, Frost Heart, Bog Bladder, Prism Lens, Hollow Core). Some pairs combine into a bonus: Steam Engine, Wildfire, Toxic Prism, Blink Strider, Featherweight, Gold Rush, Time Sink and Mutant Lens.
+
 ### Health and defense
 
 Heart Containers raise max HP (bosses always drop one, elites sometimes do). Cards: Thick Skin, Iron Heart (+50 max HP, full heal), Plating (less damage taken), Giant's Blood (max HP x1.5). Rare pickups: Iron Skin (half damage for 12 s) and Guardian Orbs (three orbs that block shots for 15 s), alongside the existing heal, shield bubble, frenzy, freeze and screen bomb.
@@ -101,7 +111,7 @@ Only one special event runs at a time (shrine, supply crate, Soul Thief, vault g
 
 The world is dotted with places worth a detour, with markers at the screen edge when one is near:
 
-- **Healing spring:** stand in it to heal until it runs dry.
+- **Healing spring:** holds a set amount of healing; stand in it to heal until it runs dry.
 - **Obelisk:** touch it to wake a super mode.
 - **Vault:** a chest guarded by an elite pack. Clear the guards, then open it for souls, a Heart Container and a free level.
 - **Nest:** spawns minis while you're near. Destroy it for a big payout.
@@ -109,7 +119,7 @@ The world is dotted with places worth a detour, with markers at the screen edge 
 
 ### Curios
 
-Smaller things turn up while you explore, some useful and some just there: abandoned packs, broken carts, old signposts, graves (usually quiet), mushroom rings (something happens, probably), watching statues, campfires (heal when it's quiet), treasure maps (dig up the chest), a wandering merchant (a rare card for a fifth of your HP), wishing wells (throw in souls, make a wish), a lost dog that follows you and fetches souls, and sleeping giants carrying a lot of loot.
+Smaller things turn up while you explore, some useful and some just there: abandoned packs, broken carts, old signposts, graves (usually quiet), mushroom rings (something happens, probably), watching statues, campfires (heal when it's quiet, until the fuel runs out), treasure maps (dig up the chest), a wandering merchant (a rare card for a fifth of your HP), wishing wells (throw in souls, make a wish), a lost dog that follows you and fetches souls, and sleeping giants carrying a lot of loot.
 
 ### Codex
 
