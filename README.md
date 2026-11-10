@@ -133,6 +133,14 @@ Pick **Easy**, **Normal** or **Nightmare** on the title screen (tap the Difficul
 
 New enemies: the **Shielder** (enemies near it take far less damage), the **Burrower** (digs under and bursts out where you stand) and the **Medic** (heals hurt enemies near it).
 
+### Achievements, looks and perks
+
+31 achievements (open them from the title screen). Many unlock a new **look** for your character (picked under Character) or a small **perk** that applies to every non-daily run: a starting reroll, +20% soul reach or +10 max HP.
+
+### Daily mutations and seeds
+
+Each daily run has two mutations that apply to every enemy that day, the same for everyone (hover or long-press Daily Run to see them). Every run has a six-character **seed**, shown when paused and at the end. Type one into *Play a seed* on the title screen to get the same map and the same upgrade offers; enemies still vary.
+
 ### Options worth knowing
 
 Damage numbers are off by default; turn them on for big hits only or for every hit (hits on the same enemy add up into one number). A small radar in the top-right corner shows the beacon, the boss, shrines, nearby landmarks and where enemies are bunching up. The end-of-run screen breaks down where your damage came from, what hurt you, how much you healed, beacons reached and each boss's fight time and mutations.

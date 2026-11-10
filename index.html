@@ -147,6 +147,9 @@ details.story .dim{opacity:.45}
 .tStart{margin:6px 0 12px}
 .tStart button{flex:1 1 0}
 .tStart #startBtn{font-size:16px;padding:14px 10px}
+.achl{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}.ach{border:2px solid #2a2440;padding:6px 8px;opacity:.55}.ach.got{opacity:1;border-color:#ffb627}.ach b{display:block;font-family:var(--font-d);font-size:11px}.ach span{display:block;font-size:15px;color:var(--dim)}.ach em{display:block;font-style:normal;font-size:14px;color:#ffb627}
+.skinH{margin:16px 0 6px;clear:both}.skins{display:flex;flex-wrap:wrap;gap:6px}.skins button{width:34px;height:34px;padding:0;display:grid;place-items:center}.skins button.on{outline:2px solid #ffb627;outline-offset:1px}.skins button:disabled{opacity:.35}.skins i{display:block;width:16px;height:16px;border:3px solid var(--d)}
+.seedBox .btns{align-items:stretch}#seedIn{font-family:var(--font-d);font-size:13px;text-transform:uppercase;width:9em;padding:6px 8px;background:#0d0b14;color:var(--ink);border:2px solid #3a3150}
 .loadout{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
 .loadout .lo{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:8px 10px;text-align:left;min-width:0}
 .loadout .lo small{font-size:9px;color:var(--dim)}
@@ -267,7 +270,7 @@ details.story .dim{opacity:.45}
       <button class="lo" data-sheet="rSheet"><small>RELICS</small><b id="loR"></b></button>
       <button class="lo" id="loDiff"><small>DIFFICULTY</small><b id="loD"></b></button>
     </div>
-    <div class="sheet" id="cSheet" hidden><div class="pickrow" id="cPick"></div></div>
+    <div class="sheet" id="cSheet" hidden><div class="pickrow" id="cPick"></div><h3 class="skinH">LOOK</h3><div class="skins" id="skinPick"></div></div>
     <div class="sheet" id="wSheet" hidden><div class="pickrow" id="wPick"></div></div>
     <div class="sheet" id="rSheet" hidden><div class="note">Pick up to 2. <span id="comboNote"></span></div><div class="pickrow" id="rPick"></div><button class="sheetDone">DONE</button></div>
     <div class="note" id="bestTitle"></div>
@@ -281,7 +284,8 @@ details.story .dim{opacity:.45}
       </div>
     </details>
     <details class="story"><summary>THE STORY SO FAR</summary><div id="storyBox"></div></details>
-    <div class="btns tSmall"><button class="optBtn">OPTIONS</button><button id="updBtn">CHECK FOR UPDATE</button><button id="installBtn">INSTALL APP</button></div>
+    <details class="seedBox"><summary>PLAY A SEED</summary><p class="note">Same map and the same upgrade offers as the run that seed came from. Enemies still vary.</p><div class="btns"><input id="seedIn" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false"><button id="seedGo">PLAY SEED</button></div></details>
+    <div class="btns tSmall"><button id="achBtn">ACHIEVEMENTS</button><button class="optBtn">OPTIONS</button><button id="updBtn">CHECK FOR UPDATE</button><button id="installBtn">INSTALL APP</button></div>
     <div class="note" id="updTxt"></div>
   </div>
 </div>
@@ -294,6 +298,13 @@ details.story .dim{opacity:.45}
   </div>
 </div>
 
+<div class="ov" id="achOv" hidden>
+  <div class="card wide">
+    <h2>ACHIEVEMENTS</h2>
+    <div id="achBody"></div>
+    <div class="btns"><button class="go" id="achClose">BACK</button></div>
+  </div>
+</div>
 <div class="ov" id="codex" hidden>
   <div class="card wide">
     <h2>CODEX</h2>
@@ -383,7 +394,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.26.0';
+const VERSION='1.27.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -736,11 +747,12 @@ const joy={on:false,ox:0,oy:0,dx:0,dy:0,kx:0,ky:0,id:null};
 let isTouch=matchMedia('(pointer: coarse)').matches;
 function reset(opts){
   const daily=!!opts.daily,seedStr=daily?new Date().toLocaleDateString('en-CA'):'';
-  cardRand=daily?mulberry32(strHash('overkill-'+seedStr)):Math.random;
+  const seedN=daily?strHash('overkill-'+seedStr)>>>0:(opts.seed||((Math.random()*2176782335)|0)+1);
+  cardRand=mulberry32(seedN);
   G={state:'play',daily,seedStr,char:opts.char||'wanderer',startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,lvCD:0,surges:0,cashedOut:0,autoPicked:0,
     threat:0,tp:0,biomeI:0,biomePrev:0,morph:1,streak:0,streakT:0,bestStreak:0,stop:0,shake:0,flash:0,hurt:0,spawnAcc:0,packT:12,hazT:6,
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
-    taken:{},hurtBy:{},novice:meta.bestThreat<10,curios:new Map(),pet:null,trophies:[],rx:{},rxB:12,allies:[],lms:new Map(),lmSeed:(Math.random()*1e5)|0,startX:0,startY:0,clear:null,lull:null,lullAt:-1,check:null,lullLog:[],checksUsed:0,decoy:null,staticT:0,fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,campK:null,lastCampK:null,cloud:null,worms:[],thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
+    taken:{},hurtBy:{},novice:meta.bestThreat<10,curios:new Map(),pet:null,trophies:[],rx:{},rxB:12,allies:[],lms:new Map(),lmSeed:seedN%100000,seedN,seedCode:seedCode(seedN),customSeed:!!opts.seed,dmods:daily?dailyMuts(seedStr):[],startX:0,startY:0,clear:null,lull:null,lullAt:-1,check:null,lullLog:[],checksUsed:0,decoy:null,staticT:0,fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,campK:null,lastCampK:null,cloud:null,worms:[],thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
   P={bootsT:0,armorT:0,guardT:0,shield:0,shieldT:0,frenzy:0,bubble:0,x:0,y:0,vx:0,vy:0,hp:100,max:100,inv:0,face:1,moving:false,dashes:1,dashCd:0,dashT:0,ddx:1,ddy:0,chill:0,lx:0,ly:0};
   S={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,regen:0,multi:0,pierce:0,bounce:0,rear:0,circle:0,split:0,grow:0,burn:0,freeze:0,frostKill:0,chainKill:0,
     trail:0,dashMax:1,dashShock:0,orbitShots:0,nuke:0,pulse:0,hole:0,momentum:0,scorch:0,double:0,stasis:0,killNeedle:0,horizonDash:0,
@@ -876,13 +888,14 @@ function spawnEnemy(type,x,y,o={}){
   if(x===undefined){[x,y]=frontPos()}
   const T=ET[type];
   const eliteCh=Math.min(G.threat>15?Math.min(.45,.3+(G.threat-15)*.02):.3,Math.max(0,(G.threat-1)*.025)+Math.min(.05,G.streak/2000));
-  const elite=o.elite??(type!=='boss'&&type!=='mini'&&R()<eliteCh+DF().elite);
-  const hp=T.hp*hpScale()*(elite?3.5:1)*(o.hpMul||1)*DF().hp;
+  const elite=o.elite??(type!=='boss'&&type!=='mini'&&R()<eliteCh+DF().elite+(dm('elite')?.15:0));
+  const hp=T.hp*hpScale()*(elite?3.5:1)*(o.hpMul||1)*DF().hp*(type==='boss'?1:(dm('armored')?1.3:1)*(dm('glass')?.6:1));
   const shift=biomeOf(G.threat).b.eh;
   const h=(T.hue+(T.fixedHue?0:shift)+720)%360;
-  const e={uid:++UID,type,x,y,vx:0,vy:0,hp,max:hp,r:T.r,spd:T.spd*(1+Math.min(.5,G.threat*.035))*(elite?1.1:1),dmg:T.dmg*eDmgScale()*(elite?1.4:1)*DF().dmg,
+  const e={uid:++UID,type,x,y,vx:0,vy:0,hp,max:hp,r:T.r,spd:T.spd*(1+Math.min(.5,G.threat*.035))*(elite?1.1:1),dmg:T.dmg*eDmgScale()*(elite?1.4:1)*DF().dmg*(dm('glass')&&type!=='boss'?1.4:1),
     elite,ex:elite?pick(T.spd>=34?ELITE_EX.filter(x=>x!=='haste'):ELITE_EX):null,exT:rnd(1,3),rush:0,shift,flash:0,burn:0,burnD:0,burnTick:0,slow:0,buff:0,t:R()*10,cd:rnd(.8,2.5),fuse:0,oc:0,dead:false,
     ai:T.ai||'chase',col:elite?'#ffe066':`hsl(${h},${T.sat}%,58%)`,sum:4,pat:0};
+  if(dm('swift')&&type!=='boss')e.spd*=1.2;
   if(elite&&G.diff==='nightmare'){const o2=['shield','trail'].filter(x=>x!==e.ex);e.ex2=pick(o2)}
   E.push(e);
   if(EHINT[type]&&!G.hinted['e:'+type]){G.hinted['e:'+type]=1;toast(2,'New enemy: '+NAMES[type]+' '+EHINT[type])}
@@ -1357,8 +1370,9 @@ function shade(hex,k){const n=parseInt(hex.slice(1),16),f=c=>Math.max(0,Math.min
 const PS_CACHE={};
 function rankOf(lv){let r=0;for(let i=0;i<RANKS.length;i++)if(lv>=RANKS[i].lv)r=i;return r}
 function playerSprites(ch,rank){
-  const key=ch+rank;if(PS_CACHE[key])return PS_CACHE[key];
-  const C=CHAR_COL[ch]||CHAR_COL.wanderer,pal=Object.assign({},PPAL,{a:C.a,d:C.d});
+  const sk=SKINS[meta.skin]&&skinOk(meta.skin)?SKINS[meta.skin]:SKINS.base;
+  const key=ch+rank+(meta.skin||'');if(PS_CACHE[key])return PS_CACHE[key];
+  const C=CHAR_COL[ch]||CHAR_COL.wanderer,pal=Object.assign({},PPAL,{a:sk.a||C.a,d:sk.d||C.d});
   if(rank>=1){pal.d=shade(C.d,.72);pal.e='#ffd84a'}
   if(rank>=2){pal.a='#ffd84a'}
   if(rank>=3){pal.c='#ffffff'}
@@ -1776,6 +1790,84 @@ function updateChampions(dt){
   G.champT-=dt;
   if(G.champT<=0){G.champT=rnd(90,130)*DF().champ;if(!E.some(e=>e.champ&&!e.dead))spawnChampion()}
 }
+
+/* ================= achievements, skins and perks ================= */
+const SKINS={
+  base:{name:'Default',a:null,d:null},
+  ember:{name:'Ember',a:'#ff7a2a',d:'#c43d1a'},frost:{name:'Frost',a:'#a6f0ff',d:'#3a8ac4'},toxic:{name:'Toxic',a:'#9be15d',d:'#3a8a2a'},
+  rose:{name:'Rose',a:'#ff6fa8',d:'#a83a6a'},void:{name:'Void',a:'#c45cff',d:'#5a2a8a'},gold:{name:'Gold',a:'#ffd84a',d:'#b8862a'},
+  shadow:{name:'Shadow',a:'#5a5470',d:'#2a2636'},prism:{name:'Prism',a:'#ffffff',d:'#6be0ff'},blood:{name:'Nightmare',a:'#ff3b5c',d:'#5a0f1e'},
+};
+const PERKS={reroll:'Start every run with a reroll',magnet:'+20% soul reach',vigor:'+10 max HP'};
+const lapNow=()=>G.threat!==undefined?biomeOf(G.threat).lap:0;
+const hurtSum=()=>Object.values(G.hurtBy||{}).reduce((a,b)=>a+b,0);
+const evoN=()=>G.mode&&G.mode.id==='overdrive'?0:W.filter(w=>w.evo).length;
+const rxN=()=>Object.values(G.rx||{}).reduce((a,b)=>a+b,0);
+const ACH=[
+  ['kills100','First Blood','Kill 100 enemies in a run',()=>G.kills>=100,{skin:'ember'}],
+  ['kills1k','Thousand Cuts','Kill 1,000 enemies in a run',()=>G.kills>=1000],
+  ['kills5k','Overkill','Kill 5,000 enemies in a run',()=>G.kills>=5000,{skin:'blood'}],
+  ['streak100','On a Roll','Reach a 100-kill streak',()=>G.bestStreak>=100],
+  ['streak500','Unstoppable','Reach a 500-kill streak',()=>G.bestStreak>=500],
+  ['threat10','Deep In','Reach threat 10',()=>G.threat>=10,{skin:'toxic'}],
+  ['threat20','Deeper Still','Reach threat 20',()=>G.threat>=20],
+  ['boss1','Giant Killer','Beat a boss',()=>G.bossKills>=1],
+  ['boss5','Boss Rush','Beat 5 bosses in one run',()=>G.bossKills>=5,{perk:'reroll'}],
+  ['win','The Hollow Falls','Win a run',()=>!!G.won,{skin:'gold'}],
+  ['winNm','Nightmare Ender','Win a run on Nightmare',()=>!!G.won&&G.diff==='nightmare',{skin:'void'}],
+  ['nmT15','Sleepless','Reach threat 15 on Nightmare',()=>G.threat>=15&&G.diff==='nightmare'],
+  ['lap2','Round Two','Start the second lap in endless',()=>!!G.won&&lapNow()>=1,{skin:'prism'}],
+  ['mutant','Mutant Slayer','Beat a boss with 3 or more mutations',()=>G.bossLog.some(b=>b.mods&&b.mods.split(',').length>=3)],
+  ['champ1','Crown Taker','Kill a champion',()=>(G.champKills||0)>=1],
+  ['champ5','Kingslayer','Kill 5 champions in one run',()=>(G.champKills||0)>=5,{skin:'rose'}],
+  ['fast','Sprinter','Reach a beacon with the fast bonus',()=>G.lullLog.some(l=>l.fast)],
+  ['beacons3','Lamplighter','Reach 3 beacons in a run without missing one',()=>G.lullLog.length>=3&&G.lullLog.every(l=>l.reached)],
+  ['evo1','Evolution','Evolve a weapon',()=>evoN()>=1],
+  ['evo3','Arsenal','Have 3 evolved weapons at once',()=>evoN()>=3,{skin:'frost'}],
+  ['hearts5','Big Heart','Collect 5 Heart Containers in a run',()=>(G.hearts||0)>=5,{perk:'vigor'}],
+  ['trophy3','Trophy Case','Win 3 boss trophies in a run',()=>(G.trophies||[]).length>=3],
+  ['rx100','Chemist','Trigger 100 elemental reactions in a run',()=>rxN()>=100],
+  ['lm5','Explorer','Claim 5 landmarks in a run',()=>(G.lmClaimed||0)>=5,{perk:'magnet'}],
+  ['allies3','Good Company','Have 3 allies join you in a run',()=>(G.alliesJoined||0)>=3],
+  ['modes5','Super Charged','Use 5 super modes in a run',()=>G.modesUsed.length>=5],
+  ['untouched','Untouchable','Last 3 minutes without taking damage',()=>G.time>=180&&hurtSum()===0,{skin:'shadow'}],
+  ['thrifty','Iron Will','Reach threat 10 having healed under 50 HP',()=>G.threat>=10&&(G.healed||0)<50],
+  ['thief','Thief Catcher','Catch a Soul Thief',()=>(G.thieves||0)>=1],
+  ['daily','Daily Grind','Finish a daily run',(f)=>f&&G.daily],
+  ['close','Closest Call','Drop below 5% HP and live to threat +2',()=>G.lowHpT!==undefined&&G.threat>=G.lowHpT+2],
+];
+function achHave(id){return !!(meta.ach&&meta.ach[id])}
+function hasPerk(p){return ACH.some(a=>a[4]&&a[4].perk===p&&achHave(a[0]))}
+function skinOk(k){return k==='base'||ACH.some(a=>a[4]&&a[4].skin===k&&achHave(a[0]))}
+function checkAch(final){
+  if(!G||G.state==='title')return;
+  if(P&&P.hp>0&&P.hp<P.max*.05&&G.lowHpT===undefined)G.lowHpT=G.threat;
+  meta.ach=meta.ach||{};let any=false;
+  for(const [id,name,desc,ok,rw] of ACH){if(meta.ach[id])continue;let v=false;try{v=ok(final)}catch(_){}
+    if(v){meta.ach[id]=Date.now();any=true;G.achNew=(G.achNew||[]).concat(id);
+      toast(3,'Achievement: '+name+(rw?rw.skin?' · new look: '+SKINS[rw.skin].name:' · perk: '+PERKS[rw.perk]:''));snd('level')}}
+  if(any)saveMeta();
+}
+function achHTML(){
+  const n=ACH.filter(a=>achHave(a[0])).length;
+  return `<p class="note">${n} / ${ACH.length} unlocked. Looks are picked under Character; perks apply to every run except dailies.</p><div class="achl">`+
+    ACH.map(([id,name,desc,,rw])=>{const h=achHave(id);return `<div class="ach${h?' got':''}"><b>${h?'✓ ':''}${esc(name)}</b><span>${esc(desc)}</span>${rw?`<em>${rw.skin?'Look: '+SKINS[rw.skin].name:'Perk: '+PERKS[rw.perk]}</em>`:''}</div>`}).join('')+'</div>';
+}
+/* ================= daily mutations: the same two twists for everyone that day ================= */
+const DAILY_MUTS={
+  swift:{name:'Swift',desc:'enemies move 20% faster'},
+  armored:{name:'Armored',desc:'enemies have 30% more HP'},
+  volatile:{name:'Volatile',desc:'some enemies burst into shots when they die'},
+  brood:{name:'Brooding',desc:'some enemies split into crawlers when they die'},
+  glass:{name:'Glass',desc:'enemies have 40% less HP but hit 40% harder'},
+  elite:{name:'Elite',desc:'elites are much more common'},
+  regen:{name:'Regenerating',desc:'enemies heal when you stop hitting them'},
+};
+function dailyMuts(seedStr){const r=mulberry32(strHash('mut-'+seedStr)),k=Object.keys(DAILY_MUTS),a=k.splice(Math.floor(r()*k.length),1)[0],b=k[Math.floor(r()*k.length)];return [a,b]}
+const dm=k=>G.dmods&&G.dmods.includes(k);
+/* ================= run seeds ================= */
+const seedCode=n=>(n>>>0).toString(36).toUpperCase().padStart(6,'0').slice(-6);
+const seedFrom=code=>{const n=parseInt(String(code).trim().toLowerCase().replace(/[^0-9a-z]/g,''),36);return isFinite(n)&&n>0?n%2176782336:0};
 
 /* ================= event coordinator =================
    Only one special event at a time (shrine, supply crate, Soul Thief, vault guards, calm/beacon), with at least
@@ -2373,6 +2465,7 @@ function hurt(e,dmg,o={}){
     else if(el==='shock'&&e.pois>0)reaction('toxicshock',e,dmg);
     else if(o.proc&&e.burn>0&&e.slow>=2&&e.burnD>0)reaction('steam',e,dmg);
   }
+  e.hitT=G.time;
   if(e.guardT>G.time){d*=.35;if(R()<.2)burst(e.x,e.y-2,'#6be0ff',2,30,.2)}
   const dealt=Math.min(d,Math.max(0,e.hp));
   e.hp-=d;e.flash=.06;numHit(e,dealt,crit);
@@ -2389,6 +2482,9 @@ function kill(e,src){
   if(G.streak>=25&&!G.mode){G.okm++;if(G.okm>=600+G.okUses*300){G.okm=0;G.okUses++;startMode(pickMode(),'overkill meter')}}
   if(S.toxicKill&&R()<S.toxicKill&&e.type!=='boss')addZone('tcloud',e.x,e.y,16*S.area,3,{ed:14*dmgMul(),src:'poison'});
   if(e.champ)champDrop(e);
+  if(G.dmods.length&&e.type!=='boss'&&e.type!=='crate'&&e.type!=='ufo'){
+    if(dm('volatile')&&R()<.2)bRing(e,4,45,.5);
+    if(dm('brood')&&e.type!=='mini'&&R()<.1)for(let i=0;i<2;i++){const m=spawnEnemy('mini',e.x+rnd(-4,4),e.y+rnd(-4,4),{elite:false});m.vx=rnd(-50,50);m.vy=rnd(-50,50)}}
   G.kills++;G.streak++;G.streakT=1.6;if(G.streak>G.bestStreak)G.bestStreak=G.streak;
   if(S.leech&&G.leechUsed<2+S.leech*4){P.hp=Math.min(P.max,P.hp+S.leech);G.leechUsed+=S.leech}
   if(G.streak%100===0&&G.rerolls<3){G.rerolls++;toast(2,'Streak '+G.streak+': reroll earned')}
@@ -2829,6 +2925,7 @@ function update(dt){
   }
 
   // ---- threat, hazards, spawns
+  G.achT=(G.achT||0)-dt;if(G.achT<=0){G.achT=1;checkAch(false)}
   updateRank();updateChampions(dt);updateLandmarks(dt);updateCurios(dt);updatePet(dt);updateAllies(dt);updateFronts(dt);updateCamp(dt);updateThief(dt);updateDecoy(dt);updatePassives(dt);
   if(G.threat%5>=3&&G.lullAt!==G.threat-G.threat%5&&G.state==='play'&&evFree()&&sysOn('calm'))startLull();
   if(G.arena)updateArena(dt);
@@ -2951,6 +3048,7 @@ function update(dt){
         break;
     }
     if(e.champ&&champTick(e,dt,d))continue;
+    if(G.dmods.length&&dm('regen')&&e.type!=='boss'&&e.hp<e.max&&G.time-(e.hitT||0)>2)e.hp=Math.min(e.max,e.hp+e.max*.03*dt);
     if(e.elite){
       if(e.ex==='haste'){e.tele=e.tele||(e.exT<.5&&e.rush<=0);e.exT-=dt;if(e.exT<=0){e.exT=3;e.rush=.45}if(e.rush>0){e.rush-=dt;s*=3}}
       else if(e.ex==='shield')e.hp=Math.min(e.max,e.hp+e.max*.05*dt);
@@ -3494,7 +3592,7 @@ function buildReport(){
   const statKeys=Object.keys(S).filter(k=>{const d={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,dashMax:1}[k]??0;return Math.abs(S[k]-d)>1e-6});
   const r={
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
-    mode:G.daily?'daily '+G.seedStr:'normal',difficulty:DIFF[G.diff||'normal'].name,champions:{seen:G.champSeen||0,killed:G.champKills||0},character:CHARS[G.char].name,startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
+    mode:G.daily?'daily '+G.seedStr:'normal',difficulty:DIFF[G.diff||'normal'].name,seed:G.seedCode+(G.customSeed?' (chosen)':''),dailyMutations:G.dmods,achievementsThisRun:G.achNew||[],champions:{seen:G.champSeen||0,killed:G.champKills||0},character:CHARS[G.char].name,startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.victory?'won':G.won?(G.state==='over'?'won, then died in endless':'won, in endless'):G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
       bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,curios:G.curioN||{},trophies:G.trophies,relicCombos:G.combos||[],reactions:G.rx,pet:!!G.pet,novice:!!G.novice,rank:RANKS[G.rank||0].name,closestCall:G.lowHp!==undefined?Math.round(G.lowHp*100)+'%':null,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),allies:{joined:G.alliesJoined||0,lost:G.alliesLost||0,now:G.allies.map(a=>ALLY[a.kind].name+' '+Math.ceil(a.hp)+'/'+a.max)},checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
@@ -3549,6 +3647,8 @@ $('repSelect').onclick=()=>{const b=$('reportBox');b.focus();b.select()};
 function bestLine(){if(!meta.bestKills)return 'No runs yet.';const bb=meta.bestBy&&meta.bestBy[chosenD];const d=chosenD==='normal'?'':` · ${DIFF[chosenD].name} best: ${bb?bb.kills+' kills, threat '+bb.threat:'none yet'}`;return `Best: ${meta.bestKills} kills · threat ${meta.bestThreat} · ${meta.totalKills.toLocaleString()} lifetime kills`+d}
 function buildTitle(){
   $('bestTitle').textContent=bestLine();
+  $('skinPick').innerHTML=Object.entries(SKINS).map(([k,v])=>{const ok=skinOk(k),src=ACH.find(a=>a[4]&&a[4].skin===k);return `<button data-skin="${k}" class="${(meta.skin||'base')===k?'on':''}" ${ok?'':'disabled'} title="${esc(v.name+(ok?'':' · '+(src?src[2]:'')))}"><i style="background:${v.a||CHAR_COL[chosenC].a};--d:${v.d||CHAR_COL[chosenC].d}"></i></button>`}).join('');
+  const dt=new Date().toLocaleDateString('en-CA');$('dailyBtn').title='Today: '+dailyMuts(dt).map(k=>DAILY_MUTS[k].name+' ('+DAILY_MUTS[k].desc+')').join(', ');
   $('loD').textContent=DIFF[chosenD].name;$('loD').style.color=chosenD==='nightmare'?'#ff4d6d':chosenD==='easy'?'#9be15d':'';$('loDiff').title=DIFF[chosenD].desc;
   if(!UNLOCK[chosenW].ok())chosenW='pea';
   $('wPick').innerHTML=Object.keys(WDEF).map(id=>{const ok=UNLOCK[id].ok();
@@ -3577,12 +3677,14 @@ document.querySelectorAll('#title .lo[data-sheet]').forEach(b=>b.addEventListene
 function closeSheets(){['cSheet','wSheet','rSheet'].forEach(k=>$(k).hidden=true);document.querySelectorAll('#title .lo').forEach(x=>x.classList.remove('open'))}
 document.querySelector('#rSheet .sheetDone').addEventListener('click',closeSheets);
 $('rPick').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(b&&!b.disabled){const id=b.dataset.r;if(chosenR.has(id))chosenR.delete(id);else{if(chosenR.size>=RELIC_MAX)chosenR.delete([...chosenR][0]);chosenR.add(id)}buildTitle()}});
-function start(daily){
+function start(daily,seed){
   try{$('eventBar').hidden=true}catch(_){}
   initAudio();if(AC&&AC.state==='suspended')AC.resume();
   VIEW=CFG.autoZoom?VIEW_IN:VIEW_FIXED;setZoom(VIEW);applyView(true);
-  if(daily)reset({daily:true,weapon:'pea',relics:[],char:'wanderer'});else reset({daily:false,weapon:chosenW,relics:chosenR,char:chosenC});
+  if(daily)reset({daily:true,weapon:'pea',relics:[],char:'wanderer'});else reset({daily:false,weapon:chosenW,relics:chosenR,char:chosenC,seed});
   G.diff=daily?'normal':chosenD;
+  if(!daily){if(hasPerk('reroll'))G.rerolls++;if(hasPerk('magnet'))S.magnet*=1.2;if(hasPerk('vigor')){P.max+=10;P.hp+=10}}
+  if(G.dmods.length)setTimeout(()=>{if(G.state==='play')toast(3,'Today: '+G.dmods.map(k=>DAILY_MUTS[k].name+' ('+DAILY_MUTS[k].desc+')').join(' · '))},1800);
   ['title','over','win','pause','lvl','repOv','opts'].forEach(id=>$(id).hidden=true);$('hud').hidden=false;
   applyControls();
   {const st=daily?null:storyBeat(0);banner(daily?'DAILY RUN':st?'GRASSY RUINS':'THREAT 0',daily?'Same upgrade offers for everyone today':st||'Entering '+landName(0),true)}
@@ -3591,6 +3693,7 @@ function start(daily){
 function gameOver(){
   if(G.state==='over')return;
   endMode();G.state='over';snd('over');G.stop=0;joy.on=false;applyControls();burst(P.x,P.y,'#2ec4b6',40,90,.8,2);G.flash=.6;
+  checkAch(true);
   meta.runs++;meta.totalKills+=G.kills;meta.lmTotal=(meta.lmTotal||0)+(G.lmClaimed||0);
   document.querySelector('#over h2').textContent=G.victory?'VICTORY':'OVERRUN';
   const nb=G.kills>meta.bestKills;
@@ -3600,7 +3703,7 @@ function gameOver(){
   saveMeta();
   $('overBd').innerHTML=breakdownHTML();
   $('overHi').innerHTML=highlights().map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(String(b))}</dd>`).join('');$('cardPrev').hidden=true;showCardPreview();
-  $('overStats').innerHTML=[G.victory?['Result','Won the run']:['Killed by',(G.won?'(endless) ':'')+(G.lastHit||'something')],['Kills',G.kills],['Level',G.level],['Threat',G.threat],['Land',landName(G.threat)],['Time',fmtT(G.time)],['Best streak',G.bestStreak],['Weapons',W.map(w=>WDEF[w.id].name+' '+w.lvl).join(', ')]]
+  $('overStats').innerHTML=[G.victory?['Result','Won the run']:['Killed by',(G.won?'(endless) ':'')+(G.lastHit||'something')],['Kills',G.kills],['Level',G.level],['Threat',G.threat],['Land',landName(G.threat)],['Time',fmtT(G.time)],['Seed',G.daily?'daily':G.seedCode],['Best streak',G.bestStreak],['Weapons',W.map(w=>WDEF[w.id].name+' '+w.lvl).join(', ')]]
     .map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('');
   const unlocks=Object.keys(UNLOCK).filter(k=>UNLOCK[k].ok()).length;
   document.querySelectorAll('.notesIn').forEach(t=>t.value=G.notes||'');
@@ -3613,7 +3716,7 @@ function setPause(on){
   G.state=on?'pause':'play';$('pause').hidden=!on;
   joy.on=false;joy.dx=joy.dy=joy.kx=joy.ky=0;applyControls();
   if(on){
-    const rows=[['HP',Math.ceil(P.hp)+' / '+P.max],['Level',G.level],['Threat',G.threat+' · '+landName(G.threat)],...W.map(w=>[w.evo?EVO[w.id].name:WDEF[w.id].name,w.evo?'evolved':'Lv '+w.lvl])];
+    const rows=[['Seed',G.daily?'daily '+G.seedStr:G.seedCode],...(G.dmods.length?[['Today',G.dmods.map(k=>DAILY_MUTS[k].name).join(', ')]]:[]),['HP',Math.ceil(P.hp)+' / '+P.max],['Level',G.level],['Threat',G.threat+' · '+landName(G.threat)],...W.map(w=>[w.evo?EVO[w.id].name:WDEF[w.id].name,w.evo?'evolved':'Lv '+w.lvl])];
     for(const w of W)if(!w.evo){const ev=EVO[w.id],have=(G.taken[ev.mut]||0)>0;rows.push(['→ '+ev.name,'Lv '+w.lvl+'/6 · '+(have?'✓ ':'needs ')+ev.mutName])}
     if(G.modesUsed.length)rows.push(['Super modes',G.modesUsed.length]);
     for(const id in G.taken){const c=CARDS.find(c=>c.id===id);if(c)rows.push([c.name,G.taken[id]>1?'x'+G.taken[id]:RN[c.r].toLowerCase()])}
@@ -3624,7 +3727,12 @@ function setPause(on){
 }
 function toTitle(){G={state:'title'};['over','win','pause','lvl','repOv','hud','opts'].forEach(id=>$(id).hidden=true);$('title').hidden=false;buildTitle();applyControls()}
 $('loDiff').onclick=()=>{chosenD=DIFF_ORDER[(DIFF_ORDER.indexOf(chosenD)+1)%3];try{localStorage.setItem('overkill-run-diff',chosenD)}catch(_){}buildTitle();toast(chosenD==='nightmare'?3:chosenD==='easy'?1:0,DIFF[chosenD].name+': '+DIFF[chosenD].desc)};
-$('startBtn').onclick=()=>start(false);$('dailyBtn').onclick=()=>start(true);
+$('startBtn').onclick=()=>start(false);
+$('skinPick').addEventListener('click',e=>{const b=e.target.closest('button[data-skin]');if(!b||b.disabled)return;meta.skin=b.dataset.skin;saveMeta();buildTitle()});
+$('achBtn').onclick=()=>{$('achBody').innerHTML=achHTML();$('title').hidden=true;$('achOv').hidden=false;$('achOv').scrollTop=0};
+$('achClose').onclick=()=>{$('achOv').hidden=true;$('title').hidden=false};
+$('seedGo').onclick=()=>{const n=seedFrom($('seedIn').value);if(!n){$('seedIn').focus();return}start(false,n)};
+$('seedIn').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')$('seedGo').click()});$('dailyBtn').onclick=()=>start(true);
 $('againBtn').onclick=()=>start(G.daily);$('titleBtn').onclick=toTitle;$('quitBtn').onclick=toTitle;
 $('resumeBtn').onclick=()=>setPause(false);
 $('pauseBtn').onclick=()=>setPause(G.state==='play');
