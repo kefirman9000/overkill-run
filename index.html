@@ -377,7 +377,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.24.0';
+const VERSION='1.24.1';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -574,7 +574,7 @@ const WDEF={
   drone:{name:'Drone Minions',col:'#6be0ff',desc:'Little drones that follow you, shoot on their own and soak up enemy shots.',up:l=>l%2===1?'+1 drone, +30% damage':'+30% damage, drones fire faster'},
   beam:{name:'Prism Beam',col:'#f2ead8',desc:'A beam that cuts through everything in a line.',up:l=>l%3===0?'+1 beam, +30% damage':'+30% damage, longer and wider beam'},
   rang:{name:'Boomerang',col:'#e0a060',desc:'A spinning blade that flies out and comes back, cutting through everything both ways.',up:l=>l%2===0?'+1 boomerang, +30% damage':'+30% damage, longer and faster throw'},
-  nova:{name:'Frost Nova',col:'#a6f0ff',desc:'A freezing pulse around you: damages and slows everything close, and pops enemy shots near you.',up:l=>l%2===0?'+30% damage, wider pulse':'+30% damage, pulses more often'},
+  nova:{name:'Frost Nova',col:'#a6f0ff',desc:'A freezing pulse around you: damages and slows everything close, and pops a couple of enemy shots near you.',up:l=>l%2===0?'+30% damage, wider pulse':'+30% damage, pulses more often'},
   shotgun:{name:'Scattergun',col:'#ffd84a',desc:'A short-range blast of pellets that shreds whatever gets close.',up:l=>l%2===1?'+2 pellets, +30% damage':'+30% damage, reloads faster'},
   oil:{name:'Oil Slick',col:'#8a7cff',desc:'Drops slowing oil as you move. Ignites at Lv 3.',up:l=>l===3?'Slicks ignite and burn':'Bigger, longer, nastier slicks'},
 };
@@ -589,7 +589,7 @@ const EVO={
   drone:{name:'Hive Mind',mut:'rate',mutName:'Hair Trigger',desc:'Twice the drones, firing much faster.'},
   beam:{name:'Death Ray',mut:'dmg',mutName:'Heavier Rounds',desc:'Three beams at double damage.'},
   rang:{name:'Glaive Storm',mut:'pierce',mutName:'Drill Tips',desc:'Twice the blades, bigger and 60% harder-hitting.'},
-  nova:{name:'Absolute Zero',mut:'frostkill',mutName:'Cold Snap',desc:'A huge pulse at double damage that freezes solid and wipes nearby shots.'},
+  nova:{name:'Absolute Zero',mut:'frostkill',mutName:'Cold Snap',desc:'A huge pulse at double damage that freezes solid and pops the closest shots.'},
   shotgun:{name:"Dragon's Breath",mut:'rear',mutName:'Rear Guns',desc:'Twice the pellets, longer reach, and every pellet sets enemies on fire.'},
   oil:{name:'Napalm Wake',mut:'burn',mutName:'Incendiary',desc:'Huge slicks that always burn.'},
 };
@@ -1017,14 +1017,16 @@ function spawnTick(dt,mult,cap){
 function drawWaveWarnings(){for(const w of G.warn)edgeMark(w.a,'#ff4d6d',3)}
 /* screen-edge markers: everything that wants one queues it here; only the three most important are drawn,
    all in one style (a coloured arrow with a dark outline pointing where the thing is) */
-function edgeMark(a,col,pri){(G.marks||(G.marks=[])).push({a,col,pri})}
+function edgeMark(a,col,pri,opt,d){(G.marks||(G.marks=[])).push({a,col,pri,opt,d:d||0})}
 function drawEdgeMarks(){
-  const M=G.marks;if(!M||!M.length)return;
+  let M=G.marks;if(!M||!M.length)return;
+  // optional places (landmarks) never crowd the edge: only the nearest one shows, and none while something urgent is pointed at
+  const urgent=M.some(m=>m.pri>=3),opt=M.filter(m=>m.opt).sort((p,q)=>p.d-q.d);
+  M=M.filter(m=>!m.opt);if(!urgent&&opt.length&&!G.lull&&!G.clear)M.push(opt[0]);G.marks.length=0;
   M.sort((p,q)=>q.pri-p.pri);
   for(let i=0;i<Math.min(3,M.length);i++){const m=M[i],c=Math.cos(m.a),sn=Math.sin(m.a),t=Math.min((LW/2-12)/Math.max(1e-3,Math.abs(c)),(LH/2-12)/Math.max(1e-3,Math.abs(sn))),x=LW/2+c*t,y=LH/2+sn*t;
     const tri=(r,col)=>{ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x+c*r,y+sn*r);ctx.lineTo(x-c*r*.7-sn*r*.85,y-sn*r*.7+c*r*.85);ctx.lineTo(x-c*r*.7+sn*r*.85,y-sn*r*.7-c*r*.85);ctx.closePath();ctx.fill()};
     ctx.globalAlpha=m.pri>=3?.75+.25*Math.sin(G.time*10):.85;tri(8,'#0d0b14');tri(6,m.col);ctx.globalAlpha=1}
-  M.length=0;
 }
 /* Standing still too long brings trouble (not inside walled boss fights). Each time you camp, one of these
    comes, never the same one twice in a row:
@@ -1693,7 +1695,7 @@ function updateLandmarks(dt){
     if(!lm||lm.state==='done')continue;
     if(lm.kind==='camp'&&!sysOn('allies'))continue;
     const d=Math.hypot(P.x-lm.x,P.y-lm.y);if(d>420)continue;
-    if(!lm.seen){lm.seen=1;G.lmSeen=(G.lmSeen||0)+1;codexAdd('l','l:'+lm.kind);const how={camp:'stand by the cage to free them',spring:'stand in it to heal',obelisk:'touch it to wake its power',vault:'clear the guards, then open it',nest:'destroy it before it fills the area'}[lm.kind];
+    if(!lm.seen&&!G.lull&&!G.clear&&!G.boss&&!SHRINES.length){lm.seen=1;G.lmSeen=(G.lmSeen||0)+1;codexAdd('l','l:'+lm.kind);const how={camp:'stand by the cage to free them',spring:'stand in it to heal',obelisk:'touch it to wake its power',vault:'clear the guards, then open it',nest:'destroy it before it fills the area'}[lm.kind];
       toast(G.hinted['lm:'+lm.kind]?0:1,(lm.name||'A landmark')+' nearby'+(G.hinted['lm:'+lm.kind]?'':': '+how+'.'));G.hinted['lm:'+lm.kind]=1}
     switch(lm.kind){
       case 'spring':
@@ -1764,7 +1766,7 @@ function drawLandmarks(ox,oy){
         break}
     }
     // edge marker for unclaimed landmarks that are close but off screen
-    if(!on&&lm.state!=='done'&&!(G.arena&&G.arena.wall>0)&&Math.hypot(lm.x-P.x,lm.y-P.y)<560)edgeMark(Math.atan2(lm.y-P.y,lm.x-P.x),LM_COL[lm.kind],1)
+    if(!on&&lm.state!=='done'&&!(G.arena&&G.arena.wall>0)&&Math.hypot(lm.x-P.x,lm.y-P.y)<560)edgeMark(Math.atan2(lm.y-P.y,lm.x-P.x),LM_COL[lm.kind],1,1,Math.hypot(lm.x-P.x,lm.y-P.y))
   }
 }
 
@@ -2420,7 +2422,9 @@ function fireWeapon(w){
       volley(a,(1+Math.floor(l/2)+Math.floor(S.multi/2))*(w.evo?2:1),.55,150+l*8,{kind:'rang',dmg:14*lm*(w.evo?1.6:1),size:w.evo?6:4,col:w.evo?'#ffd166':'#e0a060',life:3,turn:.5+l*.03,src:'rang',pierce:999,bounce:0,split:false,noOrbit:1});snd('shoot');return Math.max(.9,1.6-.08*l)}
     case 'nova':{const r=(34+l*4)*S.area*(w.evo?1.5:1),dm=16*lm*(w.evo?2:1);let any=false;
       query(P.x,P.y,r+8,e=>{if(Math.hypot(e.x-P.x,e.y-P.y)<r+e.r){any=true;const dx=e.x-P.x,dy=e.y-P.y,d=Math.hypot(dx,dy)||1;hurt(e,dm,{proc:true,kx:dx/d,ky:dy/d,kb:60,col:'#a6f0ff',src:'nova',elem:'blast'});e.slow=Math.max(e.slow,w.evo?3:1.5)}});
-      for(const b of EB)if(Math.hypot(b.x-P.x,b.y-P.y)<r*(w.evo?1:.6)){b.life=0;burst(b.x,b.y,'#a6f0ff',2,30,.2)}
+      // pops only the few closest shots per pulse (and fewer against bosses), so it softens bullet patterns instead of erasing them
+      {const rr=r*(w.evo?1:.6),cap=(w.evo?5:2)-(G.boss?1:0),near=[];for(const b of EB){const d=Math.hypot(b.x-P.x,b.y-P.y);if(d<rr&&b.life>0)near.push([d,b])}
+       near.sort((a,b)=>a[0]-b[0]);for(let i=0;i<Math.min(cap,near.length);i++){const b=near[i][1];b.life=0;burst(b.x,b.y,'#a6f0ff',2,30,.2)}}
       RINGS.push({x:P.x,y:P.y,r:0,max:r,life:.3,t:0,c:'#a6f0ff',noFill:1});if(any||EB.length)snd('zap');return Math.max(1.1,2.6-.15*l)}
     case 'shotgun':{const t=nearest(P.x,P.y,range*.5);if(!t)return 0;const a=Math.atan2(t.y-P.y,t.x-P.x),n=(4+Math.ceil(l/2)*2)*(w.evo?2:1);
       volley(a,n,w.evo?.07:.11,230,{dmg:7*lm,size:2,col:w.evo?'#ff9f43':'#ffd84a',life:w.evo?.5:.34,src:'shotgun',elem:w.evo?'fire':'kinetic',ignite:w.evo?1:0});G.shake=Math.max(G.shake,.4);snd('shoot');return Math.max(.65,1.3-.06*l)}
