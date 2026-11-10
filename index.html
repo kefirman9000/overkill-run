@@ -325,7 +325,7 @@ body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
 
 <script>
 'use strict';
-const VERSION='1.19.0';
+const VERSION='1.20.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -977,6 +977,9 @@ function updateCamp(dt){
   if(G.arena||G.clear||G.lull){G.campT=0;G.campK=null;return}
   const dx=P.x-G.campX,dy=P.y-G.campY;
   if(dx*dx+dy*dy>CAMP_R*CAMP_R){G.campX=P.x;G.campY=P.y;G.campT=0;G.campK=null;return}
+  // only standing still in a fight counts: in a quiet spot (fewer than 5 enemies close by) you can stand as long as you like
+  if(!G.campK){let n=0;for(const e of E){if(e.dead||!countsForClear(e))continue;const ex=e.x-P.x,ey=e.y-P.y;if(ex*ex+ey*ey<150*150&&++n>=5)break}
+    if(n<5){G.campT=Math.max(0,G.campT-dt*2);return}}
   G.campT+=dt;if(G.campT<CAMP_T)return;
   if(!G.campK){
     G.campK=pick(CAMP_KINDS.filter(k=>k!==G.lastCampK));G.lastCampK=G.campK;G.campCd=0;
@@ -1419,7 +1422,8 @@ function drawEvents(ox,oy){
    Threat doesn't climb and land hazards stop during a fight. Win: heal 35% and a Power Surge (3 banked levels). */
 const ARENA_R=115;            // arena radius in world pixels
 const FLOE_R0=140,FLOE_R1=72;
-const INF_R0=270,INF_R1=115,INF_SPD=7;  // ring of fire: starts this big, closes this fast (px/s) down to this // the ice floe starts this big and cracks down to this
+const arenaScale=()=>Math.max(.8,1-Math.max(0,G.threat-5)*.012); // tougher (later) bosses get tighter arenas, never below 80%
+const INF_R0=1000,INF_R1=165,INF_T=32;  // ring of fire: starts this big and closes to this over INF_T seconds, fast at first, slowing at the end // the ice floe starts this big and cracks down to this
 const ARENA_HP=8;                                                     // v1.16.2: 5 -> 8 (fights were 17-19 s)
 const BOSS_DMG=1.25;
 const bossEarly=()=>Math.min(1,.6+G.threat*.027);                   // threat 5: 73%, 10: 87%, 15+: full                                                   // boss shots and shells hit 40% harder             // boss HP multiplier for boss fights (tune with the run report's bossFights)
@@ -1459,7 +1463,7 @@ const fmtOf=()=>G.arena?FMT[G.arena.fmt]:null;
 function startArena(){
   const bi=biomeOf(G.threat).i%BIOMES.length,B=BOSSES[bi],F=FMT[B.fmt];
   const fin=bi===5&&!G.won;
-  const A=G.arena={final:fin,x:P.x,y:P.y,r:B.fmt==='floe'?FLOE_R0:B.fmt==='inferno'?INF_R0:ARENA_R,fmt:B.fmt,phase:'in',t:0,bi,wall:0,start:G.time,fireA:0,fireT:0};
+  const A=G.arena={final:fin,x:P.x,y:P.y,r:B.fmt==='floe'?Math.round(FLOE_R0*arenaScale()):B.fmt==='inferno'?INF_R0:Math.round(ARENA_R*arenaScale()),fmt:B.fmt,phase:'in',t:0,bi,wall:0,start:G.time,fireA:0,fireT:0};
   // the horde dissolves for every boss fight: no souls, no kills, just gone. Only the boss and what it summons remain.
   for(const e of E){if(e.dead)continue;e.dead=true;if(PT.length<500)burst(e.x,e.y,e.col,3,35,.35)}
   BOOMQ.length=0;if(F.walls)SHRINES=[];
@@ -1534,14 +1538,14 @@ function updateArena(dt){
   if(F.horde&&A.phase==='fight')spawnTick(dt,F.horde,maxAlive()*.7);
   // ice floe: the edge cracks away, and touching the water chills you
   if(A.fmt==='floe'&&A.phase==='fight'){
-    const nr=Math.max(FLOE_R1,FLOE_R0-(G.time-A.fightStart)*1.5);
+    const nr=Math.max(FLOE_R1,FLOE_R0*arenaScale()-(G.time-A.fightStart)*1.5);
     if(Math.floor(nr/4)!==Math.floor(A.r/4))for(let i=0;i<10;i++){const a=R()*TAU;PT.push({x:A.x+Math.cos(a)*A.r,y:A.y+Math.sin(a)*A.r,vx:Math.cos(a)*20,vy:Math.sin(a)*20,life:.8,max:.8,c:'#e8f6ff',s:2})}
     A.r=nr;
     if(Math.hypot(P.x-A.x,P.y-A.y)>A.r-7)P.chill=Math.max(P.chill,.6);
   }
   // ring of fire: closes in, burns whatever is outside it; the King stays inside
   if(A.fmt==='inferno'){
-    if(A.phase==='fight')A.r=Math.max(INF_R1,INF_R0-(G.time-A.fightStart)*INF_SPD);
+    if(A.phase==='fight'){const k=Math.min(1,(G.time-A.fightStart)/INF_T),r1=INF_R1*Math.max(.85,arenaScale());A.r=r1+(INF_R0-r1)*(1-k)*(1-k)}
     const b=G.boss;if(b&&!b.dead){const dx=b.x-A.x,dy=b.y-A.y,d=Math.hypot(dx,dy);if(d>A.r-10){b.x=A.x+dx/d*(A.r-10);b.y=A.y+dy/d*(A.r-10);b.charge=0}}
     A.fireT-=dt;
     if(A.fireT<=0&&A.fireA>.5){A.fireT=.25;
@@ -1609,6 +1613,7 @@ function drawBossMarks(ox,oy){
   const B=bossOf(b),x=b.x-ox,y=b.y-oy;
   if(b.pylons)for(const pl of b.pylons)if(!pl.dead){ctx.globalAlpha=.35+.25*Math.sin(G.time*9+pl.uid);line(pl.x-ox,pl.y-oy,x,y,'#6be0ff');ctx.globalAlpha=1}
   if(b.sub){const k=(G.time*1.5)%1;ctx.globalAlpha=.6*(1-k);ring(x,y+2,4+k*12,'#9ad13c');ctx.globalAlpha=.4;ring(x,y+2,3,'#c6f06a');ctx.globalAlpha=1;return}
+  if(b.restT>G.time){ctx.globalAlpha=.6+.3*Math.sin(G.time*8);ring(x,y,b.r+6,'#ffd84a');ctx.globalAlpha=1;if(R()<.2)PT.push({x:b.x+rnd(-5,5),y:b.y-b.r,vx:0,vy:-12,life:.5,max:.5,c:'#ffd84a',s:1})}
   const ghost=b.phase>0;
   ctx.globalAlpha=(ghost?.18:.5)+.15*Math.sin(G.time*6);ring(x,y+3,b.r+5+Math.sin(G.time*4),B.col);
   if(!ghost){ctx.globalAlpha=.12+.05*Math.sin(G.time*5);ctx.fillStyle=B.col;ctx.fillRect(RK(x)-2,RK(y)-48,5,40)}
@@ -1621,6 +1626,16 @@ function bShot(e,a,spd,dmgK,o){dmgK*=BOSS_DMG*bossEarly();const B=bossOf(e);EB.p
 function bRing(e,n,spd,dmgK,o){const off=R();for(let i=0;i<n;i++)bShot(e,(i/n+off)*TAU,spd,dmgK,o)}
 function bLater(e,t,fn){e.q.push({t,fn})}
 function bShell(e,x,y,r,after){addZone('shell',x,y,r,1.1,{boom:{r,dmg:0,pd:e.dmg*1.1*BOSS_DMG*bossEarly(),col:bossOf(e).col,src:'boss',hostile:true,cause:bossOf(e).name,after}})}
+const REST_T=2.6;
+function bossRest(e){
+  e.cd=REST_T;e.restT=G.time+REST_T;e.tele=false;e.q.length=0;
+  const A=G.arena;let x,y;
+  for(let i=0;i<8;i++){const a=R()*TAU,r=rnd(30,60);x=P.x+Math.cos(a)*r;y=P.y+Math.sin(a)*r;if(!A||A.wall<.5||Math.hypot(x-A.x,y-A.y)<A.r-14)break;x=A.x+rnd(-20,20);y=A.y+rnd(-20,20)}
+  if(A&&A.fmt==='inferno'&&Math.hypot(x-A.x,y-A.y)>A.r-14){x=A.x;y=A.y}
+  PU.push({kind:'heart',x,y,t:0,vx:0,vy:-20});
+  RINGS.push({x:e.x,y:e.y,r:0,max:28,life:.4,t:0,c:'#ffd84a',noFill:1});
+  if(!G.hinted.rest){G.hinted.rest=1;toast(1,'The boss is catching its breath: hit it hard and grab the heart.')}
+}
 const bossFaster=e=>Math.max(.5,.88-G.threat*.012)*Math.pow(.88,e.rage||0);   // quicker at higher threat, and when enraged
 /* how the boss moves between attacks, by fight type (null = walk toward you) */
 function bossMove(e,dx,dy,d){
@@ -1660,6 +1675,9 @@ function bossThink(e,dt,dx,dy,d){
   const next=B.pats[(e.pat+1)%B.pats.length];
   e.tele=e.cd<.55&&next!=='dive'&&next!=='stalk';
   if(e.cd>0)return bossMove(e,dx,dy,d);
+  // after a full cycle of attacks the boss stops to catch its breath: it takes extra damage, and a heart drops
+  if(e.pat===B.pats.length-1&&!e.rested&&!(e.sub||e.phase>0||e.stalk>0||e.charge>0||e.spiral>0)){e.rested=true;bossRest(e);return [0,0,0]}
+  e.rested=false;
   e.pat=(e.pat+1)%B.pats.length;
   const T=G.threat,f=bossFaster(e),aim=Math.atan2(dy,dx);
   switch(next){
@@ -1752,6 +1770,7 @@ function burst(x,y,col,n,sp=50,life=.4,size=1){
   for(let i=0;i<n&&PT.length<(isTouch?300:900)*(G.lowFx?.45:1);i++){const a=R()*TAU,s=rnd(.3,1)*sp;PT.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.5,1)*life,max:life,c:col,s:size})}
 }
 function hurt(e,dmg,o={}){
+  if(e.restT>G.time)dmg*=1.25;
   if(e.type==='boss'&&!e.dead&&!(e.phase>0)&&!(e.shieldN>0)&&dmg>=e.max*.008&&!(G.hsT>G.time)){G.hsT=G.time+.3;G.stop=Math.max(G.stop,.035)}
   if(e.dead||e.phase>0||e.type==='ufo')return;                       // UFOs fly too high to hit
   if(e.shieldN>0){if(R()<.15)burst(e.x,e.y-2,'#a6f0ff',2,30,.2);return}             // shielded by its pylons                                       // a phased Wraith can't be hit

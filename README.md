@@ -16,7 +16,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 
 - Rarity runs Common → Rare → Epic → Legendary → Mythic. Higher threat and longer kill streaks push the odds toward the extreme stuff.
 - Enemies attack in squads from one to three directions at a time, sometimes a pincer from both sides. The directions shift every 10 seconds or so, and red arrows at the screen edge point to where the next wave is coming from.
-- Keep moving: stand in one spot for a few seconds and something comes for you, either a **UFO** that beams you up and drops you elsewhere, or a **sandworm** that burrows over and erupts beneath you. Red marks close in around you first. None of them can be shot; they all give up once you move. Souls and pickups left on the ground also fade away (they blink first).
+- Keep moving in a fight: stand in one spot for a few seconds with enemies close around you and something comes for you, either a **UFO** that beams you up and drops you elsewhere, or a **sandworm** that burrows over and erupts beneath you. Red marks close in around you first. In quiet spots, with few enemies nearby, you can stand still as long as you like. None of them can be shot; they all give up once you move. Souls and pickups left on the ground also fade away (they blink first).
 - A **Soul Thief** turns up every minute or so. It runs from you dropping souls; catch it within 14 seconds for a burst of rare souls and a pickup (often a Heart Container).
 - The threat meter rises with kills and time. It drives spawn rate, enemy toughness and elite chance.
 - Six lands, each with its own enemies and hazards: Grassy Ruins, Burning Forest (lava), Frozen Wastes (ice you slide on), Toxic Swamp (poison clouds), Crystal Caves (eruptions), The Void (black holes). After the Void, the cycle repeats harder.
@@ -24,12 +24,13 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 - Tougher enemies join as the threat climbs: Wraiths (turn ghostly, threat 9), Lancers (telegraphed charges, 11), Mortars (shell where you're heading, 13), Splitters (burst into shards, 15), Snipers (long aim line, 18) and Juggernauts (bullet-resistant, ring-of-shots stomp, 20).
 - Every 5 threat levels the land's boss arrives, and each one is a different kind of fight:
   - **The Warden** (Grassy Ruins): an arena. The horde vanishes, walls rise, and it's you against it.
-  - **Cinder King** (Burning Forest): a ring of fire. It starts wide around you and closes in to a small arena, burning anything outside it.
+  - **Cinder King** (Burning Forest): a ring of fire. It starts far out around you and closes in over about 30 seconds to a small arena, burning anything outside it.
   - **Glacial Maw** (Frozen Wastes): thin ice. An all-ice arena whose edge cracks away during the fight.
   - **Bog Mother** (Toxic Swamp): she dives and resurfaces elsewhere, and bubbles show where a second early.
   - **Prism Colossus** (Crystal Caves): shielded. Break its four pylons first, and each one enrages it.
   - **The Hollow** (The Void): a hunt. It stalks you unseen and can only be hurt when it shows itself.
 - During every boss fight only the boss and whatever it summons are on the field.
+- Later bosses fight in tighter arenas (down to 80% size). Every boss stops to catch its breath after each full cycle of attacks: for a couple of seconds it takes extra damage and a heart drops near you.
 - Beating a boss heals you, banks a Power Surge and drops a Heart Container (+max HP).
 
 ### Weapons
