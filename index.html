@@ -225,6 +225,8 @@ body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
     <div class="ladder" aria-label="Rarity ladder">
       <span style="background:var(--r0)">COMMON</span><span style="background:var(--r1)">RARE</span><span style="background:var(--r2)">EPIC</span><span style="background:var(--r3)">LEGENDARY</span><span style="background:var(--r4)">MYTHIC</span>
     </div>
+    <h3>CHARACTER</h3>
+    <div class="pickrow" id="cPick"></div>
     <h3>STARTING WEAPON</h3>
     <div class="pickrow" id="wPick"></div>
     <h3>RELICS</h3>
@@ -259,6 +261,14 @@ body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
   </div>
 </div>
 
+<div class="ov" id="win" hidden>
+  <div class="card">
+    <h2 style="color:var(--r3)">VICTORY</h2>
+    <p>The Hollow is gone and the first lap is yours. End the run here, or keep going: the lands start over, harder, and the threat never stops climbing.</p>
+    <dl class="stats" id="winStats"></dl>
+    <div class="btns"><button class="go" id="endlessBtn">KEEP GOING (ENDLESS)</button><button id="endWinBtn">END RUN</button></div>
+  </div>
+</div>
 <div class="ov" id="over" hidden>
   <div class="card">
     <h2>OVERRUN</h2>
@@ -315,7 +325,7 @@ body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
 
 <script>
 'use strict';
-const VERSION='1.17.0';
+const VERSION='1.18.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -548,7 +558,7 @@ const CARDS=[
   {id:'glass',r:3,tag:'EXTREME',name:'Glass Cannon',icon:'dmg',desc:'+60% damage, but 30% less max HP',max:1,apply:()=>{S.dmg+=.6;P.max=Math.max(20,Math.round(P.max*.7));P.hp=Math.min(P.hp,P.max)}},
   {id:'ironheart',r:2,tag:'DEFENSE',name:'Iron Heart',icon:'maxhp',desc:'+50 max HP and heal to full',max:3,apply:()=>{P.max+=50;P.hp=P.max}},
   {id:'plating',r:1,tag:'DEFENSE',name:'Plating',icon:'shield',desc:'Take 12% less damage from everything',max:3,apply:()=>{S.armor=(S.armor||0)+.12}},
-  {id:'secondheart',r:3,tag:'EXTREME',name:'Giant\'s Blood',icon:'heal',desc:'Max HP x1.5, and Heart Containers give double',max:1,apply:()=>{P.max=Math.round(P.max*1.5);P.hp=Math.min(P.max,P.hp+P.max*.3);S.bigHearts=1}},
+  {id:'secondheart',r:3,tag:'EXTREME',name:'Giant\'s Blood',icon:'heal',desc:'+40% max HP and heal 30%',max:1,apply:()=>{P.max=Math.round(P.max*1.4);P.hp=Math.min(P.max,P.hp+P.max*.3)}},
   {id:'pspd',r:0,name:'Hot Barrels',icon:'rate',desc:'+15% projectile speed and range',max:6,apply:()=>S.pspeed+=.15},
   {id:'regen',r:0,name:'Mending',icon:'regen',desc:'+0.6 HP per second',apply:()=>S.regen+=.6},
   {id:'multi',r:1,tag:'MUTATION',name:'Twin Barrels',icon:'multi',desc:'+1 projectile on every volley',max:6,apply:()=>S.multi++},
@@ -583,6 +593,8 @@ const CARDS=[
   {id:'needlekill',r:4,tag:'REALITY BREAK',name:'Vengeance',icon:'chain',desc:'Every kill launches a homing needle',max:1,apply:()=>S.killNeedle=1},
   {id:'horizon',r:4,tag:'REALITY BREAK',name:'Event Horizon',icon:'crit',desc:'Every dash leaves a black hole behind you',max:1,apply:()=>S.horizonDash=1},
 ];
+/* cut in 1.18: cards that barely changed a run (reports showed them under 1% of damage, or pure filler) */
+{const CUT=new Set(['staticf','frostaura','clover','pspd','magnet','thorns','regen']);for(let i=CARDS.length-1;i>=0;i--)if(CUT.has(CARDS[i].id))CARDS.splice(i,1)}
 
 /* ================= meta ================= */
 let meta={totalKills:0,bestKills:0,bestThreat:0,bestLevel:0,runs:0,daily:{}};
@@ -629,7 +641,8 @@ const MODES={
   meteor:{name:'METEOR SHOWER',sub:'The sky falls on them',dur:8,col:'#ff7a2a'},
   vortex:{name:'VORTEX',sub:'A black hole circles you',dur:8,col:'#c792ea'},
 };
-function pickMode(){const ks=Object.keys(MODES).filter(k=>k!==G.lastMode);return ks[Math.floor(R()*ks.length)]}
+const MODE_OFF=new Set(['vortex','meteor']);                            // kept defined, out of the random pool
+function pickMode(){const ks=Object.keys(MODES).filter(k=>k!==G.lastMode&&!MODE_OFF.has(k));return ks[Math.floor(R()*ks.length)]}
 const isMode=id=>G.mode&&G.mode.id===id;
 function endMode(){
   if(!G.mode)return;
@@ -654,7 +667,7 @@ let isTouch=matchMedia('(pointer: coarse)').matches;
 function reset(opts){
   const daily=!!opts.daily,seedStr=daily?new Date().toLocaleDateString('en-CA'):'';
   cardRand=daily?mulberry32(strHash('overkill-'+seedStr)):Math.random;
-  G={state:'play',daily,seedStr,startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,lvCD:0,surges:0,cashedOut:0,autoPicked:0,
+  G={state:'play',daily,seedStr,char:opts.char||'wanderer',startW:opts.weapon,relics:[...opts.relics],time:0,kills:0,level:1,xp:0,need:xpNeed(1),pendingLv:0,lvCD:0,surges:0,cashedOut:0,autoPicked:0,
     threat:0,tp:0,biomeI:0,biomePrev:0,morph:1,streak:0,streakT:0,bestStreak:0,stop:0,shake:0,flash:0,hurt:0,spawnAcc:0,packT:12,hazT:6,
     boss:null,bossKills:0,volleys:0,shots:0,okPulse:0,okHole:0,needleCd:0,oang:0,blades:[],hudT:0,hudDirty:true,walk:0,lastHit:'',
     taken:{},hurtBy:{},lms:new Map(),lmSeed:(Math.random()*1e5)|0,startX:0,startY:0,clear:null,lull:null,lullAt:-1,check:null,lullLog:[],checksUsed:0,decoy:null,staticT:0,fronts:[],frontT:0,warn:[],campX:0,campY:0,campT:0,campCd:0,campK:null,lastCampK:null,cloud:null,worms:[],thiefT:45,arena:null,arenaG:null,arenaPrevG:null,arenaTime:0,morphSp:5,bossLog:[],log:[],notes:'',mode:null,lastMode:null,modesUsed:[],okm:0,okUses:0,shrineT:40,crateT:25,drones:[],leechWin:1,leechUsed:0,rerolls:0,rerollsUsed:0,fc:0,timeline:[],tlT:0,dmgBy:{},killsBy:{},killsByType:{},frames:0,ftSum:0,fpsMin:999,fpsWin:[],peakE:0,peakPB:0,hinted:{},golemHint:false,trailD:0,oilD:0,oilT:0,deaths:''};
@@ -665,6 +678,7 @@ function reset(opts){
   W=[{id:opts.weapon,lvl:1,cd:.3}];
   E=[];PB=[];EB=[];PU=[];PT=[];Z=[];BEAMS=[];SHRINES=[];TURRETS=[];RINGS=[];ARCS=[];DECALS=[];DEAD=[];AMB=[];GHOSTS=[];BOOMQ=[];
   cam={x:0,y:0};
+  applyChar();
   if(G.relics.includes('magnet'))S.magnet*=2;
   if(G.relics.includes('wind')){S.dashMax=2;P.dashes=2}
   if(G.relics.includes('mutagen')){const pool=CARDS.filter(c=>c.r===2&&c.id!=='dash'&&cardRelevant(c));const c=pool[Math.floor(cardRand()*pool.length)];takeCard(c,[c.name],true)}
@@ -765,6 +779,7 @@ const TPK=45;const tpFor=n=>TPK*n*(n+1)/2;
 function luck(){return G.threat*.7+Math.min(8,G.streak/30)}
 function dmgMul(){
   let m=S.dmg*(1+.04*((G.level||1)-1));
+  if(G.char==='berserker')m*=1+.6*Math.max(0,1-P.hp/P.max);
   if(S.momentum){const f=Math.min(1,Math.hypot(P.vx,P.vy)/(74*S.move));m*=.7+1.1*f}
   return m;
 }
@@ -810,7 +825,8 @@ const MINE_HOT='#ffd166';
 const MINE_SHADES={pea:'#fff0b8',needle:'#fffbe6',drone:'#ffe9a0',rang:'#ffd98a',shotgun:'#ffe27a',turret:'#f6f0c8',reflect:'#fff6d0',vengeance:'#ffcf70',dashvolley:'#ffe27a'};
 const pcol=b=>CLEAR()?(MINE_SHADES[b.src]||'#fff0b8'):b.col;
 /* ================= extra pickups, card effects and super modes (1.14) ================= */
-const PICKUPS=['bubble','frenzy','freezeAll','armor','guard','decoy','boots','thunder'];
+const HEART_CAP=10;                                                   // Heart Containers per run
+const PICKUPS=['bubble','frenzy','freezeAll','armor','guard','boots','thunder'];
 function randomPickup(){return pick(PICKUPS)}
 /* Decoy: a flickering copy of you that draws nearby enemies for 8 s, then blows up */
 function updateDecoy(dt){
@@ -861,6 +877,11 @@ function showBossCard(B){
 function timeScale(dt){if(!(G.slowT>0))return 1;G.slowT-=dt;return G.slowT>.4?.25:1-.75*Math.max(0,G.slowT)/.4}
 /* land change: a slanted sweep of the new land's colour crosses the screen */
 function landWipe(col){if(!RM)G.wipe={t:0,col}}
+function drawVignette(){
+  if(!CFG.fx||G.state==='title')return;
+  if(!G.vig||G.vigW!==LW||G.vigH!==LH){G.vigW=LW;G.vigH=LH;const r0=Math.min(LW,LH)*.38,r1=Math.hypot(LW,LH)*.55;G.vig=ctx.createRadialGradient(LW/2,LH/2,r0,LW/2,LH/2,r1);G.vig.addColorStop(0,'rgba(0,0,0,0)');G.vig.addColorStop(1,'rgba(0,0,0,.4)')}
+  ctx.fillStyle=G.vig;ctx.fillRect(0,0,LW,LH);
+}
 function drawWipe(dt){
   const w=G.wipe;if(!w)return;w.t+=dt;const D=.9,k=w.t/D;if(k>=1){G.wipe=null;return}
   const edge=-60+k*(LW+120),sl=LH*.35;
@@ -893,14 +914,6 @@ function postFx(dt){
       const dist=P.x*A.dx+P.y*A.dy-A.fs,amp=Math.max(0,Math.min(1,1-dist/130))*1.4*A.fireA;
       if(amp>.3){FX.tmp=fxCanvas(FX.tmp,W0,H0);const t=FX.tmp.getContext('2d');t.clearRect(0,0,W0,H0);t.drawImage(cv,0,0);
         const st=2*K;for(let y=0;y<H0;y+=st){const off=Math.round(Math.sin(y/K*.3+G.time*9)*amp*K);if(off)ctx.drawImage(FX.tmp,0,y,W0,st,off,y,W0,st)}}
-    }
-    // colour fringing: split red and blue a pixel apart
-    if(isMode('overdrive')||G.chroma>0){
-      FX.tmp=fxCanvas(FX.tmp,W0,H0);const t=FX.tmp.getContext('2d');t.globalCompositeOperation='copy';t.drawImage(cv,0,0);
-      if(!FX.ch)FX.ch=[null,null,null];
-      ['#ff0000','#00ff00','#0000ff'].forEach((col,i)=>{FX.ch[i]=fxCanvas(FX.ch[i],W0,H0);const c=FX.ch[i].getContext('2d');c.globalCompositeOperation='copy';c.drawImage(FX.tmp,0,0);c.globalCompositeOperation='multiply';c.fillStyle=col;c.fillRect(0,0,W0,H0)});
-      const px=K;ctx.globalCompositeOperation='copy';ctx.drawImage(FX.ch[1],0,0);ctx.globalCompositeOperation='lighter';ctx.drawImage(FX.ch[0],-px,0);ctx.drawImage(FX.ch[2],px,0);
-      ctx.globalCompositeOperation='source-over';
     }
   }
   ctx.restore();
@@ -937,14 +950,17 @@ function spawnTick(dt,mult,cap){
   const sq=squadSize();G.spawnAcc=Math.min(sq+2,G.spawnAcc+dt*spawnRate()*mult);
   while(G.spawnAcc>=sq&&E.length<cap){G.spawnAcc-=sq;spawnSquad(sq)}
 }
-function drawWaveWarnings(){
-  // a solid arrow at the screen edge pointing where the next squad will come from, pulsing as it closes in
-  for(const w of G.warn){
-    const k=Math.min(1,w.t/.4)*(.65+.35*Math.sin(G.time*12)),c=Math.cos(w.a),sn=Math.sin(w.a);
-    const t=Math.min((LW/2-14)/Math.max(1e-3,Math.abs(c)),(LH/2-14)/Math.max(1e-3,Math.abs(sn))),x=LW/2+c*t,y=LH/2+sn*t;  // on the screen edge
+function drawWaveWarnings(){for(const w of G.warn)edgeMark(w.a,'#ff4d6d',3)}
+/* screen-edge markers: everything that wants one queues it here; only the three most important are drawn,
+   all in one style (a coloured arrow with a dark outline pointing where the thing is) */
+function edgeMark(a,col,pri){(G.marks||(G.marks=[])).push({a,col,pri})}
+function drawEdgeMarks(){
+  const M=G.marks;if(!M||!M.length)return;
+  M.sort((p,q)=>q.pri-p.pri);
+  for(let i=0;i<Math.min(3,M.length);i++){const m=M[i],c=Math.cos(m.a),sn=Math.sin(m.a),t=Math.min((LW/2-12)/Math.max(1e-3,Math.abs(c)),(LH/2-12)/Math.max(1e-3,Math.abs(sn))),x=LW/2+c*t,y=LH/2+sn*t;
     const tri=(r,col)=>{ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x+c*r,y+sn*r);ctx.lineTo(x-c*r*.7-sn*r*.85,y-sn*r*.7+c*r*.85);ctx.lineTo(x-c*r*.7+sn*r*.85,y-sn*r*.7-c*r*.85);ctx.closePath();ctx.fill()};
-    ctx.globalAlpha=k;tri(8,'#0d0b14');tri(6,'#ff4d6d');ctx.fillStyle='#fff';ctx.fillRect(RK(x-c*2)-1,RK(y-sn*2)-1,2,2);ctx.globalAlpha=1;
-  }
+    ctx.globalAlpha=m.pri>=3?.75+.25*Math.sin(G.time*10):.85;tri(8,'#0d0b14');tri(6,m.col);ctx.globalAlpha=1}
+  M.length=0;
 }
 /* Standing still too long brings trouble (not inside walled boss fights). Each time you camp, one of these
    comes, never the same one twice in a row:
@@ -954,7 +970,7 @@ function drawWaveWarnings(){
      worm     a sandworm burrows toward you and erupts underneath you
    Nothing here can be shot; the answer is always to move. */
 const CAMP_R=30,CAMP_T=4.5,UFO_HOLD=1.6,UFO_BEAM_R=20;
-const CAMP_KINDS=['ufo','quake','storm','worm'];
+const CAMP_KINDS=['ufo','worm'];                                      // 1.18: trimmed from four
 function updateCamp(dt){
   P.abd=Math.max(0,(P.abd||0)-dt*.6);
   updateCampFx(dt);
@@ -1026,7 +1042,7 @@ function drawCampGround(ox,oy){
   for(const w of G.worms){
     const x=RK(w.x-ox),y=RK(w.y-oy);
     if(w.st==='dig'){ctx.fillStyle='#4a3420';ctx.fillRect(x-4,y-1,9,3);ctx.fillStyle='#6b4a2b';ctx.fillRect(x-3,y-2,7,2);ctx.fillStyle='#8a6a42';ctx.fillRect(x-1,y-3,3,1)}
-    else if(w.st==='rise'){if(Math.floor(w.t*12)%2===0)ring(x,y,16,'#ff3b5c');ctx.fillStyle='#4a3420';ctx.fillRect(x-6,y-1,13,3)}
+    else if(w.st==='rise'){tele(x,y,16,w.t/.6,true);ctx.fillStyle='#4a3420';ctx.fillRect(x-6,y-1,13,3)}
     else if(w.st==='erupt'){const h=Math.round(Math.min(1,w.t*6)*Math.max(0,1-(w.t-.5)*2.5)*22);
       ctx.fillStyle='#5a3a2a';ctx.fillRect(x-4,y-h,9,h);ctx.fillStyle='#c4a07a';for(let i=0;i<h;i+=3)ctx.fillRect(x-4,y-h+i,9,1);
       if(h>6){ctx.fillStyle='#2a1a12';ctx.fillRect(x-3,y-h,7,3);ctx.fillStyle='#fff';ctx.fillRect(x-2,y-h+1,1,1);ctx.fillRect(x+2,y-h+1,1,1)}
@@ -1080,7 +1096,7 @@ function drawUfo(e,ox,oy){
   const x=RK(e.x-ox),y=RK(e.y-oy),h=14,s=enemySprite('ufo',0,e.flash>0);
   // ground: shadow, then the warning circle or the beam
   ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x-6,y+1,13,2);
-  if(e.st==='warn'&&Math.floor(e.stT*10)%2===0){ctx.globalAlpha=.9;ring(x,y,UFO_BEAM_R,'#9dff7a');ctx.globalAlpha=1}
+  if(e.st==='warn')tele(x,y,UFO_BEAM_R,e.stT/1.1,true);
   if(e.st==='beam'){
     const k=.25+.08*Math.sin(G.time*14);ctx.globalAlpha=k;ctx.fillStyle='#9dff7a';
     for(let i=0;i<=h;i++){const w=Math.round(4+(UFO_BEAM_R-4)*i/h);ctx.fillRect(x-w,y-h+i,w*2+1,1)}
@@ -1094,7 +1110,8 @@ function drawUfo(e,ox,oy){
 function updateThief(dt){
   if(G.arena||G.clear||G.lull)return;
   G.thiefT-=dt;if(G.thiefT>0)return;
-  G.thiefT=rnd(65,95);
+  if(!evFree()){G.thiefT=1;return}
+  G.thiefT=rnd(65,95);evStart();
   const a=R()*TAU,t=spawnEnemy('thief',P.x+Math.cos(a)*70,P.y+Math.sin(a)*70,{elite:false});t.life=14;t.cd=.45;
   G.thiefSeen=(G.thiefSeen||0)+1;banner('SOUL THIEF','Catch it before it gets away');snd('pick',3);
 }
@@ -1106,13 +1123,53 @@ function thiefDown(e){
   banner('CAUGHT IT','Souls everywhere');G.flash=Math.max(G.flash,.3);
 }
 function drawThiefPointer(ox,oy){
-  for(const e of E){if(e.type!=='thief'||e.dead)continue;const bx=e.x-ox,by=e.y-oy;if(bx>=0&&by>=0&&bx<=LW&&by<=LH)continue;
-    const a=Math.atan2(e.y-P.y,e.x-P.x),x=clamp(LW/2+Math.cos(a)*(LW/2-8),6,LW-6),y=clamp(LH/2+Math.sin(a)*(LH/2-8),6,LH-6);
-    ctx.fillStyle=Math.floor(G.time*6)%2?'#ffd84a':'#fff';ctx.fillRect(RK(x)-1,RK(y)-1,3,3);ctx.fillRect(RK(x),RK(y)-2,1,5);ctx.fillRect(RK(x)-2,RK(y),5,1)}
+  for(const e of E){if(e.type!=='thief'||e.dead)continue;const bx=e.x-ox,by=e.y-oy;if(bx>=0&&by>=0&&bx<=LW&&by<=LH)continue;edgeMark(Math.atan2(e.y-P.y,e.x-P.x),'#ffd84a',4)}
 }
 /* souls and pickups left on the ground fade: hearts and power-ups after 25 s, souls after 16 s (rare ones 28 s) */
 function puLife(p){return p.kind==='gem'?(p.tier>=2?28:16):p.kind==='maxhp'?45:25}
 
+/* one telegraph style for everything about to land: a ring where it will hit that fills up as it gets close,
+   red if it can hurt you, gold if it's yours; the ring blinks for the last third */
+function tele(x,y,r,k,hostile){
+  k=Math.max(0,Math.min(1,k));const col=hostile?'#ff3b5c':'#ffd166';
+  ctx.globalAlpha=.2;disc(x,y,Math.max(1,r*k),col);
+  ctx.globalAlpha=k>.66&&Math.floor(G.time*14)%2?.35:.85;ring(x,y,r,col);ctx.globalAlpha=1;
+}
+/* ================= characters =================
+   Pick one on the title screen. Each has one passive that changes how a run plays. */
+const CHARS={
+  wanderer:{name:'Wanderer',desc:'No tricks. A steady start.',ok:()=>true,req:''},
+  medic:{name:'Medic',desc:'Every upgrade pick heals 10% of max HP. 10% less damage.',ok:()=>meta.bestThreat>=8,req:'reach threat 8'},
+  berserker:{name:'Berserker',desc:'Up to +60% damage the lower your HP. 20 less max HP.',ok:()=>meta.bestThreat>=12,req:'reach threat 12'},
+  scout:{name:'Scout',desc:'15% faster, an extra dash, double soul reach. 15 less max HP.',ok:()=>(meta.lmTotal||0)>=10,req:'claim 10 landmarks'},
+  tinker:{name:'Tinker',desc:'Starts with a second random weapon. Weapons recharge 10% slower.',ok:()=>(meta.wins||0)>=1,req:'win a run'},
+};
+let chosenC='wanderer';try{const c=localStorage.getItem('overkill-run-char');if(c&&CHARS[c])chosenC=c}catch(_){}
+function applyChar(){
+  switch(G.char){
+    case 'medic':S.dmg-=.1;break;
+    case 'berserker':P.max-=20;P.hp=P.max;break;
+    case 'scout':S.move*=1.15;S.dashMax=(S.dashMax||1)+1;P.dashes=S.dashMax;S.magnet*=2;P.max-=15;P.hp=P.max;break;
+    case 'tinker':{const pool=Object.keys(WDEF).filter(id=>id!==G.startW&&UNLOCK[id].ok());if(pool.length)W.push({id:pool[Math.floor(R()*pool.length)],lvl:1,cd:.6});S.rate-=.1;break}
+  }
+}
+/* ================= the ending =================
+   The boss at the end of the first Void is the final boss. Beat it and the run is won: end there, or keep going
+   in endless mode (the run report records both). */
+function showWin(){
+  G.won=true;meta.wins=(meta.wins||0)+1;saveMeta();
+  G.state='win';joy.on=false;applyControls();G.lvCD=Math.max(G.lvCD,1);
+  $('winStats').innerHTML=[['Time',fmtT(G.time)],['Kills',G.kills],['Level',G.level],['Character',CHARS[G.char].name],['Weapons',W.map(w=>w.evo?EVO[w.id].name:WDEF[w.id].name+' '+w.lvl).join(', ')]]
+    .map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('');
+  setTimeout(()=>{$('lvl').hidden=true;$('win').hidden=false},600);
+}
+
+/* ================= event coordinator =================
+   Only one special event at a time (shrine, supply crate, Soul Thief, vault guards, calm/beacon), with at least
+   20 s of plain fighting between them. Bosses and clear-outs always happen; they just make the others wait. */
+const EV_GAP=20;
+function evFree(){return !G.arena&&!G.clear&&!G.lull&&G.time>=(G.evNext||0)&&!SHRINES.length&&!E.some(e=>!e.dead&&(e.type==='thief'||e.guardOf||e.type==='crate'))}
+function evStart(){G.evNext=G.time+EV_GAP}
 /* ================= landmarks =================
    The world is dotted with places worth a detour (about one in three 520-px patches has one):
      spring   stand in it to heal until it runs dry (standing still here doesn't bring trouble)
@@ -1147,10 +1204,10 @@ function updateLandmarks(dt){
       case 'obelisk':
         if(d<13&&!G.mode&&!G.clear&&!G.lull){lm.state='done';G.lmClaimed=(G.lmClaimed||0)+1;
           RINGS.push({x:lm.x,y:lm.y,r:0,max:50,life:.5,t:0,c:'#c792ea',noFill:1});burst(lm.x,lm.y-8,'#c792ea',30,80,.5,2);
-          startMode(pick(['meteor','vortex','storm','orbital','overdrive','soulrush']),'obelisk')}
+          startMode(pick(['storm','orbital','overdrive','soulrush','titan']),'obelisk')}
         break;
       case 'vault':
-        if(lm.state==='idle'&&d<150&&!G.clear&&!G.lull){lm.state='guarded';const n=4+Math.min(4,Math.floor(G.threat/5)),type=chooseType();
+        if(lm.state==='idle'&&d<150&&evFree()){lm.state='guarded';evStart();const n=4+Math.min(4,Math.floor(G.threat/5)),type=chooseType();
           for(let i=0;i<n;i++){const a=i/n*TAU,g=spawnEnemy(type,lm.x+Math.cos(a)*22,lm.y+Math.sin(a)*22,{elite:true});g.guardOf=lm}
           banner('VAULT GUARDS','Clear them to open the vault')}
         else if(lm.state==='guarded'&&!E.some(e=>!e.dead&&e.guardOf===lm)){lm.state='open';toast(2,'The vault is unlocked!');snd('level')}
@@ -1192,9 +1249,7 @@ function drawLandmarks(ox,oy){
       case 'nest':if(lm.state==='done'){disc(x,y,9,'#2a1a1a');disc(x,y,5,'#1a0e0e')}break;
     }
     // edge marker for unclaimed landmarks that are close but off screen
-    if(!on&&lm.state!=='done'&&!(G.arena&&G.arena.wall>0)){const d=Math.hypot(lm.x-P.x,lm.y-P.y);if(d<560){
-      const a=Math.atan2(lm.y-P.y,lm.x-P.x),c=Math.cos(a),sn=Math.sin(a),t=Math.min((LW/2-7)/Math.max(1e-3,Math.abs(c)),(LH/2-7)/Math.max(1e-3,Math.abs(sn)));
-      const ex=RK(LW/2+c*t),ey=RK(LH/2+sn*t);ctx.fillStyle='#0d0b14';ctx.fillRect(ex-3,ey-3,7,7);ctx.fillStyle=LM_COL[lm.kind];ctx.fillRect(ex-2,ey-2,5,5);ctx.fillStyle='#fff';ctx.fillRect(ex,ey,1,1)}}
+    if(!on&&lm.state!=='done'&&!(G.arena&&G.arena.wall>0)&&Math.hypot(lm.x-P.x,lm.y-P.y)<560)edgeMark(Math.atan2(lm.y-P.y,lm.x-P.x),LM_COL[lm.kind],1)
   }
 }
 
@@ -1224,7 +1279,7 @@ function updateClear(dt){
   eventBar(left.length===1?'1 ENEMY LEFT':left.length+' ENEMIES LEFT');
 }
 function startLull(){
-  G.lullAt=G.threat;
+  G.lullAt=G.threat-G.threat%5;evStart();
   const a=R()*TAU,d=rnd(420,520),bx=P.x+Math.cos(a)*d,by=P.y+Math.sin(a)*d;
   G.lull={phase:'calm',t:0,x:bx,y:by,limit:LULL_LIMIT,start:G.time};
   // the horde melts away, nearest last, and their shots go with them
@@ -1271,15 +1326,11 @@ function drawEvents(ox,oy){
     ctx.globalAlpha=.18+.12*p;ctx.fillStyle='#9be1ff';ctx.fillRect(x-3,y-80,7,80);ctx.globalAlpha=.5+.3*p;ctx.fillRect(x-1,y-80,3,80);
     ctx.globalAlpha=.8;ring(x,y,12+p*2,'#9be1ff');ctx.globalAlpha=.4;ring(x,y,16+p*3,'#9be1ff');ctx.globalAlpha=1;
     ctx.fillStyle='#fff';ctx.fillRect(x-1,y-3,3,3);
-    if(x<0||y<0||x>LW||y>LH){const a=Math.atan2(L.y-P.y,L.x-P.x),c=Math.cos(a),sn=Math.sin(a),t=Math.min((LW/2-12)/Math.max(1e-3,Math.abs(c)),(LH/2-12)/Math.max(1e-3,Math.abs(sn))),px=LW/2+c*t,py=LH/2+sn*t;
-      ctx.fillStyle='#0d0b14';ctx.beginPath();ctx.moveTo(px+c*8,py+sn*8);ctx.lineTo(px-c*6-sn*7,py-sn*6+c*7);ctx.lineTo(px-c*6+sn*7,py-sn*6-c*7);ctx.fill();
-      ctx.fillStyle='#9be1ff';ctx.beginPath();ctx.moveTo(px+c*6,py+sn*6);ctx.lineTo(px-c*4-sn*5,py-sn*4+c*5);ctx.lineTo(px-c*4+sn*5,py-sn*4-c*5);ctx.fill()}
+    if(x<0||y<0||x>LW||y>LH)edgeMark(Math.atan2(L.y-P.y,L.x-P.x),'#9be1ff',5);
   }
   if(G.check&&!(L&&L.phase==='calm')){const x=RK(G.check.x-ox),y=RK(G.check.y-oy);if(x>-10&&y>-10&&x<LW+10&&y<LH+10){ctx.globalAlpha=.5;ring(x,y,8,'#9be1ff');ctx.fillStyle='#9be1ff';ctx.fillRect(x,y-10,1,10);ctx.fillRect(x+1,y-10,4,3);ctx.globalAlpha=1}}
   // clear-out: point at the last few enemies
-  if(G.clear){const left=E.filter(countsForClear);if(left.length<=8)for(const e of left){const bx=e.x-ox,by=e.y-oy;if(bx>=0&&by>=0&&bx<=LW&&by<=LH)continue;
-    const a=Math.atan2(e.y-P.y,e.x-P.x),c=Math.cos(a),sn=Math.sin(a),t=Math.min((LW/2-8)/Math.max(1e-3,Math.abs(c)),(LH/2-8)/Math.max(1e-3,Math.abs(sn)));
-    ctx.fillStyle=Math.floor(G.time*6)%2?'#ff3b5c':'#fff';ctx.fillRect(RK(LW/2+c*t)-1,RK(LH/2+sn*t)-1,3,3)}}
+  if(G.clear){const left=E.filter(countsForClear);if(left.length<=8)for(const e of left){const bx=e.x-ox,by=e.y-oy;if(bx>=0&&by>=0&&bx<=LW&&by<=LH)continue;edgeMark(Math.atan2(e.y-P.y,e.x-P.x),'#ff3b5c',2)}}
 }
 
 /* ================= boss fights =================
@@ -1330,7 +1381,8 @@ const bossOf=e=>BOSSES[e.bk||0];
 const fmtOf=()=>G.arena?FMT[G.arena.fmt]:null;
 function startArena(){
   const bi=biomeOf(G.threat).i%BIOMES.length,B=BOSSES[bi],F=FMT[B.fmt];
-  const A=G.arena={x:P.x,y:P.y,r:B.fmt==='floe'?FLOE_R0:ARENA_R,fmt:B.fmt,phase:'in',t:0,bi,wall:0,start:G.time,fireA:0,fireT:0};
+  const fin=bi===5&&!G.won;
+  const A=G.arena={final:fin,x:P.x,y:P.y,r:B.fmt==='floe'?FLOE_R0:ARENA_R,fmt:B.fmt,phase:'in',t:0,bi,wall:0,start:G.time,fireA:0,fireT:0};
   // the horde dissolves for every boss fight: no souls, no kills, just gone. Only the boss and what it summons remain.
   for(const e of E){if(e.dead)continue;e.dead=true;if(PT.length<500)burst(e.x,e.y,e.col,3,35,.35)}
   BOOMQ.length=0;if(F.walls)SHRINES=[];
@@ -1349,7 +1401,7 @@ function spawnBoss(){
   if(A.fmt==='escape'){x=P.x+A.dx*95;y=P.y+A.dy*95}
   else if(A.fmt==='pylons'||A.fmt==='hunt'){const a=R()*TAU;x=P.x+Math.cos(a)*110;y=P.y+Math.sin(a)*110}
   else{const a=Math.atan2(P.y-A.y,P.x-A.x)+Math.PI+rnd(-.6,.6),d=A.r*.6;x=A.x+Math.cos(a)*d;y=A.y+Math.sin(a)*d}
-  const hm=(1+G.threat*.3)*ARENA_HP;
+  const hm=(1+G.threat*.3)*ARENA_HP*(A.final?1.5:1);
   const b=spawnEnemy('boss',x,y,{elite:false,hpMul:hm});
   b.bk=A.bi;b.spr=B.spr;b.col=B.col;b.cd=1.6;b.pat=-1;b.q=[];b.sum=6;b.rage=0;G.boss=b;
   if(A.fmt==='pylons'){
@@ -1359,7 +1411,7 @@ function spawnBoss(){
   if(A.fmt==='submerge')b.cd=2.4;
   RINGS.push({x,y,r:0,max:40,life:.5,t:0,c:B.col});burst(x,y,B.col,40,90,.6,2);G.shake=Math.max(G.shake,2.5);
   $('bossName').textContent=B.name.toUpperCase();
-  showBossCard(B);snd('boss');
+  showBossCard(A.final?Object.assign({},B,{title:'FINAL BOSS · '+B.title}):B);snd('boss');
 }
 function pylonDown(pl){
   const b=pl.owner;if(!b||b.dead)return;
@@ -1370,7 +1422,7 @@ function pylonDown(pl){
 }
 function arenaWon(e){
   const A=G.arena,B=bossOf(e),F=FMT[A.fmt];if(!A)return;
-  A.phase='out';A.t=0;
+  A.phase='out';A.t=0;A.won=true;
   G.bossLog.push({boss:B.name,fight:A.fmt,threat:G.threat,fightSeconds:Math.round(G.time-A.fightStart),hpLeft:Math.ceil(P.hp)+'/'+P.max});
   // in a walled fight everything the boss brought goes with it; in the open the horde stays
   for(const o of E)if(!o.dead&&o!==e){o.dead=true;burst(o.x,o.y,o.col,4,40,.3)}
@@ -1386,7 +1438,9 @@ function arenaWon(e){
 function arenaEnd(){
   if(G.arenaG){G.arenaPrevG=G.arenaG;G.arenaG=null;G.morph=0;G.morphSp=1.4;landWipe(BIOMES[G.biomeI%BIOMES.length].d[1])}
   G.arenaTime=(G.arenaTime||0)+(G.time-G.arena.start);
+  const fin=G.arena.final&&G.arena.won;
   G.arena=null;G.spawnAcc=0;G.packT=Math.max(G.packT,8);G.hazT=Math.max(G.hazT,4);
+  if(fin)showWin();
 }
 function updateArena(dt){
   const A=G.arena,F=FMT[A.fmt];A.t+=dt;
@@ -1630,6 +1684,7 @@ function burst(x,y,col,n,sp=50,life=.4,size=1){
   for(let i=0;i<n&&PT.length<(isTouch?300:900)*(G.lowFx?.45:1);i++){const a=R()*TAU,s=rnd(.3,1)*sp;PT.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.5,1)*life,max:life,c:col,s:size})}
 }
 function hurt(e,dmg,o={}){
+  if(e.type==='boss'&&!e.dead&&!(e.phase>0)&&!(e.shieldN>0)&&dmg>=e.max*.008&&!(G.hsT>G.time)){G.hsT=G.time+.3;G.stop=Math.max(G.stop,.035)}
   if(e.dead||e.phase>0||e.type==='ufo')return;                       // UFOs fly too high to hit
   if(e.shieldN>0){if(R()<.15)burst(e.x,e.y-2,'#a6f0ff',2,30,.2);return}             // shielded by its pylons                                       // a phased Wraith can't be hit
   const res=ET[e.type].res,el=o.elem||'kinetic';
@@ -1652,8 +1707,8 @@ function hurt(e,dmg,o={}){
 function dropGem(x,y,tier){PU.push({kind:'gem',x:x+rnd(-3,3),y:y+rnd(-3,3),tier,t:R()*3,vx:rnd(-25,25),vy:rnd(-25,25)})}
 function kill(e,src){
   if(e.dead)return;e.dead=true;
-  if(e.type==='crate'){burst(e.x,e.y,'#b8834a',20,70,.5,2);burst(e.x,e.y,'#ffe066',12,60,.5);snd('boom');PU.push({kind:'mode',mode:pickMode(),x:e.x,y:e.y,t:0,vx:0,vy:-30});return}
-  if(G.streak>=25&&!G.mode){G.okm++;if(G.okm>=300+G.okUses*200){G.okm=0;G.okUses++;startMode(pickMode(),'overkill meter');banner('OVERKILL!',MODES[G.mode.id].name)}}
+  if(e.type==='crate'){burst(e.x,e.y,'#b8834a',20,70,.5,2);burst(e.x,e.y,'#ffe066',12,60,.5);snd('boom');PU.push({kind:randomPickup(),x:e.x,y:e.y,t:0,vx:-20,vy:-30});PU.push({kind:R()<.5?'heart':randomPickup(),x:e.x,y:e.y,t:0,vx:20,vy:-30});for(let i=0;i<6;i++){const a=i/6*TAU;PU.push({kind:'gem',tier:Math.min(3,1+Math.floor(G.threat/8)),x:e.x,y:e.y,t:0,vx:Math.cos(a)*70,vy:Math.sin(a)*70})}return}
+  if(G.streak>=25&&!G.mode){G.okm++;if(G.okm>=600+G.okUses*300){G.okm=0;G.okUses++;startMode(pickMode(),'overkill meter')}}
   G.kills++;G.streak++;G.streakT=1.6;if(G.streak>G.bestStreak)G.bestStreak=G.streak;
   if(S.leech&&G.leechUsed<2+S.leech*4){P.hp=Math.min(P.max,P.hp+S.leech);G.leechUsed+=S.leech}
   if(G.streak%100===0&&G.rerolls<3){G.rerolls++;toast(2,'Streak '+G.streak+': reroll earned')}
@@ -1820,7 +1875,7 @@ function weaponCards(){
     else if(w&&w.lvl<6)out.push({id:'lvl:'+id,r:w.lvl>=3?1:0,tag:'WEAPON',name:WDEF[id].name+' Lv '+(w.lvl+1),icon:'w:'+id,wcol:WDEF[id].col,
       desc:WDEF[id].up(w.lvl+1)+(w.lvl+1===6?'. Max level: evolves once you have '+EVO[id].mutName+'.':''),apply:()=>{w.lvl++},weapon:1});
     else if(w&&w.lvl>=6&&!w.evo&&(G.taken[EVO[id].mut]||0)>0)out.push({id:'evo:'+id,r:3,tag:'EVOLUTION',name:EVO[id].name,icon:'w:'+id,wcol:'#ffa31a',
-      desc:WDEF[id].name+' evolves. '+EVO[id].desc,apply:()=>{w.evo=1;G.chroma=Math.max(G.chroma||0,.35);banner('EVOLVED',EVO[id].name);G.flash=Math.max(G.flash,.5);G.stop=Math.max(G.stop,.15);buzz(60)},weapon:1,evo:1});
+      desc:WDEF[id].name+' evolves. '+EVO[id].desc,apply:()=>{w.evo=1;G.stop=Math.max(G.stop,.15);banner('EVOLVED',EVO[id].name);G.flash=Math.max(G.flash,.5);G.stop=Math.max(G.stop,.15);buzz(60)},weapon:1,evo:1});
   }
   return out;
 }
@@ -1931,6 +1986,7 @@ $('rerollBtn').onclick=reroll;
 $('cashBtn').onclick=()=>cashOut();
 $('cards').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(b)chooseCard(+b.dataset.i)});
 function takeCard(c,offerNames,silent){
+  if(G.char==='medic'&&G.state!=='title')P.hp=Math.min(P.max,P.hp+P.max*.1);
   c.apply();if(!c.cost)G.taken[c.id]=(G.taken[c.id]||0)+1;G.hudDirty=true;
   G.log.push({t:Math.round(G.time),lv:G.level-G.pendingLv+1,pick:c.name,rarity:c.cost?'SURGE':RN[c.r],offered:offerNames});
   if(!silent)toast(c.r,c.name);
@@ -1993,7 +2049,7 @@ function updateThreat(){
       banner('THREAT '+G.threat,'Entering '+landName(G.threat));landWipe(b.d[1]);
       if(!G.hinted[b.name]){G.hinted[b.name]=1;setTimeout(()=>{if(G.state!=='title')toast(2,b.hint)},1800)}
       G.hazT=3;
-    }else banner('THREAT '+G.threat,'More of them. Rarer souls.');
+    }else toast(0,'Threat '+G.threat+': more of them, rarer souls.');
     const n=10+G.threat*3;for(let i=0;i<n;i++){const a=i/n*TAU,d=Math.hypot(LW,LH)/2+12;spawnEnemy(null,P.x+Math.cos(a)*d,P.y+Math.sin(a)*d)}
     if(G.threat%5===0&&!G.boss&&!G.arena&&!G.clear){startClear();break}
   }
@@ -2075,7 +2131,7 @@ function update(dt){
 
   // ---- threat, hazards, spawns
   updateLandmarks(dt);updateFronts(dt);updateCamp(dt);updateThief(dt);updateDecoy(dt);updatePassives(dt);
-  if(!G.arena&&!G.clear&&!G.lull&&G.threat%5===3&&G.lullAt!==G.threat&&G.state==='play')startLull();
+  if(G.threat%5>=3&&G.lullAt!==G.threat-G.threat%5&&G.state==='play'&&evFree())startLull();
   if(G.arena)updateArena(dt);
   else if(G.clear)updateClear(dt);                                   // clear-out: no spawns, no hazards, no threat climb
   else if(G.lull)updateLull(dt);                                     // calm: the same, while you run for the beacon                                       // boss arena: no horde, no land hazards, no threat climb
@@ -2328,7 +2384,8 @@ function update(dt){
   TURRETS=TURRETS.filter(t=>t.t>0);
   // ---- shrines: stand on one for 1.6s to trigger a super mode
   if(!G.arena)G.shrineT-=dt;
-  if(G.shrineT<=0){G.shrineT=rnd(45,65);const a=R()*TAU,d=rnd(50,Math.min(LW,LH)*.42);SHRINES.push({x:P.x+Math.cos(a)*d,y:P.y+Math.sin(a)*d,t:22,prog:0});toast(2,'A power shrine appeared. Stand on it.')}
+  if(G.shrineT<=0&&!evFree())G.shrineT=1;
+  if(G.shrineT<=0){G.shrineT=rnd(45,65);evStart();const a=R()*TAU,d=rnd(50,Math.min(LW,LH)*.42);SHRINES.push({x:P.x+Math.cos(a)*d,y:P.y+Math.sin(a)*d,t:22,prog:0});toast(2,'A power shrine appeared. Stand on it.')}
   for(const sh of SHRINES){
     sh.t-=dt;const dd=Math.hypot(P.x-sh.x,P.y-sh.y);
     if(dd<11){sh.prog+=dt;if(R()<.5)PT.push({x:sh.x+rnd(-6,6),y:sh.y,vx:0,vy:-30,life:.4,max:.4,c:'#ffe066',s:1})}else sh.prog=Math.max(0,sh.prog-dt*.5);
@@ -2337,7 +2394,8 @@ function update(dt){
   SHRINES=SHRINES.filter(sh=>sh.t>0);
   // ---- supply crates drop in
   if(!G.arena)G.crateT-=dt;
-  if(G.crateT<=0){G.crateT=rnd(30,45);const a=R()*TAU,d=rnd(50,Math.min(LW,LH)*.45);addZone('drop',P.x+Math.cos(a)*d,P.y+Math.sin(a)*d,7,.9)}
+  if(G.crateT<=0&&!evFree())G.crateT=1;
+  if(G.crateT<=0){G.crateT=rnd(40,60);evStart();const a=R()*TAU,d=rnd(50,Math.min(LW,LH)*.45);addZone('drop',P.x+Math.cos(a)*d,P.y+Math.sin(a)*d,7,.9)}
   ambient(dt);
   // ---- pickups
   for(const p of PU){
@@ -2379,7 +2437,8 @@ function gainXp(v){
 function collect(p){
   if(p.kind==='mode'){startMode(p.mode,'supply crate');return}
   if(p.kind==='gem'){gainXp(GEMV[p.tier]*(isMode('soulrush')?3:1));snd('gem',p.tier);if(p.tier>=2)burst(p.x,p.y,RC[p.tier],4+p.tier*2,40,.3);return}
-  if(p.kind==='maxhp'){const v=10*(S.bigHearts?2:1);P.max+=v;P.hp=Math.min(P.max,P.hp+v*2);G.hearts=(G.hearts||0)+1;toast(2,'Heart Container: +'+v+' max HP');snd('level');RINGS.push({x:P.x,y:P.y,r:0,max:30,life:.35,t:0,c:'#ff4d6d',noFill:1});G.hudDirty=true;return}
+  if(p.kind==='maxhp'&&(G.hearts||0)>=HEART_CAP){P.hp=Math.min(P.max,P.hp+P.max*.25);toast(0,'Heart Container ('+HEART_CAP+' max): healed instead');snd('pick',1);return}
+  if(p.kind==='maxhp'){const v=10;P.max+=v;P.hp=Math.min(P.max,P.hp+v*2);G.hearts=(G.hearts||0)+1;toast(2,'Heart Container: +'+v+' max HP');snd('level');RINGS.push({x:P.x,y:P.y,r:0,max:30,life:.35,t:0,c:'#ff4d6d',noFill:1});G.hudDirty=true;return}
   if(p.kind==='decoy'){G.decoy={x:P.x,y:P.y,t:8};toast(1,'Decoy: enemies nearby go for it, then it blows up');snd('pick',2);return}
   if(p.kind==='boots'){P.bootsT=10;P.dashes=Math.max(P.dashes,S.dashMax);toast(1,'Wind Boots: endless dashes and +30% speed for 10s');snd('pick',2);G.hudDirty=true;return}
   if(p.kind==='thunder'){const t=nearest(P.x,P.y,220);if(t)chainZap(t,P,25,60*dmgMul(),'thunder',false);G.flash=Math.max(G.flash,.35);G.shake=Math.max(G.shake,1.5);G.chroma=Math.max(G.chroma||0,.25);toast(1,'Thunderclap');snd('zap');return}
@@ -2498,21 +2557,21 @@ function drawZone(z,ox,oy){
   switch(z.kind){
     case 'drop':{ctx.globalAlpha=1;const fall=z.life/z.max*60;ctx.fillStyle='rgba(0,0,0,.4)';const sw=RK(9*(1-z.life/z.max*.5));ctx.fillRect(RK(x-sw/2),RK(y+3),sw,2);
       ctx.drawImage(enemySprite('crate',0,false),RK(x)-4,RK(y-fall)-4);break}
-    case 'shell':{ctx.globalAlpha=1;ring(x,y,z.r*(1-z.life/z.max*.6),z.boom&&z.boom.hostile?'rgba(255,59,92,.85)':'rgba(255,182,39,.6)');if(z.boom&&z.boom.hostile&&Math.floor(z.t*10)%2===0)ring(x,y,z.r,'rgba(255,59,92,.5)');const fall=z.life/z.max*30;ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(RK(x)-2,RK(y),5,2);
+    case 'shell':{ctx.globalAlpha=1;tele(x,y,z.r,1-z.life/z.max,!!(z.boom&&z.boom.hostile));const fall=z.life/z.max*30;ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(RK(x)-2,RK(y),5,2);
       ctx.fillStyle='#3a3150';ctx.fillRect(RK(x)-2,RK(y-fall)-3,5,5);ctx.fillStyle='#ffb627';ctx.fillRect(RK(x),RK(y-fall)-5,1,2);break}
-    case 'fuse':ctx.globalAlpha=1;if(Math.floor(z.t*16)%2===0)ring(x,y,z.r,'#ff3b5c');ring(x,y,z.r*(z.life/z.max),'#ffb627');disc(x,y,2,'#fff');break;
+    case 'fuse':ctx.globalAlpha=1;tele(x,y,z.r,1-z.life/z.max,!z.boom||z.boom.hostile!==false);disc(x,y,1.5,'#fff');break;
     case 'lava':disc(x,y,z.r+1,'#5a1a0e');disc(x,y,z.r,'#c8361a');disc(x,y,z.r*.65,'#ff7a2a');
       if(Math.random()<.3)PT.push({x:z.x+rnd(-z.r,z.r)*.6,y:z.y+rnd(-z.r,z.r)*.6,vx:0,vy:-15,life:.3,max:.3,c:'#ffd166',s:1});break;
     case 'ice':ctx.globalAlpha*=.55;disc(x,y,z.r,'#e8f6ff');ctx.globalAlpha=Math.max(0,fade)*.8;ring(x,y,z.r,'#ffffff');line(x-z.r*.4,y-z.r*.2,x-z.r*.1,y-z.r*.5,'#ffffff');break;
     case 'poison':ctx.globalAlpha*=.35;disc(x,y,z.r,'#7ac23c');ctx.globalAlpha=Math.max(0,fade)*.6;disc(x+Math.sin(z.t*2)*3,y+Math.cos(z.t*2)*2,z.r*.6,'#9ad13c');break;
     case 'crack':{ctx.globalAlpha=1;const k=z.t/z.max;ctx.fillStyle=Math.floor(z.t*10)%2?'#2a1a12':'#ff3b5c';
       for(let i=0;i<7;i++){const a=i/7*TAU+hash(i,z.x|0)%10*.06;for(let s=2;s<z.r*k;s+=2){const j=(hash(i,s)%3)-1;ctx.fillRect(RK(x+Math.cos(a)*s+j),RK(y+Math.sin(a)*s),1,1)}}
-      ctx.globalAlpha=.5;ring(x,y,z.r,'#ff3b5c');break}
+      tele(x,y,z.r,k,true);break}
     case 'pit':disc(x,y,z.r+2,'#4a3420');disc(x,y,z.r,'#1a120c');disc(x,y,z.r*.55,'#0a0605');
       if(Math.random()<.4)PT.push({x:z.x+rnd(-z.r,z.r)*.8,y:z.y+rnd(-z.r,z.r)*.8,vx:0,vy:6,life:.4,max:.4,c:'#6b4a2b',s:1});break;
     case 'ppuddle':ctx.globalAlpha*=.6;disc(x,y,z.r,'#6a8a2a');break;
     case 'spike':
-      if(z.arm>0){if(Math.floor(z.arm*12)%2===0)ring(x,y,z.r,'#ff3b5c');ring(x,y,z.r*(1-z.arm/.9),'#a6f0ff')}
+      if(z.arm>0){if(!z.arm0)z.arm0=z.arm;tele(x,y,z.r,1-z.arm/z.arm0,true)}
       else{for(let i=0;i<6;i++){const a=i/6*TAU+z.t;const px=x+Math.cos(a)*z.r*.6,py=y+Math.sin(a)*z.r*.6;ctx.fillStyle=i%2?'#6be0ff':'#e0c3ff';ctx.fillRect(RK(px),RK(py)-4,2,5);ctx.fillStyle='#fff';ctx.fillRect(RK(px),RK(py)-4,1,1)}}
       break;
     case 'hole':case 'fhole':disc(x,y,z.kind==='hole'?7:9,'#000');ring(x,y,z.kind==='hole'?8:10,z.kind==='hole'?'#7d3cff':'#c792ea');ctx.globalAlpha*=.35;ring(x,y,z.r*(.6+.1*Math.sin(z.t*5)),z.kind==='hole'?'#7d3cff':'#c792ea');break;
@@ -2566,7 +2625,8 @@ function render(){
   for(const e of E){
     const white=e.flash>0||(e.fuse>0&&Math.floor(e.fuse*14)%2===0)||(e.tele&&Math.floor(G.time*18)%2===0);
     const s=enemySprite(e.spr||e.type,e.shift,white);
-    const x=RK(e.x-ox-s.width/2),y=RK(e.y-oy-s.height/2);
+    const bob=e.spd>0&&!(e.frozen>0)&&e.type!=='boss'&&((G.time*7+(e.uid||0)*.37)|0)%2?1:0;   // a little step as they walk
+    const x=RK(e.x-ox-s.width/2),y=RK(e.y-oy-s.height/2)-bob;
     if(x<-20||y<-20||x>LW+20||y>LH+20)continue;
     if(e.sub)continue;                                              // submerged: only the ripples show
     if(e.type==='ufo'){drawUfo(e,ox,oy);continue}
@@ -2593,7 +2653,10 @@ function render(){
       const spr=P.inv>.45&&P.dashT<=0?SPR_PW:SPR_P[P.moving?(Math.floor(G.walk)%2):0];
       ctx.save();
       if(isMode('titan')){const k=2;ctx.translate(RK(P.x-ox),RK(P.y-oy)+2);if(P.face<0)ctx.scale(-1,1);ctx.drawImage(SPR_PO,-4*k-1,-8*k-1,10*k,10*k);ctx.drawImage(spr,-4*k,-8*k,8*k,8*k)}
-      else if(P.face<0){ctx.translate(x+8,y);ctx.scale(-1,1);ctx.drawImage(SPR_PO,-1,-1);ctx.drawImage(spr,0,0)}else{ctx.drawImage(SPR_PO,x-1,y-1);ctx.drawImage(spr,x,y)}
+      else{let sx=1,sy=1;                                            // stretch along a dash, squash as it ends
+        if(P.dashT>0){P.sqT=.12;if(Math.abs(P.vx)>=Math.abs(P.vy)){sx=1.25;sy=.8}else{sx=.8;sy=1.25}}
+        else if(P.sqT>0){P.sqT-=G.rdt||.016;sx=1.15;sy=.87}
+        ctx.translate(x+4,y+8);ctx.scale((P.face<0?-1:1)*sx,sy);ctx.drawImage(SPR_PO,-5,-9);ctx.drawImage(spr,-4,-8)}
       ctx.restore();
       if(isMode('storm')){const cx=RK(P.x-ox),cy=RK(P.y-oy)-28;ctx.fillStyle='#5a5a70';ctx.fillRect(cx-9,cy-2,18,5);ctx.fillRect(cx-6,cy-5,12,4);ctx.fillStyle='#8a8aa0';ctx.fillRect(cx-5,cy-5,8,2);
         if(Math.floor(G.time*10)%3===0){ctx.fillStyle='#7df9ff';ctx.fillRect(cx+rnd(-6,6)|0,cy+3,1,3)}}
@@ -2639,7 +2702,7 @@ function render(){
   ctx.globalAlpha=1;
   postFx(G.rdt||0);
   ctx.setTransform(K,0,0,K,0,0);                                    // screen overlays stay put
-  drawWipe(G.rdt||0);
+  drawWipe(G.rdt||0);drawVignette();
   // offscreen boss arrow
   if(G.boss){const b=G.boss,bx=b.x-ox,by=b.y-oy;if(bx<0||by<0||bx>LW||by>LH){const a=Math.atan2(b.y-P.y,b.x-P.x);
     const x=clamp(LW/2+Math.cos(a)*(LW/2-10),8,LW-8),y=clamp(LH/2+Math.sin(a)*(LH/2-10),8,LH-8);ctx.fillStyle=Math.floor(G.time*4)%2?'#c45cff':'#fff';
@@ -2649,7 +2712,8 @@ function render(){
   drawWaveWarnings();drawThiefPointer(ox,oy);
   drawCampSky(ox,oy);drawEvents(ox,oy);
   // shrine pointer when off screen
-  for(const sh of SHRINES){const bx=sh.x-ox,by=sh.y-oy;if(bx<0||by<0||bx>LW||by>LH){const a=Math.atan2(sh.y-P.y,sh.x-P.x);const x=clamp(LW/2+Math.cos(a)*(LW/2-8),6,LW-6),y=clamp(LH/2+Math.sin(a)*(LH/2-8),6,LH-6);ctx.fillStyle='#ffe066';ctx.fillRect(RK(x)-1,RK(y)-1,3,3)}}
+  for(const sh of SHRINES){const bx=sh.x-ox,by=sh.y-oy;if(bx<0||by<0||bx>LW||by>LH)edgeMark(Math.atan2(sh.y-P.y,sh.x-P.x),'#ffe066',3)}
+  drawEdgeMarks();
   if(G.state==='play'&&P.hp<P.max*.3){const k=.25+.2*Math.sin(G.time*7);ctx.fillStyle=`rgba(255,40,70,${k})`;ctx.fillRect(0,0,LW,3);ctx.fillRect(0,LH-3,LW,3);ctx.fillRect(0,0,3,LH);ctx.fillRect(LW-3,0,3,LH);
     if((G.beatT=(G.beatT||0)-1/60)<=0){G.beatT=1;snd('beat')}}
   if(G.hurt>0){ctx.fillStyle=`rgba(255,40,70,${Math.min(.9,G.hurt*.9)})`;ctx.fillRect(0,0,LW,2);ctx.fillRect(0,LH-2,LW,2);ctx.fillRect(0,0,2,LH);ctx.fillRect(LW-2,0,2,LH)}
@@ -2665,7 +2729,9 @@ function toast(r,txt){
   const keep=SIMPLE()?1:4;while(box.children.length>keep)box.lastChild.remove();
   setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),320)},SIMPLE()?2000:2800);
 }
-function banner(big,sub){
+const MINOR_BAN=/^(VAULT|NEST|CAUGHT|SOUL THIEF|SHIELD DOWN|TOO SLOW)/;
+function banner(big,sub,force){
+  if(!force&&MINOR_BAN.test(big)){toast(1,big.charAt(0)+big.slice(1).toLowerCase()+(sub?': '+sub:''));return}
   const b=$('banner');$('banBig').textContent=big;$('banSub').textContent=sub||'';
   b.classList.remove('show');void b.offsetWidth;b.classList.add('show');
 }
@@ -2676,7 +2742,7 @@ function updateHud(){
   $('threatFill').style.width=clamp((G.tp-tpFor(G.threat))/(tpFor(G.threat+1)-tpFor(G.threat)),0,1)*100+'%';
   $('xpFill').style.width=(G.xp/G.need*100)+'%';$('lvTxt').textContent='LV '+G.level+(G.pendingLv>0&&G.state==='play'?' · +'+G.pendingLv+' BANKED':'');$('xpTxt').textContent=G.xp+'/'+G.need;
   $('streakTxt').textContent=G.streak>=10?'x'+G.streak+' STREAK':'';
-  const okNeed=300+G.okUses*200;$('okFill').style.width=Math.min(100,G.okm/okNeed*100)+'%';
+  const okNeed=600+G.okUses*300;$('okFill').style.width=Math.min(100,G.okm/okNeed*100)+'%';
   const mw=$('modeWrap');if(G.mode){const M=MODES[G.mode.id];mw.hidden=false;mw.style.setProperty('--mc',M.col);$('modeName').textContent=M.name+' '+Math.ceil(G.mode.t)+'s';$('modeFill').style.width=(G.mode.t/G.mode.max*100)+'%'}else mw.hidden=true;
   const bw=$('bossWrap');if(G.boss){bw.hidden=false;$('bossFill').style.width=Math.max(0,G.boss.hp/G.boss.max*100)+'%'}else bw.hidden=true;
   $('dashBtn').classList.toggle('cd',P.dashes<=0);
@@ -2696,8 +2762,8 @@ function buildReport(){
   const statKeys=Object.keys(S).filter(k=>{const d={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,dashMax:1}[k]??0;return Math.abs(S[k]-d)>1e-6});
   const r={
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
-    mode:G.daily?'daily '+G.seedStr:'normal',startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
-    result:{status:G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
+    mode:G.daily?'daily '+G.seedStr:'normal',character:CHARS[G.char].name,startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
+    result:{status:G.victory?'won':G.won?(G.state==='over'?'won, then died in endless':'won, in endless'):G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
       bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
@@ -2754,19 +2820,25 @@ function buildTitle(){
   if(!UNLOCK[chosenW].ok())chosenW='pea';
   $('wPick').innerHTML=Object.keys(WDEF).map(id=>{const ok=UNLOCK[id].ok();
     return `<button data-w="${id}" class="${id===chosenW?'sel':''}" ${ok?'':'disabled'} title="${ok?esc(WDEF[id].desc):'Unlock: '+UNLOCK[id].req}"><img src="${iconURL('w:'+id,ok?WDEF[id].col:'#555')}" alt="">${ok?esc(WDEF[id].name):'Locked: '+UNLOCK[id].req}</button>`}).join('');
+  if(!CHARS[chosenC].ok())chosenC='wanderer';
+  $('cPick').innerHTML=Object.keys(CHARS).map(id=>{const c=CHARS[id],ok=c.ok();
+    return `<button data-c="${id}" class="${id===chosenC?'sel':''}" ${ok?'':'disabled'}>${ok?esc(c.name)+': '+esc(c.desc):'Locked ('+esc(c.name)+'): '+esc(c.req)}</button>`}).join('');
   $('rPick').innerHTML=Object.keys(RELICS).map(id=>{const r=RELICS[id],ok=r.ok();if(!ok)chosenR.delete(id);
     return `<button data-r="${id}" class="${chosenR.has(id)?'sel':''}" ${ok?'':'disabled'}>${ok?esc(r.name)+': '+esc(r.desc):'Locked: '+esc(r.req)}</button>`}).join('');
   const today=new Date().toLocaleDateString('en-CA');
   $('dailyBtn').textContent=meta.daily[today]?`DAILY RUN (best ${meta.daily[today]})`:'DAILY RUN';
 }
 $('wPick').addEventListener('click',e=>{const b=e.target.closest('button[data-w]');if(b&&!b.disabled){chosenW=b.dataset.w;buildTitle()}});
+$('endlessBtn').addEventListener('click',()=>{$('win').hidden=true;G.endless=true;G.state='play';applyControls();banner('ENDLESS','The second lap begins',true)});
+$('endWinBtn').addEventListener('click',()=>{$('win').hidden=true;G.victory=true;gameOver()});
+$('cPick').addEventListener('click',e=>{const b=e.target.closest('button[data-c]');if(b&&!b.disabled){chosenC=b.dataset.c;try{localStorage.setItem('overkill-run-char',chosenC)}catch(_){}buildTitle()}});
 $('rPick').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(b&&!b.disabled){const id=b.dataset.r;chosenR.has(id)?chosenR.delete(id):chosenR.add(id);buildTitle()}});
 function start(daily){
   try{$('eventBar').hidden=true}catch(_){}
   initAudio();if(AC&&AC.state==='suspended')AC.resume();
   VIEW=CFG.autoZoom?VIEW_IN:VIEW_FIXED;setZoom(VIEW);applyView(true);
-  if(daily)reset({daily:true,weapon:'pea',relics:[]});else reset({daily:false,weapon:chosenW,relics:chosenR});
-  ['title','over','pause','lvl','repOv','opts'].forEach(id=>$(id).hidden=true);$('hud').hidden=false;
+  if(daily)reset({daily:true,weapon:'pea',relics:[],char:'wanderer'});else reset({daily:false,weapon:chosenW,relics:chosenR,char:chosenC});
+  ['title','over','win','pause','lvl','repOv','opts'].forEach(id=>$(id).hidden=true);$('hud').hidden=false;
   applyControls();
   banner(daily?'DAILY RUN':'THREAT 0',daily?'Same upgrade offers for everyone today':'Entering '+landName(0));
   updateHud();
@@ -2774,12 +2846,13 @@ function start(daily){
 function gameOver(){
   if(G.state==='over')return;
   endMode();G.state='over';snd('over');G.stop=0;joy.on=false;applyControls();burst(P.x,P.y,'#2ec4b6',40,90,.8,2);G.flash=.6;
-  meta.runs++;meta.totalKills+=G.kills;
+  meta.runs++;meta.totalKills+=G.kills;meta.lmTotal=(meta.lmTotal||0)+(G.lmClaimed||0);
+  document.querySelector('#over h2').textContent=G.victory?'VICTORY':'OVERRUN';
   const nb=G.kills>meta.bestKills;
   meta.bestKills=Math.max(meta.bestKills,G.kills);meta.bestThreat=Math.max(meta.bestThreat,G.threat);meta.bestLevel=Math.max(meta.bestLevel,G.level);
   if(G.daily)meta.daily[G.seedStr]=Math.max(meta.daily[G.seedStr]||0,G.kills);
   saveMeta();
-  $('overStats').innerHTML=[['Killed by',G.lastHit||'something'],['Kills',G.kills],['Level',G.level],['Threat',G.threat],['Land',landName(G.threat)],['Time',fmtT(G.time)],['Best streak',G.bestStreak],['Weapons',W.map(w=>WDEF[w.id].name+' '+w.lvl).join(', ')]]
+  $('overStats').innerHTML=[G.victory?['Result','Won the run']:['Killed by',(G.won?'(endless) ':'')+(G.lastHit||'something')],['Kills',G.kills],['Level',G.level],['Threat',G.threat],['Land',landName(G.threat)],['Time',fmtT(G.time)],['Best streak',G.bestStreak],['Weapons',W.map(w=>WDEF[w.id].name+' '+w.lvl).join(', ')]]
     .map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('');
   const unlocks=Object.keys(UNLOCK).filter(k=>UNLOCK[k].ok()).length;
   document.querySelectorAll('.notesIn').forEach(t=>t.value=G.notes||'');
@@ -2801,7 +2874,7 @@ function setPause(on){
     document.querySelectorAll('.repNote').forEach(n=>n.textContent='');
   }
 }
-function toTitle(){G={state:'title'};['over','pause','lvl','repOv','hud','opts'].forEach(id=>$(id).hidden=true);$('title').hidden=false;buildTitle();applyControls()}
+function toTitle(){G={state:'title'};['over','win','pause','lvl','repOv','hud','opts'].forEach(id=>$(id).hidden=true);$('title').hidden=false;buildTitle();applyControls()}
 $('startBtn').onclick=()=>start(false);$('dailyBtn').onclick=()=>start(true);
 $('againBtn').onclick=()=>start(G.daily);$('titleBtn').onclick=toTitle;$('quitBtn').onclick=toTitle;
 $('resumeBtn').onclick=()=>setPause(false);

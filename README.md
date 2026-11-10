@@ -16,7 +16,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 
 - Rarity runs Common → Rare → Epic → Legendary → Mythic. Higher threat and longer kill streaks push the odds toward the extreme stuff.
 - Enemies attack in squads from one to three directions at a time, sometimes a pincer from both sides. The directions shift every 10 seconds or so, and red arrows at the screen edge point to where the next wave is coming from.
-- Keep moving: stand in one spot for a few seconds and something comes for you, a different threat each time: a **UFO** that beams you up and drops you elsewhere, a **sinkhole** that opens under your feet, a **lightning storm** that follows you with strikes, or a **sandworm** that burrows over and erupts beneath you. None of them can be shot; they all give up once you move. Souls and pickups left on the ground also fade away (they blink first).
+- Keep moving: stand in one spot for a few seconds and something comes for you, either a **UFO** that beams you up and drops you elsewhere, or a **sandworm** that burrows over and erupts beneath you. Red marks close in around you first. None of them can be shot; they all give up once you move. Souls and pickups left on the ground also fade away (they blink first).
 - A **Soul Thief** turns up every minute or so. It runs from you dropping souls; catch it within 14 seconds for a burst of rare souls and a pickup (often a Heart Container).
 - The threat meter rises with kills and time. It drives spawn rate, enemy toughness and elite chance.
 - Six lands, each with its own enemies and hazards: Grassy Ruins, Burning Forest (lava), Frozen Wastes (ice you slide on), Toxic Swamp (poison clouds), Crystal Caves (eruptions), The Void (black holes). After the Void, the cycle repeats harder.
@@ -74,6 +74,16 @@ Colours follow one simple rule so busy fights stay readable: anything that can h
 
 Heart Containers raise max HP (bosses always drop one, elites sometimes do). Cards: Thick Skin, Iron Heart (+50 max HP, full heal), Plating (less damage taken), Giant's Blood (max HP x1.5). Rare pickups: Iron Skin (half damage for 12 s) and Guardian Orbs (three orbs that block shots for 15 s), alongside the existing heal, shield bubble, frenzy, freeze and screen bomb.
 
+### Characters and the ending
+
+Pick a character on the title screen: **Wanderer** (no tricks), **Medic** (every upgrade pick heals 10%, -10% damage; unlock at threat 8), **Berserker** (up to +60% damage the lower your HP, -20 max HP; threat 12), **Scout** (faster, extra dash, double soul reach, -15 max HP; claim 10 landmarks) or **Tinker** (starts with a second random weapon, weapons recharge 10% slower; win a run).
+
+The Hollow at the end of the first Void is the **final boss**. Beat it to win the run, then end there or keep going in endless mode.
+
+### Pacing
+
+Only one special event runs at a time (shrine, supply crate, Soul Thief, vault guards, calm), with at least 20 seconds of plain fighting between them. Super modes come from shrines, obelisks and the Overkill meter, roughly one every couple of minutes. Heart Containers are capped at 10 per run.
+
 ### Clear-outs, calms and checkpoints
 
 - **Clear-out:** when a boss is due, the horde stops coming. Kill everything that's left (a counter shows how many) and the boss arrives. After 12 seconds the stragglers rush you, and after 30 anything left dissolves.
@@ -90,7 +100,7 @@ The world is dotted with places worth a detour, with markers at the screen edge 
 
 ### More pickups and cards
 
-Pickups also include **Decoy** (a copy of you that draws nearby enemies, then explodes), **Wind Boots** (endless dashes and +30% speed for 10 s) and **Thunderclap** (lightning through up to 25 enemies). New cards: Static Field (lightning jumps from you), Dash Barrage (each dash fires a ring of shots), Lucky Clover (more pickups), Bounty Hunter (elites always drop one), Frost Aura (slows enemies near you) and Glass Cannon (+60% damage, -30% max HP).
+Pickups also include **Wind Boots** (endless dashes and +30% speed for 10 s) and **Thunderclap** (lightning through up to 25 enemies). New cards: Dash Barrage (each dash fires a ring of shots), Bounty Hunter (elites always drop one) and Glass Cannon (+60% damage, -30% max HP).
 
 ### Super modes
 
@@ -100,7 +110,7 @@ Short, overpowered bursts you trigger on the battlefield:
 - **Supply crates** drop in with a shadow. Your weapons crack them open and they leave a power orb.
 - **The Overkill meter** fills while you hold a 25+ kill streak and fires a mode on its own when full.
 
-Modes: Overdrive (every weapon evolved), Titan (huge, invulnerable, crushes what you touch), Time Stop, Orbital Strike, Storm Cloud, Turret Drop, Soul Rush, Meteor Shower (meteors rain on enemies) and Vortex (a black hole circles you, dragging the crowd).
+Modes: Overdrive (every weapon evolved), Titan (huge, invulnerable, crushes what you touch), Time Stop, Orbital Strike, Storm Cloud, Turret Drop, Soul Rush.
 
 ## Install on your phone
 
