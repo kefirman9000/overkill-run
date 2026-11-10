@@ -166,6 +166,8 @@ details.story .dim{opacity:.45}
 .pickrow button[disabled]{opacity:.45;cursor:not-allowed}
 .note{color:var(--dim);font-size:16px;line-height:1}
 .stats{display:grid;grid-template-columns:1fr auto;gap:2px 14px;font-variant-numeric:tabular-nums;margin:0}
+.bd{margin:4px 0 8px}.bd h4{font-family:var(--font-d);font-size:11px;color:var(--dim);margin:8px 0 3px;letter-spacing:.06em}
+.bdr{display:grid;grid-template-columns:minmax(0,9em) 1fr auto;gap:6px;align-items:center;font-size:15px;margin:1px 0}.bdr i{display:block;height:7px;background:var(--c,#ffb627)}.bdr span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dim)}
 .stats dt{color:var(--dim)} .stats dd{margin:0;text-align:right}
 .btns{display:flex;flex-wrap:wrap;gap:10px}
 .btns button{font-size:12px;padding:11px 14px}
@@ -324,6 +326,7 @@ details.story .dim{opacity:.45}
     <dl class="stats" id="overStats"></dl>
     <h3>HIGHLIGHTS</h3>
     <dl class="stats" id="overHi"></dl>
+    <details class="bd" id="overBdW" open><summary>BREAKDOWN</summary><div id="overBd"></div></details>
     <img id="cardPrev" alt="Run card" hidden>
     <div class="note" id="bestOver"></div>
     <label class="notes" for="notesOver"><span>Notes for Claude (optional, goes into the run report)</span><textarea id="notesOver" class="notesIn" rows="3" placeholder="What felt good, bad, too easy, too hard?"></textarea></label>
@@ -351,6 +354,8 @@ details.story .dim{opacity:.45}
     <div class="pickrow" id="optSimple"><button data-v="1">GRAPHICS: SIMPLE</button><button data-v="0">GRAPHICS: FULL</button></div>
     <div class="pickrow" id="optColors"><button data-v="clear">COLORS: CLEAR</button><button data-v="vivid">COLORS: VIVID</button></div>
     <div class="pickrow" id="optFx"><button data-v="1">EFFECTS: ON</button><button data-v="0">EFFECTS: OFF</button></div>
+    <div class="pickrow" id="optNums"><button data-v="0">NUMBERS: OFF</button><button data-v="1">NUMBERS: BIG HITS</button><button data-v="2">NUMBERS: ALL</button></div>
+    <div class="pickrow" id="optRadar"><button data-v="1">RADAR: ON</button><button data-v="0">RADAR: OFF</button></div>
     <div class="pickrow" id="optDetail"><button data-v="0">SIMPLE GROUND</button><button data-v="1">DETAILED GROUND</button></div>
     <div class="pickrow" id="optMusic"><button data-v="1">MUSIC ON</button><button data-v="0">MUSIC OFF</button></div>
     <div class="pickrow" id="optHap"><button data-v="1">VIBRATION ON</button><button data-v="0">VIBRATION OFF</button></div>
@@ -377,7 +382,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.24.1';
+const VERSION='1.25.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -684,7 +689,7 @@ const RELICS={
 let chosenW='pea';const chosenR=new Set();
 
 /* ================= control settings ================= */
-const CFG_DEF={simple:1,smooth:1,colors:'clear',fx:1,autoPick:0,mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:.4,autoZoom:1,music:1,haptics:1,detail:0};
+const CFG_DEF={nums:0,radar:1,simple:1,smooth:1,colors:'clear',fx:1,autoPick:0,mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:.4,autoZoom:1,music:1,haptics:1,detail:0};
 let CFG=Object.assign({},CFG_DEF);
 try{const c=JSON.parse(localStorage.getItem('overkill-run-controls')||'null');if(c)CFG=Object.assign(CFG,c)}catch(e){}
 function saveCfg(){try{localStorage.setItem('overkill-run-controls',JSON.stringify(CFG))}catch(e){}}
@@ -1369,6 +1374,20 @@ function updateRank(){
   banner(RANKS[r].name.toUpperCase(),{1:'Armor and a scarf. You look like you belong here.',2:'A crown and a cape. They know your name now.',3:'You glow. They are afraid of you.'}[r],true);
 }
 /* ================= highlights and the run card ================= */
+function srcName(k){const w=W.find(w=>w.id===k);if(WDEF[k])return w&&w.evo?EVO[k].name:WDEF[k].name;return {reaction:'Reactions',poison:'Poison',burn:'Burning',ally:'Allies',pet:'Pet',other:'Other',dash:'Dash',orbit:'Orbit'}[k]||k.charAt(0).toUpperCase()+k.slice(1)}
+function breakdownHTML(){
+  const bars=(rows,col)=>{const mx=Math.max(1,...rows.map(r=>r[1]));return rows.map(([n,v,t])=>`<div class="bdr"><span>${esc(n)}</span><i style="--c:${col};width:${Math.max(2,v/mx*100)}%"></i><b>${esc(t)}</b></div>`).join('')};
+  const tot=Object.values(G.dmgBy).reduce((a,b)=>a+b,0)||1;
+  const dmg=Object.entries(G.dmgBy).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k,v])=>[srcName(k),v,Math.round(v/tot*100)+'%']);
+  const hurt=Object.entries(G.hurtBy||{}).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,v])=>[k,v,fmtN(v)]);
+  let h='<h4>DAMAGE DEALT</h4>'+bars(dmg,'#ffb627');
+  if(hurt.length)h+='<h4>DAMAGE TAKEN</h4>'+bars(hurt,'#ff4d6d');
+  const b=[];b.push(['Healed',fmtN(G.healed||0)+' HP']);
+  if(G.lullLog.length)b.push(['Beacons',G.lullLog.filter(l=>l.reached).length+' / '+G.lullLog.length+' reached'+(G.lullLog.some(l=>l.fast)?' ('+G.lullLog.filter(l=>l.fast).length+' fast)':'')]);
+  for(const x of G.bossLog)b.push([x.boss,x.fightSeconds+'s'+(x.mods?' · '+x.mods.split(',').map(m=>BOSS_MODS[m]?BOSS_MODS[m].name:m).join(', '):'')]);
+  h+='<h4>RUN</h4><dl class="stats">'+b.map(([a,v])=>`<dt>${esc(a)}</dt><dd>${esc(v)}</dd>`).join('')+'</dl>';
+  return h;
+}
 function highlights(){
   const H=[];
   const wk=Object.keys(G.dmgBy).filter(k=>WDEF[k]).sort((a,b)=>G.dmgBy[b]-G.dmgBy[a])[0];
@@ -1662,6 +1681,43 @@ function bossModsTick(e,dt){
   if(!e.mods||!e.mods.length)return;
   if(e.mods.includes('brood')){e.broodT=(e.broodT??5)-dt;if(e.broodT<=0){e.broodT=6;for(let i=0;i<3;i++){const m=spawnEnemy('mini',e.x+rnd(-8,8),e.y+rnd(-8,8),{elite:false});m.vx=rnd(-60,60);m.vy=rnd(-60,60)}}}
   if(e.mods.includes('regen')&&G.time-(e.hitT||0)>2&&e.hp<e.max){e.hp=Math.min(e.max,e.hp+e.max*.012*dt);if(R()<.1)PT.push({x:e.x+rnd(-6,6),y:e.y-4,vx:0,vy:-14,life:.4,max:.4,c:'#9be15d',s:1})}
+}
+
+/* ================= damage numbers (optional) and the radar ================= */
+const FONT3={'0':'111101101101111','1':'010110010010111','2':'111001111100111','3':'111001111001111','4':'101101111001001','5':'111100111001111','6':'111100111101111','7':'111001010010010','8':'111101111101111','9':'111101111001111','.':'000000000000010','k':'100101110101101','m':'000111111101101','b':'100100111101111','t':'010111010010011','!':'010010010000010'};
+const NUMS=[];
+function fmtN(v){if(v<1000)return String(Math.max(1,Math.round(v)));const u=[['t',1e12],['b',1e9],['m',1e6],['k',1e3]];for(const [s,d] of u)if(v>=d){const x=v/d;return (x<10?x.toFixed(1):Math.round(x))+s}return String(Math.round(v))}
+function numHit(e,d,crit){
+  if(!CFG.nums||d<=0||!G.state||G.state==='title')return;
+  const big=crit||d>=e.max*.25||(e.type==='boss'&&d>=e.max*.01);
+  if(CFG.nums===1&&!big)return;
+  const n=NUMS.find(n=>n.e===e&&n.t<.25&&n.crit===crit);
+  if(n){n.v+=d;n.t=Math.min(n.t,.08);return}
+  if(NUMS.length>=50)NUMS.shift();
+  NUMS.push({e,x:e.x+rnd(-4,4),y:e.y-e.r-3,v:d,t:0,crit,col:crit?'#ffd84a':e.type==='boss'?'#ff9fd0':'#ffffff'});
+}
+function drawNums(ox,oy,dt){
+  if(!NUMS.length)return;
+  for(let i=NUMS.length-1;i>=0;i--){const n=NUMS[i];n.t+=dt;if(n.t>.7){NUMS.splice(i,1);continue}
+    const txt=fmtN(n.v)+(n.crit?'!':''),sc=1,w=txt.length*4*sc-sc,x=Math.round(n.x-ox-w/2),y=Math.round(n.y-oy-n.t*14);
+    ctx.globalAlpha=n.t>.5?(.7-n.t)/.2:1;
+    for(const pass of [0,1]){ctx.fillStyle=pass?n.col:'#0d0b14';const o=pass?0:1;
+      for(let c=0;c<txt.length;c++){const g=FONT3[txt[c]];if(!g)continue;for(let k=0;k<15;k++)if(g[k]==='1')ctx.fillRect(x+c*4*sc+(k%3)*sc+o,y+((k/3)|0)*sc+o,sc,sc)}}
+  }
+  ctx.globalAlpha=1;
+}
+function drawRadar(){
+  if(!CFG.radar||G.state==='title'||!G.time)return;
+  const s=LW/innerWidth,R0=Math.round(30*s),cx=Math.round(LW-(14+30)*s),cy=Math.round((56+30)*s),RANGE=700;
+  ctx.globalAlpha=.55;ctx.fillStyle='#0d0b14';ctx.beginPath();ctx.arc(cx,cy,R0,0,TAU);ctx.fill();ctx.globalAlpha=.5;ring(cx,cy,R0,'#5a5378');ctx.globalAlpha=1;
+  const dot=(x,y,col,sz,blink)=>{let dx=(x-P.x)/RANGE*R0,dy=(y-P.y)/RANGE*R0;const d=Math.hypot(dx,dy);if(d>R0-2){dx*=(R0-2)/d;dy*=(R0-2)/d}if(blink&&Math.floor(G.time*4)%2)return;ctx.fillStyle=col;ctx.fillRect(Math.round(cx+dx-sz/2),Math.round(cy+dy-sz/2),sz,sz)};
+  // enemies as faint specks so you can see where the pressure is coming from
+  ctx.globalAlpha=.5;let n=0;for(const e of E){if(e.dead||e.type==='boss'||n++>120)continue;dot(e.x,e.y,'#ff4d6d',1)}ctx.globalAlpha=1;
+  for(const lm of G.lms.values())if(lm&&lm.state!=='done'&&Math.hypot(lm.x-P.x,lm.y-P.y)<RANGE*1.4)dot(lm.x,lm.y,LM_COL[lm.kind],2);
+  for(const sh of SHRINES)dot(sh.x,sh.y,'#ffe066',2);
+  if(G.lull&&G.lull.phase==='calm')dot(G.lull.x,G.lull.y,'#9be1ff',4,G.lull.limit-G.lull.t<10);
+  if(G.boss&&!G.boss.dead)dot(G.boss.x,G.boss.y,'#c45cff',4);
+  ctx.fillStyle='#ffffff';ctx.fillRect(cx-1,cy-1,2,2);
 }
 
 /* ================= event coordinator =================
@@ -2244,7 +2300,8 @@ function hurt(e,dmg,o={}){
   const res=ET[e.type].res,el=o.elem||'kinetic';
   const m=res&&res[el]!==undefined?res[el]:1;
   let d=dmg*m;
-  if(o.proc&&S.crit&&R()<S.crit){d*=3;if(PT.length<400)burst(e.x,e.y-3,'#ffffff',3,30,.25)}
+  let crit=false;
+  if(o.proc&&S.crit&&R()<S.crit){d*=3;crit=true;if(PT.length<400)burst(e.x,e.y-3,'#ffffff',3,30,.25)}
   if(o.proc){
     if(S.burn>0&&R()<S.burn){e.burn=3;e.burnD=Math.max(e.burnD,dmg*.5)}
     if(S.freeze>0&&R()<S.freeze)e.slow=2;
@@ -2259,7 +2316,7 @@ function hurt(e,dmg,o={}){
     else if(o.proc&&e.burn>0&&e.slow>=2&&e.burnD>0)reaction('steam',e,dmg);
   }
   const dealt=Math.min(d,Math.max(0,e.hp));
-  e.hp-=d;e.flash=.06;
+  e.hp-=d;e.flash=.06;numHit(e,dealt,crit);
   const src=o.src||'other';G.dmgBy[src]=(G.dmgBy[src]||0)+dealt;
   if(m<.5&&R()<.25){burst(e.x,e.y,'#8a8aa0',2,30,.2);if(!G.golemHint&&e.type==='golem'){G.golemHint=true;toast(1,'Golems resist that. Lightning and blasts crack them.')}}
   if(o.kx!==undefined){const kb=(o.kb||30)/(e.r*.5)*(e.type==='boss'?.08:e.type==='jugg'?.15:e.type==='crate'?0:1);e.vx+=o.kx*kb;e.vy+=o.ky*kb}
@@ -2651,6 +2708,7 @@ function tryDash(){
 }
 function update(dt){
   G.time+=dt;
+  if(G.prevHp!==undefined&&P.hp>G.prevHp&&P.max===G.prevMax)G.healed=(G.healed||0)+(P.hp-G.prevHp);G.prevHp=P.hp;G.prevMax=P.max;
   // ---- input & movement
   let mx=0,my=0;
   if(keys.KeyA||keys.ArrowLeft)mx--;if(keys.KeyD||keys.ArrowRight)mx++;
@@ -3299,10 +3357,10 @@ function render(){
   if(isMode('timestop')){ctx.fillStyle='rgba(166,240,255,.14)';ctx.fillRect(0,0,LW,LH)}
   if(G.mode){const c=MODES[G.mode.id].col;ctx.globalAlpha=.5+.3*Math.sin(G.time*8);ctx.fillStyle=c;ctx.fillRect(0,0,LW,1);ctx.fillRect(0,LH-1,LW,1);ctx.fillRect(0,0,1,LH);ctx.fillRect(LW-1,0,1,LH);ctx.globalAlpha=1}
   drawWaveWarnings();drawThiefPointer(ox,oy);
-  drawCampSky(ox,oy);drawEvents(ox,oy);
+  drawCampSky(ox,oy);drawEvents(ox,oy);drawNums(ox,oy,G.state==='play'?G.rdt||0:0);
   // shrine pointer when off screen
   for(const sh of SHRINES){const bx=sh.x-ox,by=sh.y-oy;if(bx<0||by<0||bx>LW||by>LH)edgeMark(Math.atan2(sh.y-P.y,sh.x-P.x),'#ffe066',3)}
-  drawEdgeMarks();
+  drawEdgeMarks();drawRadar();
   if(G.state==='play'&&P.hp<P.max*.3){const k=.25+.2*Math.sin(G.time*7);ctx.fillStyle=`rgba(255,40,70,${k})`;ctx.fillRect(0,0,LW,3);ctx.fillRect(0,LH-3,LW,3);ctx.fillRect(0,0,3,LH);ctx.fillRect(LW-3,0,3,LH);
     if((G.beatT=(G.beatT||0)-1/60)<=0){G.beatT=1;snd('beat')}}
   if(G.hurt>0){ctx.fillStyle=`rgba(255,40,70,${Math.min(.9,G.hurt*.9)})`;ctx.fillRect(0,0,LW,2);ctx.fillRect(0,LH-2,LW,2);ctx.fillRect(0,0,2,LH);ctx.fillRect(LW-2,0,2,LH)}
@@ -3452,6 +3510,7 @@ function gameOver(){
   meta.bestKills=Math.max(meta.bestKills,G.kills);meta.bestThreat=Math.max(meta.bestThreat,G.threat);meta.bestLevel=Math.max(meta.bestLevel,G.level);
   if(G.daily)meta.daily[G.seedStr]=Math.max(meta.daily[G.seedStr]||0,G.kills);
   saveMeta();
+  $('overBd').innerHTML=breakdownHTML();
   $('overHi').innerHTML=highlights().map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(String(b))}</dd>`).join('');$('cardPrev').hidden=true;showCardPreview();
   $('overStats').innerHTML=[G.victory?['Result','Won the run']:['Killed by',(G.won?'(endless) ':'')+(G.lastHit||'something')],['Kills',G.kills],['Level',G.level],['Threat',G.threat],['Land',landName(G.threat)],['Time',fmtT(G.time)],['Best streak',G.bestStreak],['Weapons',W.map(w=>WDEF[w.id].name+' '+w.lvl).join(', ')]]
     .map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('');
@@ -3541,7 +3600,7 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 let optsFrom=null;
 function syncOpts(){
   const mark=(id,v)=>$(id).querySelectorAll('button').forEach(b=>b.classList.toggle('sel',b.dataset.v===String(v)));
-  mark('optMode',CFG.mode);mark('optUI',CFG.ui);mark('optTap',CFG.tapDash);mark('optShake',CFG.shake);mark('optDetail',CFG.detail);mark('optZoom',CFG.autoZoom);mark('optMusic',CFG.music);mark('optHap',CFG.haptics);mark('optAuto',CFG.autoPick);mark('optFx',CFG.fx);mark('optColors',CFG.colors);mark('optSimple',CFG.simple);mark('optSmooth',CFG.smooth);
+  mark('optMode',CFG.mode);mark('optUI',CFG.ui);mark('optTap',CFG.tapDash);mark('optShake',CFG.shake);mark('optDetail',CFG.detail);mark('optNums',CFG.nums);mark('optRadar',CFG.radar);mark('optZoom',CFG.autoZoom);mark('optMusic',CFG.music);mark('optHap',CFG.haptics);mark('optAuto',CFG.autoPick);mark('optFx',CFG.fx);mark('optColors',CFG.colors);mark('optSimple',CFG.simple);mark('optSmooth',CFG.smooth);
   $('optJs').value=Math.round(CFG.jsize*100);$('optJsV').textContent=Math.round(CFG.jsize*100)+'%';
   $('optDead').value=Math.round(CFG.dead*100);$('optDeadV').textContent=Math.round(CFG.dead*100)+'%';
   $('optDs').value=Math.round(CFG.dsize*100);$('optDsV').textContent=Math.round(CFG.dsize*100)+'%';
@@ -3554,7 +3613,7 @@ function openOpts(){
 function closeOpts(){saveCfg();$('opts').hidden=true;$(optsFrom||'title').hidden=false;applyControls()}
 document.querySelectorAll('.optBtn').forEach(b=>b.onclick=openOpts);
 const pickHandler=(id,key,num)=>$(id).addEventListener('click',e=>{const b=e.target.closest('button[data-v]');if(!b)return;CFG[key]=num?+b.dataset.v:b.dataset.v;saveCfg();syncOpts();applyControls()});
-pickHandler('optMode','mode');pickHandler('optUI','ui');pickHandler('optTap','tapDash',1);pickHandler('optShake','shake',1);pickHandler('optDetail','detail',1);pickHandler('optZoom','autoZoom',1);pickHandler('optMusic','music',1);pickHandler('optHap','haptics',1);pickHandler('optAuto','autoPick',1);pickHandler('optFx','fx',1);pickHandler('optColors','colors');pickHandler('optSimple','simple',1);pickHandler('optSmooth','smooth',1);$('optSmooth').addEventListener('click',()=>{K_LOW=false;applyView(true)});
+pickHandler('optMode','mode');pickHandler('optUI','ui');pickHandler('optTap','tapDash',1);pickHandler('optShake','shake',1);pickHandler('optDetail','detail',1);pickHandler('optNums','nums',1);pickHandler('optRadar','radar',1);pickHandler('optZoom','autoZoom',1);pickHandler('optMusic','music',1);pickHandler('optHap','haptics',1);pickHandler('optAuto','autoPick',1);pickHandler('optFx','fx',1);pickHandler('optColors','colors');pickHandler('optSimple','simple',1);pickHandler('optSmooth','smooth',1);$('optSmooth').addEventListener('click',()=>{K_LOW=false;applyView(true)});
 const sliderHandler=(id,key)=>$(id).addEventListener('input',e=>{CFG[key]=+e.target.value/100;syncOpts();applyControls()});
 sliderHandler('optJs','jsize');sliderHandler('optDead','dead');sliderHandler('optDs','dsize');sliderHandler('optOp','op');
 $('optDone').onclick=closeOpts;

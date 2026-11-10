@@ -125,6 +125,10 @@ The world is dotted with places worth a detour, with markers at the screen edge 
 
 Smaller things turn up while you explore, some useful and some just there: abandoned packs, broken carts, old signposts, graves (usually quiet), mushroom rings (something happens, probably), watching statues, campfires (heal when it's quiet, until the fuel runs out), treasure maps (dig up the chest), a wandering merchant (a rare card for a fifth of your HP), wishing wells (throw in souls, make a wish), a lost dog that follows you and fetches souls, and sleeping giants carrying a lot of loot.
 
+### Options worth knowing
+
+Damage numbers are off by default; turn them on for big hits only or for every hit (hits on the same enemy add up into one number). A small radar in the top-right corner shows the beacon, the boss, shrines, nearby landmarks and where enemies are bunching up. The end-of-run screen breaks down where your damage came from, what hurt you, how much you healed, beacons reached and each boss's fight time and mutations.
+
 ### Codex
 
 The pause menu's **Codex** lists every enemy, boss, place, curio, evolution and card you've found across all your runs.
