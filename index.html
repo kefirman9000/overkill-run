@@ -99,6 +99,11 @@ body.simple #banner .big{font-size:clamp(20px,4.6vw,36px)}
 #banner .sub{font-size:clamp(11px,2.4vw,15px);margin-top:6px}
 #eventBar{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 62px);font-family:var(--font-d);font-size:13px;color:#9be1ff;text-shadow:2px 2px 0 #000;background:rgba(13,11,20,.75);padding:4px 10px;border:2px solid #9be1ff;pointer-events:none;white-space:nowrap}
 body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
+details.story{margin:8px 0 2px;font-size:17px;line-height:1.25}
+details.story summary{font-family:var(--font-d);font-size:12px;cursor:pointer;color:var(--dim)}
+details.story p{margin:6px 0}
+details.story .dim{opacity:.45}
+#cardPrev{display:block;width:100%;max-width:520px;margin:10px auto 0;border:2px solid #2a2440;image-rendering:auto}
 #bossCard{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
 #bossCard .lb{position:absolute;left:0;right:0;height:11vh;background:#000;transition:transform .3s steps(6)}
 #bossCard .lb.top{top:0;transform:translateY(-100%)}
@@ -160,6 +165,7 @@ body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
 .up .tag{font-family:var(--font-d);font-size:9px;padding:2px 5px;background:var(--c);color:#0d0b14}
 .up .nm{font-family:var(--font-d);font-size:13px;color:var(--c);line-height:1.15}
 .up .ds{line-height:1;color:var(--ink)}
+.up .fl{flex-basis:100%;font-style:italic;color:var(--dim);font-size:15px;line-height:1.15;opacity:.85}
 .up .evh{font-family:var(--font-d);font-size:9px;line-height:1.3;color:var(--dim)}
 .up .evh.key{color:#ffa31a}
 .up .ky{margin-top:auto;font-family:var(--font-d);font-size:9px;color:var(--dim)}
@@ -225,6 +231,7 @@ body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
     <div class="ladder" aria-label="Rarity ladder">
       <span style="background:var(--r0)">COMMON</span><span style="background:var(--r1)">RARE</span><span style="background:var(--r2)">EPIC</span><span style="background:var(--r3)">LEGENDARY</span><span style="background:var(--r4)">MYTHIC</span>
     </div>
+    <details class="story"><summary>THE STORY SO FAR</summary><div id="storyBox"></div></details>
     <h3>CHARACTER</h3>
     <div class="pickrow" id="cPick"></div>
     <h3>STARTING WEAPON</h3>
@@ -264,7 +271,8 @@ body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
 <div class="ov" id="win" hidden>
   <div class="card">
     <h2 style="color:var(--r3)">VICTORY</h2>
-    <p>The Hollow is gone and the first lap is yours. End the run here, or keep going: the lands start over, harder, and the threat never stops climbing.</p>
+    <p id="winStory"></p>
+    <p class="note">End the run here, or keep going: the lands start over, harder, and the threat never stops climbing.</p>
     <dl class="stats" id="winStats"></dl>
     <div class="btns"><button class="go" id="endlessBtn">KEEP GOING (ENDLESS)</button><button id="endWinBtn">END RUN</button></div>
   </div>
@@ -273,9 +281,12 @@ body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
   <div class="card">
     <h2>OVERRUN</h2>
     <dl class="stats" id="overStats"></dl>
+    <h3>HIGHLIGHTS</h3>
+    <dl class="stats" id="overHi"></dl>
+    <img id="cardPrev" alt="Run card" hidden>
     <div class="note" id="bestOver"></div>
     <label class="notes" for="notesOver"><span>Notes for Claude (optional, goes into the run report)</span><textarea id="notesOver" class="notesIn" rows="3" placeholder="What felt good, bad, too easy, too hard?"></textarea></label>
-    <div class="btns"><button class="go" id="againBtn">RUN IT BACK</button><button class="repBtn">COPY RUN REPORT</button><button class="saveBtn">SAVE REPORT FILE</button><button id="titleBtn">TITLE</button></div>
+    <div class="btns"><button class="go" id="againBtn">RUN IT BACK</button><button id="cardBtn">SAVE RUN CARD</button><button class="repBtn">COPY RUN REPORT</button><button class="saveBtn">SAVE REPORT FILE</button><button id="titleBtn">TITLE</button></div>
     <div class="note repNote"></div>
   </div>
 </div>
@@ -325,7 +336,7 @@ body.simple #toasts{top:calc(env(safe-area-inset-top,0px) + 96px)}
 
 <script>
 'use strict';
-const VERSION='1.20.0';
+const VERSION='1.21.0';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -1164,6 +1175,7 @@ function showWin(){
   G.state='win';joy.on=false;applyControls();G.lvCD=Math.max(G.lvCD,1);
   $('winStats').innerHTML=[['Time',fmtT(G.time)],['Kills',G.kills],['Level',G.level],['Character',CHARS[G.char].name],['Weapons',W.map(w=>w.evo?EVO[w.id].name:WDEF[w.id].name+' '+w.lvl).join(', ')]]
     .map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('');
+  $('winStory').textContent=STORY_END;
   setTimeout(()=>{$('lvl').hidden=true;$('win').hidden=false},600);
 }
 
@@ -1229,6 +1241,133 @@ function drawAllies(ox,oy){
   }
 }
 
+/* ================= words: flavour, landmark names, story ================= */
+const FLAVOR={
+  dmg:'Same bullets. More opinions.',rate:'The trigger was always the slow part.',move:'You were never going to outfight them all. Outrun some.',
+  area:'Everything you do now takes up more room.',hp:'Scar tissue counts as armor if you have enough of it.',
+  dashvolley:'Every exit is also an entrance.',bounty:'The big ones always carry something.',glass:'Hit like a truck. Break like a window.',
+  ironheart:'It beats slower, and it does not stop.',plating:'Bolted on in a hurry. Holds anyway.',secondheart:'Bigger than you should be. Bigger than they are.',
+  multi:'Why aim once?',pierce:'The first one was just in the way.',bounce:'Every miss gets a second opinion.',rear:'Never turn your back. Shoot it instead.',
+  burn:'A little fire goes a long way, mostly toward them.',freeze:'Cold makes everything slow down and think.',dashshock:'Excuse me.',
+  split:'One shot, several apologies.',grow:'Bullets that learn on the way.',circle:'Every sixth one is for the ones behind you.',
+  frostkill:'Their friends freeze when they fall. Grief, probably.',chainkill:'Some of them were always going to explode.',trail:'Leave something for the ones following you.',
+  dash:'A second chance, every few seconds.',barrier:'One free mistake, on a timer.',leech:'Take a little back from every one of them.',
+  crit:'Sometimes the bullet just knows.',afterburn:'Running away, but make it arson.',quickdraw:'Dash, and everything fires at once.',
+  phoenix:'Die once. It does not take.',orbit:'Wind it up. Let it go.',nuke:'Every tenth shot is a statement.',pulse:'Every so often, the whole screen gets told.',
+  hole:'Put the crowd somewhere else. Somewhere small.',momentum:'Standing still is for the dead and the slow.',
+  scorch:'The ground remembers where you have been.',double:'Twice as many problems, all of them theirs.',stasis:'Near you, time is in no hurry.',
+  needlekill:'Every death sends a little message to the next one.',horizon:'You leave holes in the world behind you.',
+  // weapons
+  'w:pea':'Reliable. Unimpressive. Still here at the end.','w:fire':'Slow, hot and personal.','w:bolt':'Picks one, then picks its friends.',
+  'w:needle':'They find their own way.','w:blade':'Keep close. Closer than that.','w:missile':'Fire and forget. They will not.',
+  'w:bomb':'Throw one. Hear five.','w:drone':'Small, loyal and a little too eager.','w:beam':'A straight line through everything.',
+  'w:rang':'Out, through and back again.','w:nova':'The cold comes from you.','w:shotgun':'Up close, nobody misses.','w:oil':'Slippery for them, flammable for everyone.',
+};
+const LM_NAMES={
+  spring:['the Weeping Spring','the Still Pool','the Mender\'s Well','the Silver Basin','the Quiet Water'],
+  obelisk:['the Obelisk of the Third Sun','the Humming Stone','the Last Pillar','the Watcher\'s Spire','the Burnt Monolith'],
+  vault:['the Miser\'s Vault','the Sealed Strongbox','the Deserter\'s Cache','the Old Armory','the Iron Coffer'],
+  nest:['the Writhing Nest','the Brood Mound','the Hatchery','the Pulsing Hive','the Rotten Cradle'],
+  camp:['the Prisoner\'s Cage','the Forgotten Camp','the Stockade','the Last Holdout','the Locked Pen'],
+};
+const STORY=[
+  {land:'Grassy Ruins',line:'They said the old world ended quietly. It didn\'t. It is still ending, and it has noticed you.'},
+  {land:'Burning Forest',line:'The forest burns because something wants it burned. Every ember has a master.'},
+  {land:'Frozen Wastes',line:'The cold keeps everything out here: the guns, the bodies, the names of everyone who ran before you.'},
+  {land:'Toxic Swamp',line:'Half of them crawled out of this bog. It would like you to stay.'},
+  {land:'Crystal Caves',line:'The caves sing at a pitch the horde can\'t stand. They are all down here, screaming back.'},
+  {land:'The Void',line:'At the bottom of everything is the Hollow, the thing eating the world. It has been waiting for someone loud enough.'},
+];
+const STORY_END='The Hollow is gone. For the first time in a long time, nothing is coming. The quiet lasts about a minute. Then the ground shakes, and you hear them again, more of them, further out. Somebody has to keep running.';
+
+/* ================= your look grows with you =================
+   Rookie (Lv 1), Veteran (Lv 10: armor, gold belt, scarf), Champion (Lv 25: gold helm and crown, cape),
+   Legend (Lv 40: glowing eyes, an outline in your colour, sparks). Each character has its own colours. */
+const RANKS=[{lv:1,name:'Rookie'},{lv:10,name:'Veteran'},{lv:25,name:'Champion'},{lv:40,name:'Legend'}];
+const CHAR_COL={wanderer:{a:'#2ec4b6',d:'#2ec4b6',acc:'#2ec4b6'},medic:{a:'#e6f7ff',d:'#3ac7a0',acc:'#7dffd4'},berserker:{a:'#ff5e5b',d:'#c8361a',acc:'#ff5e5b'},
+  scout:{a:'#c6f06a',d:'#6b8f2a',acc:'#c6f06a'},tinker:{a:'#ff9f43',d:'#8a5a2a',acc:'#ffb627'}};
+function shade(hex,k){const n=parseInt(hex.slice(1),16),f=c=>Math.max(0,Math.min(255,Math.round(c*k)));return '#'+[(n>>16)&255,(n>>8)&255,n&255].map(c=>f(c).toString(16).padStart(2,'0')).join('')}
+const PS_CACHE={};
+function rankOf(lv){let r=0;for(let i=0;i<RANKS.length;i++)if(lv>=RANKS[i].lv)r=i;return r}
+function playerSprites(ch,rank){
+  const key=ch+rank;if(PS_CACHE[key])return PS_CACHE[key];
+  const C=CHAR_COL[ch]||CHAR_COL.wanderer,pal=Object.assign({},PPAL,{a:C.a,d:C.d});
+  if(rank>=1){pal.d=shade(C.d,.72);pal.e='#ffd84a'}
+  if(rank>=2){pal.a='#ffd84a'}
+  if(rank>=3){pal.c='#ffffff'}
+  const f=[makeSprite(PLAYER_A,pal),makeSprite(PLAYER_B,pal)];
+  return PS_CACHE[key]={f,o:outlineOf(f[0],'#14101c'),glow:outlineOf(f[0],C.acc),acc:C.acc};
+}
+/* extras drawn in the player's local space (origin at the feet, facing right): scarf, cape, crown */
+function drawPlayerGear(rank,acc){
+  const t=G.time||0,mv=Math.min(1,Math.hypot(P.vx,P.vy)/60);
+  if(rank>=2){const fl=Math.round(Math.sin(t*10)*mv);ctx.fillStyle=shade(acc,.6);ctx.fillRect(-6,-4,2,4+fl);ctx.fillRect(-7-Math.round(mv*2),-3,2,3+fl);ctx.fillStyle=acc;ctx.fillRect(-6,-4,1,4+fl)}
+  if(rank>=1){const fl=Math.round(Math.sin(t*14)*1.5*mv+mv);ctx.fillStyle=acc;ctx.fillRect(-4-1,-5,2,1);ctx.fillRect(-5-fl,-4,2,1)}
+}
+function drawPlayerCrown(rank){if(rank<2)return;ctx.fillStyle='#ffd84a';ctx.fillRect(-2,-9,1,1);ctx.fillRect(0,-10,1,2);ctx.fillRect(1,-9,1,1);ctx.fillStyle='#ff4d6d';ctx.fillRect(0,-10,1,1)}
+function updateRank(){
+  const r=rankOf(G.level);if(r<=(G.rank||0))return;G.rank=r;
+  const acc=playerSprites(G.char,r).acc;
+  RINGS.push({x:P.x,y:P.y,r:0,max:40,life:.5,t:0,c:acc,noFill:1});burst(P.x,P.y,acc,30,90,.5,2);G.stop=Math.max(G.stop,.1);snd('level');
+  banner(RANKS[r].name.toUpperCase(),{1:'Armor and a scarf. You look like you belong here.',2:'A crown and a cape. They know your name now.',3:'You glow. They are afraid of you.'}[r],true);
+}
+/* ================= highlights and the run card ================= */
+function highlights(){
+  const H=[];
+  const wk=Object.keys(G.dmgBy).filter(k=>WDEF[k]).sort((a,b)=>G.dmgBy[b]-G.dmgBy[a])[0];
+  if(wk){const tot=Object.values(G.dmgBy).reduce((a,b)=>a+b,0)||1,w=W.find(w=>w.id===wk);H.push(['MVP weapon',(w&&w.evo?EVO[wk].name:WDEF[wk].name)+' ('+Math.round(G.dmgBy[wk]/tot*100)+'% of damage)'])}
+  if(G.lowHp!==undefined&&G.lowHp<.5)H.push(['Closest call','survived on '+Math.max(1,Math.round(G.lowHp*100))+'% HP']);
+  if(G.bestStreak)H.push(['Best streak',G.bestStreak+' kills']);
+  if(G.bossLog.length){const f=G.bossLog.reduce((a,b)=>b.fightSeconds<a.fightSeconds?b:a);H.push(['Fastest boss',f.boss+' in '+f.fightSeconds+'s'])}
+  if(G.alliesJoined)H.push(['Allies',G.alliesJoined+' joined'+(G.dmgBy.ally?', '+Math.round(G.dmgBy.ally).toLocaleString()+' damage dealt':'')]);
+  if(G.lmClaimed)H.push(['Landmarks claimed',G.lmClaimed]);
+  H.push(['Rank',RANKS[G.rank||0].name]);
+  return H;
+}
+function runCard(){
+  const c=document.createElement('canvas');c.width=1200;c.height=630;const x=c.getContext('2d');x.imageSmoothingEnabled=false;
+  const won=G.victory||G.won,accent=won?'#ffb627':'#ff4d6d',PS=playerSprites(G.char,G.rank||0);
+  x.fillStyle='#0d0b14';x.fillRect(0,0,1200,630);
+  for(let i=0;i<140;i++){x.fillStyle=['#1c1830','#241f3a','#2a2440'][i%3];x.fillRect((i*137)%1200,(i*251)%630,4,4)}
+  x.strokeStyle=accent;x.lineWidth=10;x.strokeRect(5,5,1190,620);
+  x.fillStyle='#ffb627';x.font='bold 60px Silkscreen, monospace';x.fillText('OVERKILL',60,105);x.fillStyle='#ff4d6d';x.fillText('RUN',428,105);
+  x.fillStyle=accent;x.font='bold 40px Silkscreen, monospace';x.fillText(G.victory?'VICTORY':won?'WON · FELL IN ENDLESS':'OVERRUN',60,165);
+  x.fillStyle='#d8d0f0';x.font='32px VT323, monospace';x.fillText(G.victory?'Beat the Hollow and won the run':'Threat '+G.threat+' in '+landName(G.threat)+(G.lastHit?' · '+G.lastHit:''),60,205);
+  // you, big, with your allies
+  x.drawImage(PS.glow,64,236,10*12,10*12);x.drawImage(PS.f[0],76,248,8*12,8*12);
+  G.allies.forEach((a,i)=>{const K=ALLY[a.kind];x.drawImage(K.spr[0],210+i*70,290,48,48)});
+  x.fillStyle='#ffffff';x.font='bold 26px Silkscreen, monospace';x.fillText(CHAR_COLNAME(),60,400);x.fillStyle=PS.acc;x.font='28px VT323, monospace';x.fillText(RANKS[G.rank||0].name+' · level '+G.level,60,432);
+  // stats
+  const rows=[['Time',fmtT(G.time)],['Kills',G.kills.toLocaleString()],['Best streak',G.bestStreak],['Bosses beaten',G.bossLog.length],['Landmarks',G.lmClaimed||0]];
+  x.font='34px VT323, monospace';rows.forEach(([k,v],i)=>{x.fillStyle='#8a82a8';x.fillText(k,520,250+i*44);x.fillStyle='#ffffff';x.textAlign='right';x.fillText(String(v),860,250+i*44);x.textAlign='left'});
+  // weapons
+  x.fillStyle='#8a82a8';x.font='bold 20px Silkscreen, monospace';x.fillText('BUILD',900,236);x.font='30px VT323, monospace';
+  W.slice(0,6).forEach((w,i)=>{x.fillStyle=w.evo?'#ffb627':'#ffffff';x.fillText((w.evo?EVO[w.id].name:WDEF[w.id].name+' '+w.lvl),900,276+i*36)});
+  // bosses
+  x.fillStyle='#8a82a8';x.font='bold 20px Silkscreen, monospace';x.fillText('BOSSES',60,500);
+  const beaten=new Set(G.bossLog.map(b=>b.boss));
+  BOSSES.forEach((B,i)=>{const s=enemySprite(B.spr,0,false);x.globalAlpha=beaten.has(B.name)?1:.18;x.drawImage(s,60+i*86,516,64,64);x.globalAlpha=1});
+  x.fillStyle='#5a5378';x.font='26px VT323, monospace';x.textAlign='right';x.fillText(new Date().toLocaleDateString()+' · v'+VERSION+' · kefirman9000.github.io/overkill-run',1170,606);x.textAlign='left';
+  return c;
+}
+function CHAR_COLNAME(){return (CHARS[G.char]||CHARS.wanderer).name.toUpperCase()}
+async function saveRunCard(){
+  try{await document.fonts.ready}catch(_){}
+  const c=runCard();
+  c.toBlob(async b=>{
+    if(!b)return;const name='overkill-run-'+new Date().toISOString().slice(0,10)+'.png';
+    try{const f=new File([b],name,{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Overkill Run'});return}}catch(_){}
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  },'image/png');
+}
+async function showCardPreview(){try{await document.fonts.ready}catch(_){}try{$('cardPrev').src=runCard().toDataURL('image/png');$('cardPrev').hidden=false}catch(_){}}
+/* the story so far, on the title screen */
+function storyHTML(){const n=meta.story??-1;return STORY.map((s,i)=>i<=n?`<p><b>${esc(s.land)}.</b> ${esc(s.line)}</p>`:`<p class="dim"><b>???</b> Reach a new land to find out.</p>`).join('')+((meta.wins||0)>0?`<p><b>After.</b> ${esc(STORY_END)}</p>`:'')}
+function storyBeat(i){
+  if(i>(meta.story??-1)&&i<STORY.length){meta.story=i;saveMeta();return STORY[i].line}
+  return null;
+}
+
 /* ================= event coordinator =================
    Only one special event at a time (shrine, supply crate, Soul Thief, vault guards, calm/beacon), with at least
    20 s of plain fighting between them. Bosses and clear-outs always happen; they just make the others wait. */
@@ -1251,14 +1390,15 @@ function updateLandmarks(dt){
     const key=cx+','+cy;if(G.lms.has(key))continue;
     const h=hash(cx*7+G.lmSeed,cy*13-G.lmSeed);let lm=null;
     if(h%100<34){const x=cx*LM_CHUNK+60+(h>>8)%(LM_CHUNK-120),y=cy*LM_CHUNK+60+(h>>16)%(LM_CHUNK-120);
-      if(Math.hypot(x-G.startX,y-G.startY)>180)lm={kind:lmKind(h>>4),x,y,state:'idle',id:key,water:0}}
+      if(Math.hypot(x-G.startX,y-G.startY)>180){const kind=lmKind(h>>4),nm=LM_NAMES[kind][(h>>>20)%LM_NAMES[kind].length];lm={kind,x,y,state:'idle',id:key,water:0,name:nm.charAt(0).toUpperCase()+nm.slice(1)}}}
     G.lms.set(key,lm);
   }
   if(G.arena&&G.arena.wall>0)return;
   for(const lm of G.lms.values()){
     if(!lm||lm.state==='done')continue;
     const d=Math.hypot(P.x-lm.x,P.y-lm.y);if(d>420)continue;
-    if(!lm.seen){lm.seen=1;G.lmSeen=(G.lmSeen||0)+1;if(!G.hinted['lm:'+lm.kind]){G.hinted['lm:'+lm.kind]=1;toast(1,{camp:'Someone is trapped nearby: stand by the cage to free them.',spring:'A healing spring nearby: stand in it to heal.',obelisk:'An obelisk nearby: touch it to wake its power.',vault:'A guarded vault nearby: clear the guards, then open it.',nest:'A nest nearby: destroy it before it fills the area.'}[lm.kind])}}
+    if(!lm.seen){lm.seen=1;G.lmSeen=(G.lmSeen||0)+1;const how={camp:'stand by the cage to free them',spring:'stand in it to heal',obelisk:'touch it to wake its power',vault:'clear the guards, then open it',nest:'destroy it before it fills the area'}[lm.kind];
+      toast(G.hinted['lm:'+lm.kind]?0:1,(lm.name||'A landmark')+' nearby'+(G.hinted['lm:'+lm.kind]?'':': '+how+'.'));G.hinted['lm:'+lm.kind]=1}
     switch(lm.kind){
       case 'spring':
         if(!lm.water)lm.water=P.max*.6;
@@ -1876,7 +2016,7 @@ function hurtPlayer(d,cause){
   if(P.inv>0||G.state!=='play'||P.bubble>0||isMode('titan'))return;
   if(P.shield>0){P.shield--;P.shieldT=Math.max(P.shieldT,8/Math.max(1,S.shieldMax));P.inv=.5;burst(P.x,P.y,'#6be0ff',12,60,.35);snd('zap');buzz(15);G.hudDirty=true;return}
   if(S.armor)d*=Math.max(.5,1-S.armor);if(P.armorT>0)d*=.5;
-  buzz(35);P.hp-=d;P.inv=.75;
+  buzz(35);P.hp-=d;P.inv=.75;if(P.hp>0)G.lowHp=Math.min(G.lowHp??1,P.hp/P.max);
   // shove nearby enemies away so a surround has an exit
   query(P.x,P.y,24,o=>{if(o.type==='boss'||o.type==='crate')return;const dx=o.x-P.x,dy=o.y-P.y,l=Math.hypot(dx,dy)||1;o.vx+=dx/l*170;o.vy+=dy/l*170});
   RINGS.push({x:P.x,y:P.y,r:0,max:22,life:.22,t:0,c:'#ff4d6d',noFill:1});G.hurt=.25;G.hurtBy[cause||'unknown']=(G.hurtBy[cause||'unknown']||0)+d;snd('hurt');burst(P.x,P.y,'#ff4d6d',8,50,.4);G.lastHit=cause;
@@ -2060,7 +2200,7 @@ function renderOffers(){
   $('lvlHead').textContent=surge?'POWER SURGE · '+G.pendingLv+' BANKED LEVEL'+(G.pendingLv>1?'S':'')+' · LV '+G.level:'LEVEL '+(G.level-G.pendingLv+1)+' · PICK ONE';
   $('cards').innerHTML=offers.map((c,i)=>{
     const col=RC[c.r],ic=iconURL(c.icon,c.wcol||col),cost=c.cost||1,poor=surge&&cost>G.pendingLv;
-    return `<button class="up${c.r===4?' glitch':''}${c.taken?' taken':''}" data-i="${i}" style="--c:${col}"${poor?' disabled':''}><span class="tag">${c.cost?'SURGE':RN[c.r]}${c.tag&&!c.cost?' · '+esc(c.tag):''}</span>${surge&&c.cost?`<span class="cost">COSTS ${c.cost} LEVELS</span>`:''}<img src="${ic}" alt=""><span class="nm">${esc(c.name)}</span><span class="ds">${esc(c.desc)}</span>${(h=>h?`<span class="evh${c.weapon?'':' key'}">${esc(h)}</span>`:'')(evoHint(c))}<span class="ky">${i<9?'PRESS '+(i+1):''}</span></button>`;
+    return `<button class="up${c.r===4?' glitch':''}${c.taken?' taken':''}" data-i="${i}" style="--c:${col}"${poor?' disabled':''}><span class="tag">${c.cost?'SURGE':RN[c.r]}${c.tag&&!c.cost?' · '+esc(c.tag):''}</span>${surge&&c.cost?`<span class="cost">COSTS ${c.cost} LEVELS</span>`:''}<img src="${ic}" alt=""><span class="nm">${esc(c.name)}</span><span class="ds">${esc(c.desc)}</span>${(f=>f?`<span class="fl">${esc(f)}</span>`:'')(c.evo?'':FLAVOR[c.id.startsWith('new:')||c.id.startsWith('lvl:')?'w:'+c.id.slice(4):c.id])}${(h=>h?`<span class="evh${c.weapon?'':' key'}">${esc(h)}</span>`:'')(evoHint(c))}<span class="ky">${i<9?'PRESS '+(i+1):''}</span></button>`;
   }).join('');
   $('lvl').hidden=false;
   $('cashBtn').hidden=!surge;$('cashBtn').textContent='CASH OUT '+G.pendingLv+' (C)';
@@ -2133,7 +2273,7 @@ function updateThreat(){
     if(bi!==G.biomeI){
       G.biomePrev=G.biomeI;G.biomeI=bi;G.morph=0;G.morphSp=5;G.arenaPrevG=null;
       const b=biomeOf(G.threat).b;
-      banner('THREAT '+G.threat,'Entering '+landName(G.threat));landWipe(b.d[1]);
+      {const st=biomeOf(G.threat).lap===0?storyBeat(bi):null;if(st)banner(landName(G.threat).toUpperCase(),st,true);else banner('THREAT '+G.threat,'Entering '+landName(G.threat))}landWipe(b.d[1]);G.evNext=Math.max(G.evNext||0,G.time+6);
       if(!G.hinted[b.name]){G.hinted[b.name]=1;setTimeout(()=>{if(G.state!=='title')toast(2,b.hint)},1800)}
       G.hazT=3;
     }else toast(0,'Threat '+G.threat+': more of them, rarer souls.');
@@ -2217,7 +2357,7 @@ function update(dt){
   }
 
   // ---- threat, hazards, spawns
-  updateLandmarks(dt);updateAllies(dt);updateFronts(dt);updateCamp(dt);updateThief(dt);updateDecoy(dt);updatePassives(dt);
+  updateRank();updateLandmarks(dt);updateAllies(dt);updateFronts(dt);updateCamp(dt);updateThief(dt);updateDecoy(dt);updatePassives(dt);
   if(G.threat%5>=3&&G.lullAt!==G.threat-G.threat%5&&G.state==='play'&&evFree())startLull();
   if(G.arena)updateArena(dt);
   else if(G.clear)updateClear(dt);                                   // clear-out: no spawns, no hazards, no threat climb
@@ -2738,13 +2878,16 @@ function render(){
     const x=RK(P.x-ox-4),y=RK(P.y-oy-4);
     ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(x+1,y+7,6,2);
     if(!(P.inv>0&&P.dashT<=0&&Math.floor(P.inv*20)%2)){
-      const spr=P.inv>.45&&P.dashT<=0?SPR_PW:SPR_P[P.moving?(Math.floor(G.walk)%2):0];
+      const rk=G.rank||0,PS=playerSprites(G.char,rk);
+      const spr=P.inv>.45&&P.dashT<=0?SPR_PW:PS.f[P.moving?(Math.floor(G.walk)%2):0];
+      const OUT=rk>=3&&Math.floor(G.time*4)%2?PS.glow:PS.o;
+      if(rk>=3&&R()<.25)PT.push({x:P.x+rnd(-4,4),y:P.y+rnd(-6,2),vx:0,vy:-20,life:.5,max:.5,c:PS.acc,s:1});
       ctx.save();
-      if(isMode('titan')){const k=2;ctx.translate(RK(P.x-ox),RK(P.y-oy)+2);if(P.face<0)ctx.scale(-1,1);ctx.drawImage(SPR_PO,-4*k-1,-8*k-1,10*k,10*k);ctx.drawImage(spr,-4*k,-8*k,8*k,8*k)}
+      if(isMode('titan')){const k=2;ctx.translate(RK(P.x-ox),RK(P.y-oy)+2);if(P.face<0)ctx.scale(-1,1);ctx.drawImage(OUT,-4*k-1,-8*k-1,10*k,10*k);ctx.drawImage(spr,-4*k,-8*k,8*k,8*k)}
       else{let sx=1,sy=1;                                            // stretch along a dash, squash as it ends
         if(P.dashT>0){P.sqT=.12;if(Math.abs(P.vx)>=Math.abs(P.vy)){sx=1.25;sy=.8}else{sx=.8;sy=1.25}}
         else if(P.sqT>0){P.sqT-=G.rdt||.016;sx=1.15;sy=.87}
-        ctx.translate(x+4,y+8);ctx.scale((P.face<0?-1:1)*sx,sy);ctx.drawImage(SPR_PO,-5,-9);ctx.drawImage(spr,-4,-8)}
+        ctx.translate(x+4,y+8);ctx.scale((P.face<0?-1:1)*sx,sy);drawPlayerGear(rk,PS.acc);ctx.drawImage(OUT,-5,-9);ctx.drawImage(spr,-4,-8);drawPlayerCrown(rk)}
       ctx.restore();
       if(isMode('storm')){const cx=RK(P.x-ox),cy=RK(P.y-oy)-28;ctx.fillStyle='#5a5a70';ctx.fillRect(cx-9,cy-2,18,5);ctx.fillRect(cx-6,cy-5,12,4);ctx.fillStyle='#8a8aa0';ctx.fillRect(cx-5,cy-5,8,2);
         if(Math.floor(G.time*10)%3===0){ctx.fillStyle='#7df9ff';ctx.fillRect(cx+rnd(-6,6)|0,cy+3,1,3)}}
@@ -2852,7 +2995,7 @@ function buildReport(){
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
     mode:G.daily?'daily '+G.seedStr:'normal',character:CHARS[G.char].name,startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.victory?'won':G.won?(G.state==='over'?'won, then died in endless':'won, in endless'):G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
-      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),allies:{joined:G.alliesJoined||0,lost:G.alliesLost||0,now:G.allies.map(a=>ALLY[a.kind].name+' '+Math.ceil(a.hp)+'/'+a.max)},checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
+      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,rank:RANKS[G.rank||0].name,closestCall:G.lowHp!==undefined?Math.round(G.lowHp*100)+'%':null,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),allies:{joined:G.alliesJoined||0,lost:G.alliesLost||0,now:G.allies.map(a=>ALLY[a.kind].name+' '+Math.ceil(a.hp)+'/'+a.max)},checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
     damageBySource:dmg,damageTakenFrom:Object.fromEntries(Object.entries(G.hurtBy).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v)])),killsBySource:G.killsBy,killsByEnemy:G.killsByType,
@@ -2908,6 +3051,7 @@ function buildTitle(){
   if(!UNLOCK[chosenW].ok())chosenW='pea';
   $('wPick').innerHTML=Object.keys(WDEF).map(id=>{const ok=UNLOCK[id].ok();
     return `<button data-w="${id}" class="${id===chosenW?'sel':''}" ${ok?'':'disabled'} title="${ok?esc(WDEF[id].desc):'Unlock: '+UNLOCK[id].req}"><img src="${iconURL('w:'+id,ok?WDEF[id].col:'#555')}" alt="">${ok?esc(WDEF[id].name):'Locked: '+UNLOCK[id].req}</button>`}).join('');
+  $('storyBox').innerHTML=storyHTML();
   if(!CHARS[chosenC].ok())chosenC='wanderer';
   $('cPick').innerHTML=Object.keys(CHARS).map(id=>{const c=CHARS[id],ok=c.ok();
     return `<button data-c="${id}" class="${id===chosenC?'sel':''}" ${ok?'':'disabled'}>${ok?esc(c.name)+': '+esc(c.desc):'Locked ('+esc(c.name)+'): '+esc(c.req)}</button>`}).join('');
@@ -2917,6 +3061,7 @@ function buildTitle(){
   $('dailyBtn').textContent=meta.daily[today]?`DAILY RUN (best ${meta.daily[today]})`:'DAILY RUN';
 }
 $('wPick').addEventListener('click',e=>{const b=e.target.closest('button[data-w]');if(b&&!b.disabled){chosenW=b.dataset.w;buildTitle()}});
+$('cardBtn').addEventListener('click',saveRunCard);
 $('endlessBtn').addEventListener('click',()=>{$('win').hidden=true;G.endless=true;G.state='play';applyControls();banner('ENDLESS','The second lap begins',true)});
 $('endWinBtn').addEventListener('click',()=>{$('win').hidden=true;G.victory=true;gameOver()});
 $('cPick').addEventListener('click',e=>{const b=e.target.closest('button[data-c]');if(b&&!b.disabled){chosenC=b.dataset.c;try{localStorage.setItem('overkill-run-char',chosenC)}catch(_){}buildTitle()}});
@@ -2928,7 +3073,7 @@ function start(daily){
   if(daily)reset({daily:true,weapon:'pea',relics:[],char:'wanderer'});else reset({daily:false,weapon:chosenW,relics:chosenR,char:chosenC});
   ['title','over','win','pause','lvl','repOv','opts'].forEach(id=>$(id).hidden=true);$('hud').hidden=false;
   applyControls();
-  banner(daily?'DAILY RUN':'THREAT 0',daily?'Same upgrade offers for everyone today':'Entering '+landName(0));
+  {const st=daily?null:storyBeat(0);banner(daily?'DAILY RUN':st?'GRASSY RUINS':'THREAT 0',daily?'Same upgrade offers for everyone today':st||'Entering '+landName(0),true)}
   updateHud();
 }
 function gameOver(){
@@ -2940,6 +3085,7 @@ function gameOver(){
   meta.bestKills=Math.max(meta.bestKills,G.kills);meta.bestThreat=Math.max(meta.bestThreat,G.threat);meta.bestLevel=Math.max(meta.bestLevel,G.level);
   if(G.daily)meta.daily[G.seedStr]=Math.max(meta.daily[G.seedStr]||0,G.kills);
   saveMeta();
+  $('overHi').innerHTML=highlights().map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(String(b))}</dd>`).join('');$('cardPrev').hidden=true;showCardPreview();
   $('overStats').innerHTML=[G.victory?['Result','Won the run']:['Killed by',(G.won?'(endless) ':'')+(G.lastHit||'something')],['Kills',G.kills],['Level',G.level],['Threat',G.threat],['Land',landName(G.threat)],['Time',fmtT(G.time)],['Best streak',G.bestStreak],['Weapons',W.map(w=>WDEF[w.id].name+' '+w.lvl).join(', ')]]
     .map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('');
   const unlocks=Object.keys(UNLOCK).filter(k=>UNLOCK[k].ok()).length;

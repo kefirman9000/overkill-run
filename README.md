@@ -75,6 +75,13 @@ Colours follow one simple rule so busy fights stay readable: anything that can h
 
 Heart Containers raise max HP (bosses always drop one, elites sometimes do). Cards: Thick Skin, Iron Heart (+50 max HP, full heal), Plating (less damage taken), Giant's Blood (max HP x1.5). Rare pickups: Iron Skin (half damage for 12 s) and Guardian Orbs (three orbs that block shots for 15 s), alongside the existing heal, shield bubble, frenzy, freeze and screen bomb.
 
+### Story, ranks and run cards
+
+- Each land has a line of story the first time you reach it; the title screen collects them under **The Story So Far**, and winning adds the ending.
+- Cards carry a line of flavour, and landmarks have names (the Weeping Spring, the Miser's Vault...).
+- Your look grows with you: **Veteran** at level 10 (armor, gold belt, scarf), **Champion** at 25 (gold helm, crown, cape) and **Legend** at 40 (glowing eyes and outline). Each character has its own colours.
+- The game-over screen shows highlights (MVP weapon, closest call, best streak, fastest boss, allies, landmarks, rank) and a **run card** image you can save or share.
+
 ### Characters and the ending
 
 Pick a character on the title screen: **Wanderer** (no tricks), **Medic** (every upgrade pick heals 10%, -10% damage; unlock at threat 8), **Berserker** (up to +60% damage the lower your HP, -20 max HP; threat 12), **Scout** (faster, extra dash, double soul reach, -15 max HP; claim 10 landmarks) or **Tinker** (starts with a second random weapon, weapons recharge 10% slower; win a run).
