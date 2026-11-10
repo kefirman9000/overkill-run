@@ -141,7 +141,9 @@ details.story .dim{opacity:.45}
 .btns{display:flex;flex-wrap:wrap;gap:10px}
 .btns button{font-size:12px;padding:11px 14px}
 .btns button.go{background:var(--threat);color:#0d0b14;font-weight:700}
-#lvlBtns{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+#lvlBtns{display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-wrap:wrap}
+#lvlBtns #rrNote{flex-basis:100%;order:-1}
+#lvlBtns #autoBtn{margin-right:auto}
 #rerollBtn{font-size:11px;padding:9px 12px}
 #cashBtn{font-size:11px;padding:9px 12px}
 #lvl.surge .up{min-height:0;padding:8px 9px;gap:5px;font-size:15px}
@@ -254,7 +256,7 @@ details.story .dim{opacity:.45}
   <div class="card">
     <h2 id="lvlHead">LEVEL UP</h2>
     <div id="cards"></div>
-    <div id="lvlBtns"><span class="note" id="rrNote"></span><button id="cashBtn" hidden>CASH OUT (C)</button><button id="rerollBtn">REROLL (R)</button></div>
+    <div id="lvlBtns"><span class="note" id="rrNote"></span><button id="autoBtn" title="Take the card auto-pick would choose">AUTO-PICK (Q)</button><button id="autoAlwaysBtn" title="Never show this screen; turn off again in Options">ALWAYS AUTO-PICK</button><button id="cashBtn" hidden>CASH OUT (C)</button><button id="rerollBtn">REROLL (R)</button></div>
   </div>
 </div>
 
@@ -336,7 +338,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.21.0';
+const VERSION='1.21.1';
 const REPO='kefirman9000/overkill-run';
 const $=id=>document.getElementById(id);
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -2230,6 +2232,18 @@ function chooseCard(i){
   if(surge&&G.pendingLv>0){c.taken=1;offers=surgeHand(offers);renderOffers();return}
   closeLevelUp();
 }
+/* the picker's own auto-pick buttons: take the best card shown now, or switch auto-pick on for good */
+function autoPickOne(){
+  if(G.state!=='levelup')return;
+  let best=-1,bs=-1e9;offers.forEach((c,i)=>{if(c.taken||(surge&&(c.cost||1)>G.pendingLv))return;const v=autoScore(c);if(v>bs){bs=v;best=i}});
+  if(best>=0){G.autoPicked++;chooseCard(best)}
+}
+function autoPickAlways(){
+  if(G.state!=='levelup')return;
+  CFG.autoPick=1;saveCfg();
+  $('lvl').hidden=true;$('lvl').classList.remove('surge');G.state='play';surge=false;applyControls();
+  autoPickAll();toast(1,'Auto-pick is on for every level. Turn it off in Options.');
+}
 function cashOut(){
   if(G.state!=='levelup'||!surge||G.pendingLv<=0)return;
   const n=G.pendingLv;G.cashedOut+=n;G.pendingLv=0;
@@ -3062,6 +3076,8 @@ function buildTitle(){
 }
 $('wPick').addEventListener('click',e=>{const b=e.target.closest('button[data-w]');if(b&&!b.disabled){chosenW=b.dataset.w;buildTitle()}});
 $('cardBtn').addEventListener('click',saveRunCard);
+$('autoBtn').addEventListener('click',autoPickOne);
+$('autoAlwaysBtn').addEventListener('click',autoPickAlways);
 $('endlessBtn').addEventListener('click',()=>{$('win').hidden=true;G.endless=true;G.state='play';applyControls();banner('ENDLESS','The second lap begins',true)});
 $('endWinBtn').addEventListener('click',()=>{$('win').hidden=true;G.victory=true;gameOver()});
 $('cPick').addEventListener('click',e=>{const b=e.target.closest('button[data-c]');if(b&&!b.disabled){chosenC=b.dataset.c;try{localStorage.setItem('overkill-run-char',chosenC)}catch(_){}buildTitle()}});
@@ -3236,7 +3252,7 @@ addEventListener('keydown',e=>{
     if(e.code==='ArrowUp'||e.code==='KeyW'){e.preventDefault();if(performance.now()-lvOpenT>350){const b=lvButtons()[lvSel];if(b)chooseCard(+b.dataset.i)}return}
   }
   if(G.state==='levelup'&&e.repeat&&/^(Arrow|Key[WASD])/.test(e.code)){e.preventDefault();return}
-  if(G.state==='levelup'){const m=/^(?:Digit|Numpad)([1-9])$/.exec(e.code);if(m){chooseCard(+m[1]-1);return}if(e.code==='KeyR'){reroll();return}if(e.code==='KeyC'){cashOut();return}}
+  if(G.state==='levelup'){const m=/^(?:Digit|Numpad)([1-9])$/.exec(e.code);if(m){chooseCard(+m[1]-1);return}if(e.code==='KeyR'){reroll();return}if(e.code==='KeyC'){cashOut();return}if(e.code==='KeyQ'){autoPickOne();return}}
   if(G.state==='title'&&e.code==='Enter'&&!$('title').hidden&&document.activeElement===document.body){start(false);return}
   if(DASH_KEYS.includes(e.code)&&!e.repeat&&G.state==='play')dashQueued=true;
   keys[e.code]=true;

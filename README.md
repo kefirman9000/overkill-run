@@ -9,7 +9,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 - **Move** with WASD or the arrow keys. On a phone, drag anywhere on the screen.
 - **Dash** with Space or Shift, or the DASH button on touch screens. It's your only defensive move, and it gives a moment of invulnerability.
 - **Level up** by collecting souls. Pick one of three cards with 1, 2, 3 or a tap.
-- **Power Surge**: level-ups that come faster than one every few seconds (or during a super mode) are banked. Three or more open one Power Surge screen: spend banked levels on a hand of cards or on surge cards (Overcharge a weapon +2 levels, Fast Evolution, a boosted Legendary), or cash the rest out for overkill meter and HP. Options has auto-pick: at 5+ banked levels, or always (you never see the pick screen; it takes evolutions, then mutations that finish an evolution, defense when you're hurt, weapon upgrades and the rarest cards).
+- **Power Surge**: level-ups that come faster than one every few seconds (or during a super mode) are banked. Three or more open one Power Surge screen: spend banked levels on a hand of cards or on surge cards (Overcharge a weapon +2 levels, Fast Evolution, a boosted Legendary), or cash the rest out for overkill meter and HP. The upgrade picker has **AUTO-PICK (Q)** (take the card auto-pick would choose) and **ALWAYS AUTO-PICK** (stop showing the picker; turn it back off in Options). Options also has auto-pick: at 5+ banked levels, or always (you never see the pick screen; it takes evolutions, then mutations that finish an evolution, defense when you're hurt, weapon upgrades and the rarest cards).
 - **Pause** with P or Esc to see your build.
 
 ### Escalation
