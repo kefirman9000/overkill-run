@@ -10,7 +10,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 - **Dash** with Space or Shift, or the DASH button on touch screens. It gives a moment of invulnerability.
 - **Ability** with E (or the small gold button next to Dash): each character has one, on a cooldown. Wanderer: Second Wind (heal and a moment untouchable). Medic: Triage (heal over time, allies fully healed). Berserker: Rampage (+60% damage, faster weapons). Scout: Smoke Bomb (a decoy that explodes). Tinker: Overclock (every weapon fires at once, then recharges much faster).
 - **Level up** by collecting souls. Pick one of three cards with 1, 2, 3 or a tap.
-- **Power Surge**: level-ups that come faster than one every few seconds (or during a super mode) are banked. Three or more open one Power Surge screen: spend banked levels on a hand of cards or on surge cards (Overcharge a weapon +2 levels, Fast Evolution, a boosted Legendary), or cash the rest out for overkill meter and HP. The upgrade picker has **AUTO-PICK (Q)** (take the card auto-pick would choose) and **ALWAYS AUTO-PICK** (stop showing the picker; turn it back off in Options). Options also has auto-pick: at 5+ banked levels, or always (you never see the pick screen; it takes evolutions, then mutations that finish an evolution, defense when you're hurt, weapon upgrades and the rarest cards).
+- **Power Surge**: level-ups that come faster than one every few seconds (or during a super mode) are banked. Three or more open one Power Surge screen: spend banked levels on a hand of cards or on surge cards (Overcharge a weapon +2 levels, Fast Evolution, a boosted Legendary), or cash the rest out for overkill meter and HP. The upgrade picker has **AUTO-PICK (Q)** (take the card auto-pick would choose) and **ALWAYS AUTO-PICK** (stop showing the picker; turn it back off in Options). Options also has auto-pick: at 5+ banked levels, or always (you never see the pick screen; it takes evolutions, then mutations that finish an evolution, defense when you're hurt or have fallen behind on it (about one defensive card per 4 threat), weapon upgrades and the rarest cards).
 - **Pause** with P or Esc to see your build.
 
 ### Escalation
@@ -20,6 +20,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 - Keep moving in a fight: stand in one spot for a few seconds with enemies close around you and something comes for you, either a **UFO** that beams you up and drops you elsewhere, or a **sandworm** that burrows over and erupts beneath you. Red marks close in around you first. In quiet spots, with few enemies nearby, you can stand still as long as you like. None of them can be shot; they all give up once you move. Souls and pickups left on the ground also fade away (they blink first).
 - A **Soul Thief** turns up every minute or so. It runs from you dropping souls; catch it within 14 seconds for a burst of rare souls and a pickup (often a Heart Container).
 - The threat meter rises with kills and time. It drives spawn rate, enemy toughness and elite chance.
+- **Fewer, bigger enemies:** past threat 4 the horde grows in size rather than numbers. Big enemies are drawn larger, hit harder, move a little slower and shoulder small ones aside; one twice as wide counts as four small ones for souls, kills, threat, the Overkill meter and on-kill effects. Piercing shots drill through big bodies for extra damage instead of passing on. The number of bodies on screen is capped (80 on phones).
 - Seven lands, each with its own enemies and hazards: Grassy Ruins, Burning Forest (lava), Frozen Wastes (ice you slide on), Toxic Swamp (poison clouds), Crystal Caves (eruptions), Storm Peaks (gusts that shove you, with streaks showing the direction), The Void (black holes). After the Void, the cycle repeats harder.
 - Orbit Blades block enemy shots (evolved Saw Ring sends them back) and each Drone Minion can soak a shot every second.
 - Tougher enemies join as the threat climbs: Wraiths (turn ghostly, threat 9), Lancers (telegraphed charges, 11), Mortars (shell where you're heading, 13), Splitters (burst into shards, 15), Snipers (long aim line, 18) and Juggernauts (bullet-resistant, ring-of-shots stomp, 20).
@@ -32,7 +33,8 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
   - **Tempest** (Storm Peaks): blows you around with gusts, calls down lightning where you're heading, and in phase two sends rings of wind in from the arena wall. Beat it for the **Storm Vane** (+15% speed, dashes throw lightning).
   - **The Hollow** (The Void): a hunt. It stalks you unseen and can only be hurt when it shows itself.
 - During every boss fight only the boss and whatever it summons are on the field.
-- Later bosses fight in tighter arenas (down to 80% size). Every boss stops to catch its breath after each full cycle of attacks: for a couple of seconds it takes extra damage and a heart drops near you.
+- Bosses are **huge**, over four times your width and bigger with each one you beat, and the camera pulls back for them. Their HP keeps up with strong builds (at least what your recent damage against the horde would need 16 seconds to get through), and right after enraging they take less damage for a moment so phase two is always seen.
+- Later bosses fight in tighter arenas (down to 80% size of a larger base arena). Every boss stops to catch its breath after each full cycle of attacks: for a couple of seconds it takes extra damage and a heart drops near you.
 - At half HP every boss **enrages**: a shockwave pushes you back, it attacks faster, and it adds a new attack (Warden crossfire, Cinder King meteor fall, Glacial Maw ice walls, Bog Mother brood burst, Prism Colossus rotating lasers, Hollow eclipse).
 - Every boss drops its **trophy**, a power for the rest of the run, and the first win unlocks it as a starting relic.
 - Beating a boss heals you, banks a Power Surge and drops a Heart Container (+max HP).
@@ -65,7 +67,7 @@ Max a weapon (Lv 6) while holding its matching mutation and the next level-up of
 
 Rear guns, ricochet, shrapnel, snowball rounds that grow as they fly, halo volleys, spike trails, dash shockwaves, and late-run reality breaks such as bullets that orbit you, every 10th shot being a nuke, screen-wide pulses, black holes, and a permanent trail of fire.
 
-Mutation cards show which of your weapons they evolve, and the pause screen lists your evolution plan.
+Mutation cards show which of your weapons they evolve, and the pause screen lists your evolution plan. Once a weapon is maxed, the mutation it still needs turns up much more often.
 
 ### Look and feel
 
@@ -163,6 +165,8 @@ Until you've reached threat 10 once, the game introduces its systems gradually: 
 
 Up to two allies follow you at once: the **Gunner** shoots whatever is closest, the **Field Medic** heals you and your other ally while close, and the **Knight** charges enemies near you and draws attackers off you onto itself. Allies have their own HP and heal slowly; if they go down, they're gone. They follow you into boss fights and catch up if you're teleported.
 
+Allies **level up** too, slower than you: every third upgrade you pick, each ally gains a level (up to 6, shown as gold pips over its head) for +25% damage, a faster weapon, more max HP and a heal. The Gunner fires three shots at Lv 3 and its shots pierce at Lv 5; the Field Medic shoots twice from Lv 4 and heals more at Lv 6; the Knight swings wider at Lv 3 and hits harder at Lv 5. Allies who join later arrive a level or two up.
+
 ### More pickups and cards
 
 Pickups also include **Wind Boots** (endless dashes and +30% speed for 10 s) and **Thunderclap** (lightning through up to 25 enemies). New cards: Dash Barrage (each dash fires a ring of shots), Bounty Hunter (elites always drop one) and Glass Cannon (+60% damage, -30% max HP).
@@ -183,7 +187,7 @@ Open the GitHub Pages link in Chrome and tap **Install app** on the title screen
 
 ## Run reports
 
-Pause or die, type any thoughts into the notes box, then press **Copy run report**. It copies a summary of the run (picks, damage by source, a 30-second timeline, frame rate, device) that you can paste into a chat for balance review. **Save report file** downloads the same thing as a .txt.
+Pause or die, type any thoughts into the notes box, then press **Copy run report**. It copies a summary of the run (picks, damage by source, a 30-second timeline, frame rate, device, and for each boss fight its HP, size, your horde damage per second going in and the damage you took, including a fight you lost) that you can paste into a chat for balance review. **Save report file** downloads the same thing as a .txt.
 
 ## Updates
 

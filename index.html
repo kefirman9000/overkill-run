@@ -403,7 +403,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.28.1';
+const VERSION='1.29.0';
 const REPO='kefirman9000/overkill-run';
 const $EL={},$=id=>{const e=$EL[id];if(e&&e.isConnected)return e;return $EL[id]=document.getElementById(id)};
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -857,8 +857,9 @@ setInterval(musicTick,40);
 /* ================= spatial grid ================= */
 const CELL=24;const grid=new Map();
 const gk=(cx,cy)=>(cx+50000)*100000+(cy+50000);
-function buildGrid(){grid.clear();for(const e of E){if(e.dead||e.type==='ufo')continue;const k=gk(Math.floor(e.x/CELL),Math.floor(e.y/CELL));let a=grid.get(k);if(!a){a=[];grid.set(k,a)}a.push(e)}}
+function buildGrid(){grid.clear();let mr=0;for(const e of E){if(e.dead||e.type==='ufo')continue;if(e.r>mr)mr=e.r;const k=gk(Math.floor(e.x/CELL),Math.floor(e.y/CELL));let a=grid.get(k);if(!a){a=[];grid.set(k,a)}a.push(e)}QPAD=Math.max(0,mr-6)}
 function query(x,y,r,cb){
+  r+=QPAD;
   const x0=Math.floor((x-r)/CELL),x1=Math.floor((x+r)/CELL),y0=Math.floor((y-r)/CELL),y1=Math.floor((y+r)/CELL);
   for(let cx=x0;cx<=x1;cx++)for(let cy=y0;cy<=y1;cy++){const a=grid.get(gk(cx,cy));if(a)for(const e of a)if(!e.dead)cb(e)}
 }
@@ -873,7 +874,21 @@ const hpScale=()=>1+G.threat*.32+G.threat*G.threat*.03+Math.pow(Math.max(0,G.thr
 const eDmgScale=()=>1+G.threat*.12;
 const spawnRate=()=>1.1+G.threat*.85+Math.min(3,G.time/100);
 const PHONE=matchMedia('(pointer: coarse)').matches,FIREFOX=/Firefox\//.test(navigator.userAgent);
-const maxAlive=()=>PHONE?Math.min(170,45+G.threat*13):Math.min(420,55+G.threat*24);
+const maxAlive=()=>PHONE?Math.min(170,45+G.threat*13):Math.min(420,55+G.threat*24);   // in enemy mass (a big one counts as several)
+/* 1.29: fewer, bigger enemies. Past threat 4 the horde stops getting more numerous and starts getting bigger:
+   enemies come in sizes, a size-2 one is twice as wide and counts as four small ones (HP, souls, kills, threat,
+   overkill meter and on-kill effects all scale with that weight), and the number of bodies on screen is capped. */
+const maxBodies=()=>PHONE?Math.min(80,40+G.threat*6):Math.min(170,50+G.threat*10);
+const SIZE_NO=new Set(['boss','mini','shard','crate','ufo','thief','pylon','nest','jugg']);
+const sizeGrow=()=>Math.min(2.4,1+Math.max(0,G.threat-4)*.08);       // average size: threat 9 x1.4, 14 x1.8, 19 x2.2, 22+ x2.4
+function sizeFor(type){
+  if(SIZE_NO.has(type))return 1;
+  const g=sizeGrow();if(g<=1.001)return 1;
+  let s=g*rnd(.8,1.15);if(type==='swarmer')s=Math.min(s,1.6);         // swarmers stay quick and small-ish
+  return Math.max(1,Math.round(s*4)/4);
+}
+const sizeW=sz=>Math.max(1,Math.round(sz*sz));
+let QPAD=0;                                                           // grid queries reach this much further for big bodies
 const TPK=45;const tpFor=n=>TPK*n*(n+1)/2;
 function luck(){return G.threat*.7+Math.min(8,G.streak/30)}
 function dmgMul(){
@@ -905,10 +920,11 @@ function spawnEnemy(type,x,y,o={}){
   const T=ET[type];
   const eliteCh=Math.min(G.threat>15?Math.min(.45,.3+(G.threat-15)*.02):.3,Math.max(0,(G.threat-1)*.025)+Math.min(.05,G.streak/2000));
   const elite=o.elite??(type!=='boss'&&type!=='mini'&&R()<eliteCh+DF().elite+(dm('elite')?.15:0));
-  const hp=T.hp*hpScale()*(elite?3.5:1)*(o.hpMul||1)*DF().hp*(PHONE&&type!=='boss'?1.15:1)*(type==='boss'?1:(dm('armored')?1.3:1)*(dm('glass')?.6:1));
+  const sz=o.sz||1,big=type!=='boss'&&sz>1;                           // size: boss bodies only get wider, others get tougher too
+  const hp=T.hp*hpScale()*(elite?3.5:1)*(o.hpMul||1)*DF().hp*(PHONE&&type!=='boss'?1.15:1)*(type==='boss'?1:(dm('armored')?1.3:1)*(dm('glass')?.6:1))*(big?sz*sz*.9:1);
   const shift=biomeOf(G.threat).b.eh;
   const h=(T.hue+(T.fixedHue?0:shift)+720)%360;
-  const e={uid:++UID,type,x,y,vx:0,vy:0,hp,max:hp,r:T.r,spd:T.spd*(1+Math.min(.5,G.threat*.035))*(elite?1.1:1),dmg:T.dmg*eDmgScale()*(elite?1.4:1)*DF().dmg*(dm('glass')&&type!=='boss'?1.4:1),
+  const e={uid:++UID,type,x,y,vx:0,vy:0,hp,max:hp,r:T.r*sz,sz,kw:type==='boss'?1:sizeW(sz),spd:T.spd*(1+Math.min(.5,G.threat*.035))*(elite?1.1:1)*(big?Math.pow(sz,-.3):1),dmg:T.dmg*eDmgScale()*(elite?1.4:1)*DF().dmg*(dm('glass')&&type!=='boss'?1.4:1)*(big?1+.45*(sz-1):1),
     elite,ex:elite?pick(T.spd>=34?ELITE_EX.filter(x=>x!=='haste'):ELITE_EX):null,exT:rnd(1,3),rush:0,shift,flash:0,burn:0,burnD:0,burnTick:0,slow:0,buff:0,t:R()*10,cd:rnd(.8,2.5),fuse:0,oc:0,dead:false,
     ai:T.ai||'chase',col:elite?'#ffe066':`hsl(${h},${T.sat}%,58%)`,sum:4,pat:0};
   if(dm('swift')&&type!=='boss')e.spd*=1.2;
@@ -1044,15 +1060,27 @@ function frontPos(){
   const a=(G.fronts.length?pick(G.fronts):R()*TAU)+rnd(-.28,.28),d=Math.hypot(LW,LH)/2+14+rnd(0,22);
   return [P.x+Math.cos(a)*d,P.y+Math.sin(a)*d];
 }
+/* spawn enemies worth `mass` small ones; past threat 4 that's fewer, bigger bodies. Returns how many bodies came. */
+function spawnMass(mass,at,type0){
+  let n=0;
+  while(mass>0&&n<40){
+    const type=type0?(R()<.75?type0:chooseType()):chooseType(),sz=sizeFor(type);
+    const [x,y]=at?at(n):frontPos(),e=spawnEnemy(type,x,y,{sz});mass-=e.kw;n++;
+  }
+  return n;
+}
 function spawnSquad(n){
   const [x,y]=frontPos(),type=chooseType();
-  for(let i=0;i<n;i++)spawnEnemy(R()<.75?type:null,x+rnd(-14,14),y+rnd(-14,14));   // mostly one kind, a few stragglers
+  spawnMass(n,()=>[x+rnd(-14,14)*Math.sqrt(sizeGrow()),y+rnd(-14,14)*Math.sqrt(sizeGrow())],type);   // mostly one kind, a few stragglers
 }
-/* regular spawning, in squads: rate is unchanged, it just arrives in groups */
+function aliveMass(){let m=0,b=0;for(const e of E)if(!e.dead&&e.type!=='ufo'&&e.type!=='crate'){m+=e.kw||1;b++}return [m,b]}
+/* regular spawning, in squads: the rate (in enemy mass) is unchanged, it just arrives in groups */
 function spawnTick(dt,mult,cap){
   if(isMode('timestop'))return;
   const sq=squadSize();G.spawnAcc=Math.min(sq+2,G.spawnAcc+dt*spawnRate()*mult);
-  while(G.spawnAcc>=sq&&E.length<cap){G.spawnAcc-=sq;spawnSquad(sq)}
+  if(G.spawnAcc<sq)return;
+  let [m,b]=aliveMass();const bc=maxBodies()*(cap<maxAlive()?.7:1);
+  while(G.spawnAcc>=sq&&m<cap&&b<bc){G.spawnAcc-=sq;spawnSquad(sq);[m,b]=aliveMass()}
 }
 function drawWaveWarnings(){for(const w of G.warn)edgeMark(w.a,'#ff4d6d',3)}
 /* screen-edge markers: everything that wants one queues it here; only the three most important are drawn,
@@ -1293,7 +1321,8 @@ const ALLY={
 for(const k in ALLY){const pal=Object.assign({},PPAL,ALLY[k].pal);ALLY[k].spr=[makeSprite(PLAYER_A,pal),makeSprite(PLAYER_B,pal)];ALLY[k].out=outlineOf(ALLY[k].spr[0],'#14101c')}
 function addAlly(kind,x,y){
   const max=Math.round(ALLY[kind].hp*(1+G.threat*.12));
-  G.allies.push({kind,x,y,vx:0,vy:0,hp:max,max,cd:.5,hurtT:0,face:1,walk:0,slot:G.allies.length});G.alliesJoined=(G.alliesJoined||0)+1;
+  const lvl=Math.min(3,1+Math.floor((G.level||1)/12));              // late joiners arrive a little trained
+  G.allies.push({kind,x,y,vx:0,vy:0,hp:max,max,cd:.5,hurtT:0,face:1,walk:0,slot:G.allies.length,lvl});G.alliesJoined=(G.alliesJoined||0)+1;
   RINGS.push({x,y,r:0,max:30,life:.4,t:0,c:ALLY[kind].col,noFill:1});burst(x,y,ALLY[kind].col,20,60,.5);snd('level');
   banner('ALLY JOINED',ALLY[kind].name+': '+ALLY[kind].desc,true);
 }
@@ -1312,14 +1341,14 @@ function updateAllies(dt){
     a.x+=a.vx*dt;a.y+=a.vy*dt;if(Math.abs(a.vx)>4)a.face=a.vx>0?1:-1;a.walk+=Math.hypot(a.vx,a.vy)*dt*.12;
     if(G.arena&&G.arena.wall>=.5)arenaClamp(a,4);
     // act
-    if(a.kind==='gunner'&&a.cd<=0){const t=nearest(a.x,a.y,150);if(t){a.cd=Math.max(.25,.55-G.threat*.008);const ang=Math.atan2(t.y-a.y,t.x-a.x);
-      for(const o of [-.08,.08])spawnProj(a.x,a.y,ang+o,210,{dmg:9*dmgMul(),size:2,col:K.col,life:.75,src:'ally',noOrbit:1})}}
+    if(a.kind==='gunner'&&a.cd<=0){const t=nearest(a.x,a.y,150);if(t){const L=a.lvl||1;a.cd=Math.max(.2,(.55-G.threat*.008)*allyRate(a));const ang=Math.atan2(t.y-a.y,t.x-a.x);
+      for(const o of (L>=3?[-.14,0,.14]:[-.08,.08]))spawnProj(a.x,a.y,ang+o,210,{dmg:9*dmgMul()*allyDmg(a),size:2,col:K.col,life:.75,src:'ally',noOrbit:1,pierce:S.pierce+(L>=5?1:0)})}}
     if(a.kind==='medic'){
-      if(Math.hypot(P.x-a.x,P.y-a.y)<60&&P.hp<P.max){P.hp=Math.min(P.max,P.hp+P.max*.018*dt);if(R()<.15)PT.push({x:P.x+rnd(-4,4),y:P.y+rnd(-2,3),vx:0,vy:-14,life:.4,max:.4,c:'#9be15d',s:1})}
+      if(Math.hypot(P.x-a.x,P.y-a.y)<60&&P.hp<P.max){P.hp=Math.min(P.max,P.hp+P.max*.018*(1+.12*((a.lvl||1)-1)+((a.lvl||1)>=6?.3:0))*dt);if(R()<.15)PT.push({x:P.x+rnd(-4,4),y:P.y+rnd(-2,3),vx:0,vy:-14,life:.4,max:.4,c:'#9be15d',s:1})}
       for(const b of AL)if(b!==a&&Math.hypot(b.x-a.x,b.y-a.y)<60)b.hp=Math.min(b.max,b.hp+b.max*.03*dt);
-      if(a.cd<=0){const t=nearest(a.x,a.y,120);if(t){a.cd=1;spawnProj(a.x,a.y,Math.atan2(t.y-a.y,t.x-a.x),190,{dmg:8*dmgMul(),size:2,col:K.col,life:.7,src:'ally',noOrbit:1})}}
+      if(a.cd<=0){const t=nearest(a.x,a.y,120);if(t){a.cd=allyRate(a);const ang=Math.atan2(t.y-a.y,t.x-a.x);for(const o of ((a.lvl||1)>=4?[-.07,.07]:[0]))spawnProj(a.x,a.y,ang+o,190,{dmg:8*dmgMul()*allyDmg(a),size:2,col:K.col,life:.7,src:'ally',noOrbit:1})}}
     }
-    if(a.kind==='knight'&&a.cd<=0){let hit=false;query(a.x,a.y,16,e=>{if(e.type==='ufo'||Math.hypot(e.x-a.x,e.y-a.y)>e.r+9)return;hit=true;const ex=e.x-a.x,ey=e.y-a.y,el=Math.hypot(ex,ey)||1;hurt(e,26*dmgMul(),{kx:ex/el,ky:ey/el,kb:110,src:'ally',elem:'kinetic',col:'#c9c9d6'})});if(hit){a.cd=.45;snd('hit')}}
+    if(a.kind==='knight'&&a.cd<=0){const L=a.lvl||1,reach=L>=3?13:9;let hit=false;query(a.x,a.y,16+reach-9,e=>{if(e.type==='ufo'||Math.hypot(e.x-a.x,e.y-a.y)>e.r+reach)return;hit=true;const ex=e.x-a.x,ey=e.y-a.y,el=Math.hypot(ex,ey)||1;hurt(e,26*dmgMul()*allyDmg(a)*(L>=5?1.3:1),{kx:ex/el,ky:ey/el,kb:110,src:'ally',elem:'kinetic',col:'#c9c9d6'})});if(hit){a.cd=.45*allyRate(a);snd('hit')}}
     // getting hurt: enemy contact and enemy shots
     if(a.hurtT<=0){let took=0;query(a.x,a.y,14,e=>{if(!took&&e.dmg>0&&e.type!=='ufo'&&Math.hypot(e.x-a.x,e.y-a.y)<e.r+4)took=e.dmg*(a.kind==='knight'?.5:.8)});if(took){a.hp-=took;a.hurtT=.5;a.flash=.12}}
     for(const b of EB)if(b.life>0&&Math.abs(b.x-a.x)<4&&Math.abs(b.y-a.y)<4){a.hp-=b.dmg*.7;b.life=0;a.flash=.12}
@@ -1327,6 +1356,21 @@ function updateAllies(dt){
     if(a.hp<=0){burst(a.x,a.y,K.col,24,70,.5,2);toast(2,K.name+' is down.');G.alliesLost=(G.alliesLost||0)+1;AL.splice(i--,1)}
   }
 }
+/* 1.29: allies upgrade their guns too, slower than you: every ALLY_EVERY of your picks each ally gains a level (up to 6).
+   Each level: +25% damage and a bit faster; Gunner fires three shots at Lv 3 and they pierce at Lv 5, the Field Medic
+   heals more and shoots twice from Lv 4, the Knight hits wider from Lv 3. Every level also adds 12% max HP and heals 30%. */
+const ALLY_EVERY=3,ALLY_LVL_MAX=6;
+const ALLY_PERK={gunner:{3:'three shots',5:'piercing shots'},medic:{4:'two shots',6:'stronger healing'},knight:{3:'wider swings',5:'heavier hits'}};
+function allyPick(){
+  if(!G.allies.length)return;
+  G.allyPk=(G.allyPk||0)+1;if(G.allyPk<ALLY_EVERY)return;G.allyPk=0;
+  for(const a of G.allies){if((a.lvl||1)>=ALLY_LVL_MAX)continue;a.lvl=(a.lvl||1)+1;
+    a.max=Math.round(a.max*1.12);a.hp=Math.min(a.max,a.hp+a.max*.3);
+    RINGS.push({x:a.x,y:a.y,r:0,max:16,life:.3,t:0,c:ALLY[a.kind].col,noFill:1});burst(a.x,a.y,ALLY[a.kind].col,10,40,.3);
+    const perk=(ALLY_PERK[a.kind]||{})[a.lvl];toast(1,ALLY[a.kind].name+' upgraded to Lv '+a.lvl+(perk?': '+perk:''))}
+}
+const allyDmg=a=>1+.25*((a.lvl||1)-1);
+const allyRate=a=>Math.pow(.94,(a.lvl||1)-1);
 /* enemies near a knight go for it instead of you */
 function tauntTarget(e){for(const a of G.allies)if(a.kind==='knight'&&Math.abs(a.x-e.x)<45&&Math.abs(a.y-e.y)<45)return a;return null}
 function drawAllies(ox,oy){
@@ -1335,6 +1379,7 @@ function drawAllies(ox,oy){
     const spr=a.flash>0?SPR_PW:K.spr[Math.hypot(a.vx,a.vy)>8?(Math.floor(a.walk)%2):0];
     ctx.save();if(a.face<0){ctx.translate(x+8,y);ctx.scale(-1,1);ctx.drawImage(K.out,-1,-1);ctx.drawImage(spr,0,0)}else{ctx.drawImage(K.out,x-1,y-1);ctx.drawImage(spr,x,y)}ctx.restore();
     ctx.fillStyle=K.col;ctx.fillRect(x+3,y-4,2,2);                    // a small marker over their head
+    const L=a.lvl||1;if(L>1){ctx.fillStyle='#ffd84a';for(let k=0;k<L-1;k++)ctx.fillRect(x+4-(L-1)+k*2,y-6,1,1)}   // one gold pip per level
     if(a.hp<a.max){ctx.fillStyle='#14101c';ctx.fillRect(x-1,y+10,10,2);ctx.fillStyle=K.col;ctx.fillRect(x,y+10,Math.max(1,Math.round(8*a.hp/a.max)),1)}
   }
 }
@@ -1641,7 +1686,7 @@ const TROPHY={
   'The Hollow':{id:'core',name:'Hollow Core',desc:'Every dash leaves a black hole behind you',apply:()=>{S.horizonDash=1}},
 };
 function bossPhase2(e){
-  e.p2=true;e.rage=(e.rage||0)+1;e.cd=Math.min(e.cd,1.2);e.q.length=0;e.flash=.3;
+  e.p2=true;e.rage=(e.rage||0)+1;e.cd=Math.min(e.cd,1.2);e.q.length=0;e.flash=.3;e.p2T=G.time+P2_GUARD;
   const B=bossOf(e);EB.length=0;
   RINGS.push({x:e.x,y:e.y,r:0,max:70,life:.5,t:0,c:'#ff3b5c',noFill:1});burst(e.x,e.y,'#ff3b5c',40,110,.6,2);G.shake=Math.max(G.shake,3);G.stop=Math.max(G.stop,.15);snd('boss');
   const dx=P.x-e.x,dy=P.y-e.y,d=Math.hypot(dx,dy)||1;if(d<60){P.vx+=dx/d*220;P.vy+=dy/d*220}   // the shockwave pushes you back
@@ -2142,13 +2187,17 @@ function drawEvents(ox,oy){
      pylons   a stationary, shielded colossus powered by crystal pylons you have to break first
      submerge the Bog Mother dives and surfaces somewhere else; bubbles show where, a second early
    Threat doesn't climb and land hazards stop during a fight. Win: heal 35% and a Power Surge (3 banked levels). */
-const ARENA_R=115;            // arena radius in world pixels
+const ARENA_R=125;            // arena radius in world pixels (1.29: 115 -> 125, room for huge bosses)
 const FLOE_R0=140,FLOE_R1=72;
 const arenaScale=()=>Math.max(.8,1-Math.max(0,G.threat-5)*.012); // tougher (later) bosses get tighter arenas, never below 80%
 const INF_R0=1000,INF_R1=165,INF_T=32;  // ring of fire: starts this big and closes to this over INF_T seconds, fast at first, slowing at the end // the ice floe starts this big and cracks down to this
 const ARENA_HP=8;                                                     // v1.16.2: 5 -> 8 (fights were 17-19 s)
+const BOSS_SECS=16,BOSS_HP_CAP=2.5;                                   // 1.29: boss HP floor = 16 s of your recent horde damage (fights were 23-39 s and too easy late)
+function hordeDps(){const s=G.dpsS;if(!s||s.length<6)return 0;return (s[s.length-1]-s[0])/(s.length-1)}
+const bossSize=()=>Math.min(3.25,2.25+(G.bossKills||0)*.2);          // bosses are huge: 2.25x the old body (4.5x your width), growing each boss
+const P2_GUARD=2.5;                                                   // seconds after enraging that the boss takes 40% damage, so phase two is always seen
 const BOSS_DMG=1.25;
-const bossEarly=()=>Math.min(1,.6+G.threat*.027);                   // threat 5: 73%, 10: 87%, 15+: full                                                   // boss shots and shells hit 40% harder             // boss HP multiplier for boss fights (tune with the run report's bossFights)
+const bossEarly=()=>Math.min(1,.68+G.threat*.022);                  // 1.29: floor .6 -> .68, so the first bosses bite a little                   // threat 5: 73%, 10: 87%, 15+: full                                                   // boss shots and shells hit 40% harder             // boss HP multiplier for boss fights (tune with the run report's bossFights)
 const FMT={
   arena:   {walls:1,floor:1,horde:0,  zoom:2*ARENA_R,big:'BOSS ARENA',  sub:'Just you and it'},
   floe:    {walls:1,floor:1,horde:0,  zoom:2*FLOE_R0,big:'THIN ICE',    sub:'The floe is breaking up'},
@@ -2188,6 +2237,7 @@ const fmtOf=()=>G.arena?FMT[G.arena.fmt]:null;
 function startArena(){
   const bi=biomeOf(G.threat).i%BIOMES.length,B=BOSSES[bi],F=FMT[B.fmt];
   const fin=bi===BIOMES.length-1&&!G.won;
+  G.bossHurt=0;
   const A=G.arena={final:fin,x:P.x,y:P.y,r:B.fmt==='floe'?Math.round(FLOE_R0*arenaScale()):B.fmt==='inferno'?INF_R0:Math.round(ARENA_R*arenaScale()),fmt:B.fmt,phase:'in',t:0,bi,wall:0,start:G.time,fireA:0,fireT:0};
   // the horde dissolves for every boss fight: no souls, no kills, just gone. Only the boss and what it summons remain.
   for(const e of E){if(e.dead)continue;e.dead=true;if(PT.length<500)burst(e.x,e.y,e.col,3,35,.35)}
@@ -2206,10 +2256,14 @@ function spawnBoss(){
   if(A.fmt==='inferno'){const a=R()*TAU;x=A.x+Math.cos(a)*90;y=A.y+Math.sin(a)*90}
   else if(A.fmt==='pylons'||A.fmt==='hunt'){const a=R()*TAU;x=P.x+Math.cos(a)*110;y=P.y+Math.sin(a)*110}
   else{const a=Math.atan2(P.y-A.y,P.x-A.x)+Math.PI+rnd(-.6,.6),d=A.r*.6;x=A.x+Math.cos(a)*d;y=A.y+Math.sin(a)*d}
-  const hm=(1+G.threat*.3)*ARENA_HP*bossEarly()*(A.final?1.5:1);
-  const b=spawnEnemy('boss',x,y,{elite:false,hpMul:hm});
-  b.bk=A.bi;b.spr=B.spr;b.col=B.col;b.cd=1.6;b.pat=-1;b.q=[];b.sum=6;b.rage=0;G.boss=b;
+  // 1.29: boss HP also keeps up with your build. It is at least what your recent horde damage would chew through in
+  // BOSS_SECS seconds (horde damage overstates single-target damage, so the real fight runs longer), never more than BOSS_HP_CAP x the base.
+  const base=(1+G.threat*.3)*ARENA_HP*bossEarly()*(A.final?1.5:1),baseHp=ET.boss.hp*hpScale()*base*DF().hp;
+  const dps=hordeDps(),hm=base*Math.min(BOSS_HP_CAP,Math.max(1,dps*BOSS_SECS/baseHp));
+  const b=spawnEnemy('boss',x,y,{elite:false,hpMul:hm,sz:bossSize()});
+  b.bk=A.bi;b.spr=B.spr;b.col=B.col;b.cd=1.6;b.pat=-1;b.q=[];b.sum=6;b.rage=0;G.boss=b;b.hordeDps=Math.round(dps);
   mutateBoss(b,biomeOf(G.threat).lap,G.diff==='nightmare'?1:0);
+  if(b.mods.includes('colossal')){b.sz+=.5;b.r=ET.boss.r*b.sz}           // Colossal is bigger, too
   if(A.fmt==='pylons'){
     b.shieldN=4;b.pylons=[];
     for(let i=0;i<4;i++){const a=i/4*TAU+R(),pl=spawnEnemy('pylon',x+Math.cos(a)*80,y+Math.sin(a)*80,{elite:false,hpMul:hm});pl.owner=b;b.pylons.push(pl)}
@@ -2231,13 +2285,13 @@ function arenaWon(e){
   const A=G.arena,B=bossOf(e),F=FMT[A.fmt];if(!A)return;
   A.phase='out';A.t=0;A.won=true;
   giveTrophy(B);
-  G.bossLog.push({boss:B.name,fight:A.fmt,phase2:!!e.p2,mods:(e.mods||[]).join(',')||undefined,threat:G.threat,fightSeconds:Math.round(G.time-A.fightStart),hpLeft:Math.ceil(P.hp)+'/'+P.max});
+  G.bossLog.push({boss:B.name,fight:A.fmt,phase2:!!e.p2,mods:(e.mods||[]).join(',')||undefined,threat:G.threat,fightSeconds:Math.round(G.time-A.fightStart),hpLeft:Math.ceil(P.hp)+'/'+P.max,bossHp:Math.round(e.max),hordeDps:e.hordeDps,size:e.sz,hitsTaken:Math.round(G.bossHurt||0)});
   // in a walled fight everything the boss brought goes with it; in the open the horde stays
   for(const o of E)if(!o.dead&&o!==e){o.dead=true;burst(o.x,o.y,o.col,4,40,.3)}
   EB.length=0;Z=Z.filter(z=>{const k=ZK[z.kind];return k&&(k.friendly&&!k.hostile)});
   const heal=Math.round(P.max*.35);P.hp=Math.min(P.max,P.hp+heal);
   G.level+=3;G.pendingLv+=3;G.lvCD=1.8;G.need=xpNeed(G.level);
-  for(let i=0;i<14;i++){const a=i/14*TAU;PU.push({kind:'gem',tier:Math.min(4,1+Math.floor(G.threat/8)),x:e.x+Math.cos(a)*8,y:e.y+Math.sin(a)*8,t:0,vx:Math.cos(a)*90,vy:Math.sin(a)*90,vac:true})}
+  for(let i=0;i<6;i++){const a=i/6*TAU;PU.push({kind:'gem',tier:Math.min(4,1+Math.floor(G.threat/8)),x:e.x+Math.cos(a)*8,y:e.y+Math.sin(a)*8,t:0,vx:Math.cos(a)*90,vy:Math.sin(a)*90,vac:true})}   // 1.29: 14 -> 6, the 3-level surge plus these was landing 5-6 levels at once
   PU.push({kind:'maxhp',x:e.x,y:e.y,t:0,vx:0,vy:-30});                // a boss always drops a Heart Container
   for(let i=0;i<5;i++)setTimeout(()=>{if(G.arena===A)BOOMQ.push({x:e.x+rnd(-14,14),y:e.y+rnd(-14,14),r:20,dmg:0,col:B.col,src:'boss'})},i*140);
   G.chroma=Math.max(G.chroma||0,.45);
@@ -2274,7 +2328,7 @@ function updateArena(dt){
   // ring of fire: closes in, burns whatever is outside it; the King stays inside
   if(A.fmt==='inferno'){
     if(A.phase==='fight'){const k=Math.min(1,(G.time-A.fightStart)/INF_T),r1=INF_R1*Math.max(.85,arenaScale());A.r=r1+(INF_R0-r1)*(1-k)*(1-k)}
-    const b=G.boss;if(b&&!b.dead){const dx=b.x-A.x,dy=b.y-A.y,d=Math.hypot(dx,dy);if(d>A.r-10){b.x=A.x+dx/d*(A.r-10);b.y=A.y+dy/d*(A.r-10);b.charge=0}}
+    const b=G.boss;if(b&&!b.dead){const m=A.r-4-b.r,dx=b.x-A.x,dy=b.y-A.y,d=Math.hypot(dx,dy);if(d>m){b.x=A.x+dx/d*m;b.y=A.y+dy/d*m;b.charge=0}}
     A.fireT-=dt;
     if(A.fireT<=0&&A.fireA>.5){A.fireT=.25;
       if(Math.hypot(P.x-A.x,P.y-A.y)>A.r){const was=P.inv;P.inv=0;hurtPlayerEnv(Math.max(4,P.max*.05),'the forest fire');P.inv=was;burst(P.x,P.y,'#ff9f43',4,30,.3)}
@@ -2354,7 +2408,7 @@ function drawBossMarks(ox,oy){
 function bShot(e,a,spd,dmgK,o){dmgK*=BOSS_DMG*bossEarly();const B=bossOf(e);EB.push(Object.assign({x:e.x,y:e.y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:4,dmg:e.dmg*dmgK,from:B.name,col:B.bul},o||{}))}
 function bRing(e,n,spd,dmgK,o){const off=R();for(let i=0;i<n;i++)bShot(e,(i/n+off)*TAU,spd,dmgK,o)}
 function bLater(e,t,fn){e.q.push({t,fn})}
-function bShell(e,x,y,r,after){addZone('shell',x,y,r,1.1,{boom:{r,dmg:0,pd:e.dmg*1.1*BOSS_DMG*bossEarly(),col:bossOf(e).col,src:'boss',hostile:true,cause:bossOf(e).name,after}})}
+function bShell(e,x,y,r,after,k){addZone('shell',x,y,r,1.1,{boom:{r,dmg:0,pd:e.dmg*(k||1.1)*BOSS_DMG*bossEarly(),col:bossOf(e).col,src:'boss',hostile:true,cause:bossOf(e).name,after}})}
 const REST_T=2.6;
 function bossRest(e){
   e.cd=REST_T;e.restT=G.time+REST_T;e.tele=false;e.q.length=0;
@@ -2452,8 +2506,8 @@ function bossThink(e,dt,dx,dy,d){
     case 'singularity':e.cd=2.8*f;{const a=R()*TAU;addZone('hole',P.x+Math.cos(a)*30,P.y+Math.sin(a)*30,44,5.5,{pd:12*(1+T*.06)});e.spiral=1.6;e.arms=2;e.spinK=3;e.twin=0}break;
     case 'twinspiral':e.cd=2.8*f;e.spiral=2;e.arms=3;e.spinK=3.5;e.twin=1;break;
     // --- phase-two attacks, one per boss
-    case 'gust':e.cd=2.2*f;G.gust={a:aim+Math.PI,warn:.6,t:1.6,s:55+T};bLater(e,.6,()=>{for(let i=0;i<3;i++)bLater(e,i*.18,()=>{const n=7;for(let k=0;k<n;k++)bShot(e,aim+(k-(n-1)/2)*.16,48+i*8,.45)})});break;
-    case 'thunder':e.cd=2.5*f;{const n=4+Math.floor(T/6);for(let i=0;i<n;i++){const a=R()*TAU,r=i?rnd(16,46):0;bShell(e,P.x+P.vx*.6+Math.cos(a)*r,P.y+P.vy*.6+Math.sin(a)*r,13)}}break;
+    case 'gust':e.cd=2.2*f;G.gust={a:aim+Math.PI,warn:.75,t:1.4,s:42+T*.6};bLater(e,.6,()=>{for(let i=0;i<3;i++)bLater(e,i*.18,()=>{const n=7;for(let k=0;k<n;k++)bShot(e,aim+(k-(n-1)/2)*.16,48+i*8,.45)})});break;
+    case 'thunder':e.cd=2.5*f;{const n=3+Math.floor(T/8);for(let i=0;i<n;i++){const a=R()*TAU,r=i?rnd(18,46):0;bShell(e,P.x+P.vx*.5+Math.cos(a)*r,P.y+P.vy*.5+Math.sin(a)*r,13,null,.7)}}break;   // 1.29: fewer, lighter strikes (Tempest dealt 386 where the first two bosses dealt 69)
     case 'stormwall':e.cd=2.8*f;{const A=G.arena;if(A){const base=R()*TAU;for(let w=0;w<3;w++)bLater(e,w*.5,()=>{const n=28;for(let k=0;k<n;k++){const a=base+w*.4+k/n*TAU;if(k%7===0||k%7===1)continue;EB.push({x:A.x+Math.cos(a)*A.r*.95,y:A.y+Math.sin(a)*A.r*.95,vx:-Math.cos(a)*38,vy:-Math.sin(a)*38,life:A.r*1.9/38,dmg:e.dmg*.45*BOSS_DMG*bossEarly(),from:B.name,col:B.bul})}})}}break;
     case 'crossfire':e.cd=2.4*f;for(const off of [0,Math.PI/4])bLater(e,off?.55:0,()=>{for(let k=0;k<4;k++){const a=off+k*Math.PI/2;for(let i=0;i<6;i++)bShot(e,a,40+i*11,.45)}});break;
     case 'meteorfall':e.cd=2.8*f;{const Ar=A?A.r*.8:90,cx=A?A.x:P.x,cy=A?A.y:P.y;for(let i=0;i<10;i++){const a=R()*TAU,r=Math.sqrt(R())*Ar;bLater(e,i*.12,()=>bShell(e,cx+Math.cos(a)*r,cy+Math.sin(a)*r,16,q=>addZone('lava',q.x,q.y,10,5,{pd:10*(1+T*.06),ed:0})))}}break;
@@ -2513,6 +2567,7 @@ function burst(x,y,col,n,sp=50,life=.4,size=1){
 }
 function hurt(e,dmg,o={}){
   if(e.restT>G.time)dmg*=1.25;
+  if(e.p2T>G.time)dmg*=.4;                                           // just enraged: phase two always gets a few seconds
   if(e.mods&&e.type==='boss'){e.hitT=G.time;if(!e.p2&&e.mods.includes('armored'))dmg*=.7}
   if(e.type==='boss'&&!e.p2&&!e.dead&&e.q&&e.hp-dmg<e.max*.5&&!(e.shieldN>0)&&!(e.phase>0)){bossPhase2(e);dmg=Math.max(0,e.hp-e.max*.5)}
   if(e.type==='boss'&&!e.dead&&!(e.phase>0)&&!(e.shieldN>0)&&dmg>=e.max*.008&&!(G.hsT>G.time)){G.hsT=G.time+.3;G.stop=Math.max(G.stop,.035)}
@@ -2539,7 +2594,7 @@ function hurt(e,dmg,o={}){
   e.hitT=G.time;
   if(e.guardT>G.time){d*=.35;if(R()<.2)burst(e.x,e.y-2,'#6be0ff',2,30,.2)}
   const dealt=Math.min(d,Math.max(0,e.hp));
-  e.hp-=d;e.flash=.06;numHit(e,dealt,crit);
+  e.hp-=d;e.flash=.06;numHit(e,dealt,crit);G.dmgTot=(G.dmgTot||0)+dealt;
   const src=o.src||'other';G.dmgBy[src]=(G.dmgBy[src]||0)+dealt;
   if(m<.5&&R()<.25){burst(e.x,e.y,'#8a8aa0',2,30,.2);if(!G.golemHint&&e.type==='golem'){G.golemHint=true;toast(1,'Golems resist that. Lightning and blasts crack them.')}}
   if(o.kx!==undefined){const kb=(o.kb||30)/(e.r*.5)*(e.type==='boss'?.08:e.type==='jugg'?.15:e.type==='crate'?0:1);e.vx+=o.kx*kb;e.vy+=o.ky*kb}
@@ -2550,27 +2605,30 @@ function dropGem(x,y,tier){PU.push({kind:'gem',x:x+rnd(-3,3),y:y+rnd(-3,3),tier,
 function kill(e,src){
   if(e.dead)return;e.dead=true;
   if(e.type==='crate'){burst(e.x,e.y,'#b8834a',20,70,.5,2);burst(e.x,e.y,'#ffe066',12,60,.5);snd('boom');PU.push({kind:randomPickup(),x:e.x,y:e.y,t:0,vx:-20,vy:-30});PU.push({kind:R()<.5?'heart':randomPickup(),x:e.x,y:e.y,t:0,vx:20,vy:-30});for(let i=0;i<6;i++){const a=i/6*TAU;PU.push({kind:'gem',tier:Math.min(3,1+Math.floor(G.threat/8)),x:e.x,y:e.y,t:0,vx:Math.cos(a)*70,vy:Math.sin(a)*70})}return}
-  if(G.streak>=25&&!G.mode){G.okm++;if(G.okm>=600+G.okUses*300){G.okm=0;G.okUses++;startMode(pickMode(),'overkill meter')}}
-  if(S.toxicKill&&R()<S.toxicKill&&e.type!=='boss')addZone('tcloud',e.x,e.y,16*S.area,3,{ed:14*dmgMul(),src:'poison'});
+  const kw=e.kw||1,sz=e.sz||1,szk=Math.sqrt(sz);                       // a big enemy counts as several small ones
+  if(G.streak>=25&&!G.mode){G.okm+=kw;if(G.okm>=600+G.okUses*300){G.okm=0;G.okUses++;startMode(pickMode(),'overkill meter')}}
+  if(S.toxicKill&&R()<S.toxicKill&&e.type!=='boss')addZone('tcloud',e.x,e.y,16*S.area*szk,3,{ed:14*dmgMul(),src:'poison'});
   if(e.champ)champDrop(e);
   if(G.dmods.length&&e.type!=='boss'&&e.type!=='crate'&&e.type!=='ufo'){
     if(dm('volatile')&&R()<.2)bRing(e,4,45,.5);
     if(dm('brood')&&e.type!=='mini'&&R()<.1)for(let i=0;i<2;i++){const m=spawnEnemy('mini',e.x+rnd(-4,4),e.y+rnd(-4,4),{elite:false});m.vx=rnd(-50,50);m.vy=rnd(-50,50)}}
-  G.kills++;G.streak++;G.streakT=1.6;if(G.streak>G.bestStreak)G.bestStreak=G.streak;
-  if(S.leech&&G.leechUsed<2+S.leech*4){P.hp=Math.min(P.max,P.hp+S.leech);G.leechUsed+=S.leech}
-  if(G.streak%100===0&&G.rerolls<3){G.rerolls++;toast(2,'Streak '+G.streak+': reroll earned')}
+  const st0=G.streak;G.kills+=kw;G.bodies=(G.bodies||0)+1;G.streak+=kw;G.streakT=1.6;if(G.streak>G.bestStreak)G.bestStreak=G.streak;
+  if(S.leech&&G.leechUsed<2+S.leech*4){const h=S.leech*Math.min(3,kw);P.hp=Math.min(P.max,P.hp+h);G.leechUsed+=h}
+  if(Math.floor(G.streak/100)>Math.floor(st0/100)&&G.rerolls<3){G.rerolls++;toast(2,'Streak '+Math.floor(G.streak/100)*100+': reroll earned')}
   G.killsBy[src]=(G.killsBy[src]||0)+1;G.killsByType[e.type]=(G.killsByType[e.type]||0)+1;
   const big=e.type==='boss'||e.elite||e.r>5;
-  DEAD.push({spr:enemySprite(e.spr||e.type,e.shift,true),x:e.x,y:e.y,t:0});
-  burst(e.x,e.y,e.col,e.type==='boss'?60:big?16:SIMPLE()?3:9,e.type==='boss'?110:60,.5,big?2:1);
-  if(DECALS.length<(isTouch?110:220))DECALS.push({x:e.x,y:e.y,c:e.col,life:10,w:e.r>5?4:2});
+  DEAD.push({spr:enemySprite(e.spr||e.type,e.shift,true),x:e.x,y:e.y,t:0,sz});
+  burst(e.x,e.y,e.col,e.type==='boss'?60:big?16:SIMPLE()?3:9,e.type==='boss'?110:60*szk,.5,big?2:1);
+  if(DECALS.length<(isTouch?110:220))DECALS.push({x:e.x,y:e.y,c:e.col,life:10,w:e.r>5?Math.min(10,Math.round(e.r*.7)):2});
   snd('kill');
-  // souls
+  // souls: a big enemy is worth its weight in souls, packed into fewer, rarer ones
   const T=ET[e.type];
-  if(T.gem>=0||R()<.5){let tier=Math.max(0,T.gem)+(e.elite?1:0);if(R()<luck()*.025)tier++;tier=Math.min(4,tier);dropGem(e.x,e.y,tier)}
+  if(T.gem>=0||R()<.5){let tier=Math.max(0,T.gem)+(e.elite?1:0);if(R()<luck()*.025)tier++;tier=Math.min(4,tier);
+    if(kw<=1)dropGem(e.x,e.y,tier);
+    else{let v=GEMV[tier]*kw;const top=Math.min(4,tier+2);for(let i=0;i<4&&v>0;i++){let t=top;while(t>0&&GEMV[t]>v)t--;if(i===3)while(t<4&&GEMV[t]<v*.75)t++;dropGem(e.x,e.y,t);v-=GEMV[t]}}}
   if(e.type==='boss'){for(let i=0;i<6;i++)dropGem(e.x+rnd(-12,12),e.y+rnd(-12,12),4);PU.push({kind:'heart',x:e.x,y:e.y,t:0,vx:0,vy:-20});PU.push({kind:'vac',x:e.x+8,y:e.y,t:0,vx:20,vy:0})}
   else{
-    const lowHp=P.hp<P.max*.4,L=1+.5*(S.clover||0);
+    const lowHp=P.hp<P.max*.4,L=(1+.5*(S.clover||0))*Math.min(4,kw);
     if(S.bounty&&e.elite&&e.type!=='ufo')PU.push({kind:R()<.04?'maxhp':randomPickup(),x:e.x,y:e.y,t:0,vx:rnd(-20,20),vy:-30});
     if(R()<(lowHp?.04:.012)*L)PU.push({kind:'heart',x:e.x,y:e.y,t:0,vx:0,vy:-20});
     else if(R()<.004*L)PU.push({kind:'vac',x:e.x,y:e.y,t:0,vx:0,vy:-20});
@@ -2579,10 +2637,10 @@ function kill(e,src){
     else if(R()<(e.elite?.007:.0003))PU.push({kind:'maxhp',x:e.x,y:e.y,t:0,vx:0,vy:-20});
   }
   // death behaviors
-  if(e.type==='exploder')addZone('fuse',e.x,e.y,22,.45,{boom:{x:e.x,y:e.y,r:22,dmg:30*S.dmg,pd:e.dmg*1.4,col:'#ffb627',src:'exploder',hostile:true}});
+  if(e.type==='exploder')addZone('fuse',e.x,e.y,22*szk,.45,{boom:{x:e.x,y:e.y,r:22*szk,dmg:30*S.dmg*kw,pd:e.dmg*1.4,col:'#ffb627',src:'exploder',hostile:true}});
   if(e.type==='bloater'){for(let i=0;i<3;i++){const m=spawnEnemy('mini',e.x+rnd(-4,4),e.y+rnd(-4,4),{elite:false});m.vx=rnd(-70,70);m.vy=rnd(-70,70)}addZone('ppuddle',e.x,e.y,10,5,{pd:7*(1+G.threat*.06)})}
-  if(e.type==='splitter'){for(let i=0;i<2;i++){const c=spawnEnemy('shard',e.x+rnd(-4,4),e.y+rnd(-4,4),{elite:false});c.vx=rnd(-80,80);c.vy=rnd(-80,80)}}
-  if(e.elite&&e.ex==='split'&&e.type!=='boss'){for(let i=0;i<2;i++){const c=spawnEnemy(e.type,e.x+rnd(-5,5),e.y+rnd(-5,5),{elite:false,hpMul:.5});c.vx=rnd(-60,60);c.vy=rnd(-60,60)}}
+  if(e.type==='splitter'){for(let i=0;i<2;i++){const c=spawnEnemy('shard',e.x+rnd(-4,4),e.y+rnd(-4,4),{elite:false,sz:Math.max(1,sz*.75)});c.vx=rnd(-80,80);c.vy=rnd(-80,80)}}
+  if(e.elite&&e.ex==='split'&&e.type!=='boss'){for(let i=0;i<2;i++){const c=spawnEnemy(e.type,e.x+rnd(-5,5),e.y+rnd(-5,5),{elite:false,hpMul:.5,sz:Math.max(1,sz*.75)});c.vx=rnd(-60,60);c.vy=rnd(-60,60)}}
   if(e.type==='boss'){buzz(90);G.boss=null;G.bossKills++;G.stop=.3;G.shake=4;G.flash=.7;snd('boom');if(G.arena)arenaWon(e);else banner(bossOf(e).name.toUpperCase()+' DOWN','The threat climbs anyway')}
   else if(e.type==='pylon')pylonDown(e);
   else if(e.type==='thief')thiefDown(e);
@@ -2591,11 +2649,11 @@ function kill(e,src){
   if(e.giant)giantDown(e);
   else if(e.elite){G.stop=Math.max(G.stop,.05)}
   // mutations on kill
-  if(S.frostKill){query(e.x,e.y,26,o=>{o.slow=Math.max(o.slow,1.6)});if(R()<.3)RINGS.push({x:e.x,y:e.y,r:0,max:24,life:.2,t:0,c:'#a6f0ff',noFill:1})}
+  if(S.frostKill){query(e.x,e.y,26+e.r,o=>{o.slow=Math.max(o.slow,1.6)});if(R()<.3)RINGS.push({x:e.x,y:e.y,r:0,max:24,life:.2,t:0,c:'#a6f0ff',noFill:1})}
   if(S.chainKill&&R()<S.chainKill)BOOMQ.push({x:e.x,y:e.y,r:18*S.area,dmg:18*dmgMul(),col:'#ff9f43',src:'chainkill'});
-  if(S.killNeedle&&G.needleCd<=0){G.needleCd=.05;const t=nearest(P.x,P.y,200);if(t){const a=Math.atan2(t.y-P.y,t.x-P.x);spawnProj(P.x,P.y,a,170,{kind:'needle',dmg:9*dmgMul(),size:2,col:'#ff3b5c',life:1.4,src:'vengeance',target:t,noOrbit:1})}}
-  if(S.pulse&&++G.okPulse>=40){G.okPulse=0;pulse()}
-  if(S.hole&&++G.okHole>=60){G.okHole=0;openHole()}
+  if(S.killNeedle&&G.needleCd<=0){G.needleCd=.05;const t=nearest(P.x,P.y,200);if(t){const a=Math.atan2(t.y-P.y,t.x-P.x);for(let i=0;i<Math.min(4,kw);i++)spawnProj(P.x,P.y,a+(i-(Math.min(4,kw)-1)/2)*.2,170,{kind:'needle',dmg:9*dmgMul(),size:2,col:'#ff3b5c',life:1.4,src:'vengeance',target:t,noOrbit:1})}}
+  if(S.pulse&&(G.okPulse+=kw)>=40){G.okPulse=0;pulse()}
+  if(S.hole&&(G.okHole+=kw)>=60){G.okHole=0;openHole()}
 }
 function pulse(){
   G.flash=Math.max(G.flash,.4);G.shake=Math.max(G.shake,2);G.stop=Math.max(G.stop,.06);snd('boom');
@@ -2639,7 +2697,7 @@ function hurtPlayer(d,cause){
   if(P.inv>0||G.state!=='play'||P.bubble>0||isMode('titan'))return;
   if(P.shield>0){P.shield--;P.shieldT=Math.max(P.shieldT,8/Math.max(1,S.shieldMax));P.inv=.5;burst(P.x,P.y,'#6be0ff',12,60,.35);snd('zap');buzz(15);G.hudDirty=true;return}
   if(S.armor)d*=Math.max(.5,1-S.armor);if(P.armorT>0)d*=.5;
-  buzz(35);P.hp-=d;P.inv=.75;if(P.hp>0)G.lowHp=Math.min(G.lowHp??1,P.hp/P.max);
+  buzz(35);P.hp-=d;P.inv=.75;if(G.arena)G.bossHurt=(G.bossHurt||0)+d;if(P.hp>0)G.lowHp=Math.min(G.lowHp??1,P.hp/P.max);
   // shove nearby enemies away so a surround has an exit
   query(P.x,P.y,24,o=>{if(o.type==='boss'||o.type==='crate')return;const dx=o.x-P.x,dy=o.y-P.y,l=Math.hypot(dx,dy)||1;o.vx+=dx/l*170;o.vy+=dy/l*170});
   RINGS.push({x:P.x,y:P.y,r:0,max:22,life:.22,t:0,c:'#ff4d6d',noFill:1});G.hurt=.25;G.hurtBy[cause||'unknown']=(G.hurtBy[cause||'unknown']||0)+d;snd('hurt');burst(P.x,P.y,'#ff4d6d',8,50,.4);G.lastHit=cause;
@@ -2745,10 +2803,12 @@ function cardAvail(c){return (!c.max||(G.taken[c.id]||0)<c.max)&&cardRelevant(c)
 function rollRarity(L){const w=[Math.max(15,100-L*7),30+L*4,6+L*2.5,Math.max(0,L-2)*1.6,Math.max(0,L-6)];let t=0;for(const x of w)t+=x;let r=cardRand()*t;for(let i=0;i<5;i++){r-=w[i];if(r<=0)return i}return 0}
 function makeOffers(){
   const L=luck(),all=CARDS.filter(cardAvail).concat(weaponCards()),out=[],used=new Set();
+  // 1.29: the mutation a maxed weapon still needs to evolve turns up far more often (Oil Slick sat at Lv 6 for 4 minutes without Incendiary)
+  const needMut=new Set(W.filter(w=>w.lvl>=6&&!w.evo&&!(G.taken[EVO[w.id].mut]>0)).map(w=>EVO[w.id].mut));
   for(let i=0;i<3;i++){
     for(let r=rollRarity(L);r>=0;r--){
       const pool=all.filter(c=>c.r===r&&!used.has(c.id));
-      if(pool.length){const c=wpick(pool,c=>c.weapon?(W.length>=4?2.6:1.6):1,cardRand);used.add(c.id);out.push(c);break}
+      if(pool.length){const c=wpick(pool,c=>c.weapon?(W.length>=4?2.6:1.6):needMut.has(c.id)?8:1,cardRand);used.add(c.id);out.push(c);break}
     }
   }
   while(out.length<3){const pool=all.filter(c=>!used.has(c.id));if(!pool.length)break;const c=pool[Math.floor(cardRand()*pool.length)];used.add(c.id);out.push(c)}
@@ -2840,7 +2900,7 @@ $('cards').addEventListener('click',e=>{const b=e.target.closest('button[data-i]
 function takeCard(c,offerNames,silent){
   if(G.char==='medic'&&G.state!=='title')P.hp=Math.min(P.max,P.hp+P.max*.1);
   if(!c.cost&&!c.evo)codexAdd('c',c.id);if(c.evo)codexAdd('v',c.name);
-  c.apply();if(!c.cost)G.taken[c.id]=(G.taken[c.id]||0)+1;G.hudDirty=true;
+  c.apply();if(!c.cost)G.taken[c.id]=(G.taken[c.id]||0)+1;G.hudDirty=true;if(G.state!=='title')allyPick();
   G.log.push({t:Math.round(G.time),lv:G.level-G.pendingLv+1,pick:c.name,rarity:c.cost?'SURGE':RN[c.r],offered:offerNames});
   if(!silent)toast(c.r,c.name);
 }
@@ -2880,11 +2940,14 @@ function cashOut(){
 /* auto-pick: score each offered card and take the best */
 function autoScore(c){
   if(c.evo)return 1000;
-  const lowHp=P.hp<P.max*.4,DEF=['hp','ironheart','plating','regen','leech','barrier','secondheart','thorns'];
+  const lowHp=P.hp<P.max*.5,DEF=['hp','ironheart','plating','regen','leech','barrier','secondheart','thorns'];
   if(!c.weapon){
     const w=W.find(w=>!w.evo&&EVO[w.id].mut===c.id&&!(G.taken[c.id]>0));
     if(w)return 700+w.lvl*20;                                           // completes an evolution recipe
     if(lowHp&&DEF.includes(c.id))return 650+c.r*10;
+    // 1.29: keep some defense as the threat climbs (one card per 4 threat), not only when already hurt.
+    // A test run auto-skipped Barrier, Leech and Plating ten times and reached Tempest with no defense at all.
+    if(DEF.includes(c.id)){const have=DEF.reduce((n,id)=>n+(G.taken[id]||0),0);if(have<Math.floor(G.threat/4))return 590+c.r*10}
     return c.r*110+(DEF.includes(c.id)?5:0)+cardRand()*5;              // rarer is better
   }
   if(c.id.startsWith('lvl:')){const w=W.find(w=>w.id===c.id.slice(4));const have=w&&(G.taken[EVO[w.id].mut]||0)>0;return 480+(w?w.lvl*10:0)+(have?60:0)}
@@ -2903,7 +2966,8 @@ function autoPickAll(){
 
 /* ================= threat & biome ================= */
 function updateThreat(){
-  G.tp=G.kills*.8+(G.time-(G.arenaTime||0))*1.2+G.bossKills*60;
+  G.tp=G.kills*.8+                                                   // kills are weighted by size, so fewer bigger enemies climb it as fast
+(G.time-(G.arenaTime||0))*1.2+G.bossKills*60;
   const L=Math.floor((Math.sqrt(1+8*G.tp/TPK)-1)/2);
   while(G.threat<L){
     G.threat++;snd('threat');G.hudDirty=true;
@@ -2915,7 +2979,7 @@ function updateThreat(){
       if(!G.hinted[b.name]){G.hinted[b.name]=1;setTimeout(()=>{if(G.state!=='title')toast(2,b.hint)},1800)}
       G.hazT=3;
     }else toast(0,'Threat '+G.threat+': more of them, rarer souls.');
-    const n=10+G.threat*3;for(let i=0;i<n;i++){const a=i/n*TAU,d=Math.hypot(LW,LH)/2+12;spawnEnemy(null,P.x+Math.cos(a)*d,P.y+Math.sin(a)*d)}
+    {const n=10+G.threat*3,est=Math.max(1,Math.round(n/(sizeGrow()*sizeGrow()))),d=Math.hypot(LW,LH)/2+12;spawnMass(n,i=>{const a=i/est*TAU;return [P.x+Math.cos(a)*d,P.y+Math.sin(a)*d]})}
     if(G.threat%5===0&&!G.boss&&!G.arena&&!G.clear){startClear();break}
   }
 }
@@ -2976,9 +3040,9 @@ function update(dt){
     let shots=0;for(const b of EB){const dx=b.x-P.x,dy=b.y-P.y;if(dx*dx+dy*dy<160*160)shots++}
     if(G.worms.length||G.cloud||G.wipe)thr=1;
     const speed=Math.min(1,Math.hypot(P.vx,P.vy)/74);
-    const target=Math.min(VIEW_OUT,VIEW_IN+Math.min(100,Math.sqrt(n)*10)+Math.min(40,shots*1.5)+thr*25+speed*10+(G.boss?35:0)+(G.arena?FMT[G.arena.fmt].zoom:0)+(G.mode&&G.mode.id==='orbital'?20:0));
+    const target=Math.min(VIEW_OUT,VIEW_IN+Math.min(100,Math.sqrt(n)*10)+Math.min(40,shots*1.5)+thr*25+speed*10+(G.boss?35+((G.boss.sz||1)-1)*12:0)+(G.arena?FMT[G.arena.fmt].zoom:0)+(G.mode&&G.mode.id==='orbital'?20:0));
     zoomToward(target,dt);
-  }else zoomToward(VIEW_FIXED,dt);
+  }else zoomToward(VIEW_FIXED+(G.boss&&!G.boss.dead?50:0),dt);   // huge bosses: pull back a little even with auto zoom off
   applyView();
   G.streakT-=dt;if(G.streakT<=0)G.streak=0;
 
@@ -2987,14 +3051,14 @@ function update(dt){
   G.trailD+=moved;G.oilD+=moved;G.oilT-=dt;
   if((S.trail||S.scorch)&&G.trailD>=9){
     G.trailD=0;
-    if(S.trail)addZone('spikes',P.x,P.y+2,5*S.area,1.5+S.trail,{ed:10*S.trail*dmgMul(),src:'spikes'});
+    if(S.trail)addZone('spikes',P.x,P.y+2,8*S.area,2.5+S.trail,{ed:28*S.trail*dmgMul(),src:'spikes'});   // 1.29: wider, longer, 2.8x damage (two picks did 224 damage)
     if(S.scorch)addZone('scorch',P.x,P.y+2,6*S.area,1e9,{ed:14*dmgMul(),src:'scorch'});
   }
   const oilW=W.find(w=>w.id==='oil');
   if(oilW&&(G.oilD>=14||G.oilT<=0)){
     G.oilD=0;G.oilT=.7;const l=oilW.lvl;
     const ev=oilW.evo?1:0;
-    addZone(l>=3||ev?'oilfire':'oil',P.x,P.y+2,(8+l)*S.area*(ev?1.8:1),3+l*.4,{ed:(2+l*1.5)*dmgMul()*(ev?1.5:1),src:'oil'});
+    addZone(l>=3||ev?'oilfire':'oil',P.x,P.y+2,(9+l*1.5)*S.area*(ev?1.8:1),3.5+l*.5,{ed:(5+l*4)*dmgMul()*(ev?1.5:1),src:'oil'});   // 1.29: much stronger (Lv 6 was 1% of damage); bigger enemies stand in more of it
   }
 
   // ---- threat, hazards, spawns
@@ -3076,7 +3140,7 @@ function update(dt){
       case 'mortar':                                                   // keeps its distance, shells where you're going
         if(d<100){tx=-tx;ty=-ty}else if(d<150){const ox=tx;tx=-ty;ty=ox;s*=.5}
         e.cd-=dt;e.tele=e.cd<.5&&d<230;
-        if(e.cd<=0&&d<230){e.cd=3.2;addZone('shell',P.x+P.vx*.8,P.y+P.vy*.8,16,1.2,{boom:{r:16,dmg:0,pd:e.dmg*1.6,col:'#ff9f43',src:'mortar',hostile:true,cause:'a Mortar shell'}})}
+        if(e.cd<=0&&d<230){e.cd=3.2;const mr=Math.round(16*Math.sqrt(e.sz||1));addZone('shell',P.x+P.vx*.7,P.y+P.vy*.7,mr,1.2,{boom:{r:mr,dmg:0,pd:e.dmg*1.15,col:'#ff9f43',src:'mortar',hostile:true,cause:'a Mortar shell'}})}
         break;
       case 'sniper':                                                   // long red aim line, one fast heavy shot
         if(d<140){tx=-tx;ty=-ty}else if(d<190)s=0;
@@ -3141,7 +3205,7 @@ function update(dt){
     if(pdist<e.r+3&&S.thorns&&!(e.thornCd>0)){e.thornCd=.5;hurt(e,22*S.thorns*dmgMul(),{kx:-tx,ky:-ty,kb:140,src:'thorns',elem:'kinetic',col:'#c9c9d6'})}
     if(e.thornCd>0)e.thornCd-=dt;
     if(e.dead)continue;
-    if(pdist<e.r+3&&e.dmg>0&&!(e.phase>0))hurtPlayer(e.dmg,e.type==='boss'?bossOf(e).name:(e.elite?'an elite ':'a ')+NAMES[e.type]);
+    if(pdist<((e.sz||1)>1?e.r*.78:e.r)+3&&e.dmg>0&&!(e.phase>0))hurtPlayer(e.dmg,e.type==='boss'?bossOf(e).name:(e.elite?'an elite ':'a ')+NAMES[e.type]);   // big bodies hurt you a little inside their outline
     if(pdist>Math.hypot(LW,LH)*1.4&&e.type!=='boss'&&e.type!=='pylon'&&e.type!=='thief')e.dead=true;
   }
   buildGrid();
@@ -3150,7 +3214,7 @@ function update(dt){
     const e=E[i];if(e.dead)continue;
     if(e.type==='ufo')continue;
     query(e.x,e.y,e.r+8,o=>{if(o===e||o.type==='ufo')return;const dx=e.x-o.x,dy=e.y-o.y,d=Math.hypot(dx,dy),m=e.r+o.r;
-      if(d<m&&d>0){const p=(m-d)*.5*(o.type==='boss'||o.type==='crate'?1.6:1)*(e.type==='boss'?.1:e.type==='crate'?0:1);e.x+=dx/d*p;e.y+=dy/d*p}});
+      if(d<m&&d>0){const ew=e.kw||1,ow=o.kw||1,p=(m-d)*.5*(o.type==='boss'||o.type==='crate'?1.6:1)*(e.type==='boss'?.1:e.type==='crate'?0:1)*(ew===ow?1:2*ow/(ew+ow));e.x+=dx/d*p;e.y+=dy/d*p}});   // big ones shoulder small ones aside
   }
 
   // ---- weapons
@@ -3212,7 +3276,9 @@ function update(dt){
       if(b.dead||(b.hit&&b.hit.has(e)))return;
       const dx=e.x-b.x,dy=e.y-b.y;if(dx*dx+dy*dy>(e.r+rad)**2)return;
       const v=Math.hypot(b.vx,b.vy)||1;
-      hurt(e,b.dmg*g,{proc:true,kx:b.vx/v,ky:b.vy/v,col:b.col,src:b.src,elem:b.elem,ignite:b.ignite});
+      // piercing shots drill through a big body: they spend extra pierce on it for extra damage, so pierce keeps its value
+      let dk=1;if((e.sz||1)>=1.5&&b.pierce>0&&b.kind!=='nuke'&&b.kind!=='missile'&&b.kind!=='fire'){const k=Math.min(b.pierce,Math.floor(e.sz));dk=1+k*.7;b.pierce-=k}
+      hurt(e,b.dmg*g*dk,{proc:true,kx:b.vx/v,ky:b.vy/v,col:b.col,src:b.src,elem:b.elem,ignite:b.ignite});
       if(b.kind==='nuke'){b.dead=true;BOOMQ.push({x:b.x,y:b.y,r:46*S.area,dmg:b.dmg*1.5,col:'#ff3b5c',src:'nuke'});G.shake=Math.max(G.shake,2.5);return}
       if(b.kind==='missile'){b.dead=true;BOOMQ.push({x:b.x,y:b.y,r:b.rad,dmg:b.dmg,col:'#ff5e5b',src:'missile'});return}
       if(b.kind==='fire'){b.dead=true;BOOMQ.push({x:b.x,y:b.y,r:b.rad,dmg:b.dmg*.8,col:'#ff7a2a',src:'fire',ring:b.napalm});return}
@@ -3314,6 +3380,8 @@ function update(dt){
   if(G.boss&&G.boss.dead)G.boss=null;
   // ---- telemetry
   G.peakE=Math.max(G.peakE,E.length);G.peakPB=Math.max(G.peakPB,PB.length);
+  // damage per second against the horde over the last 30 s (outside boss fights): boss HP keeps up with it
+  G.dpsT=(G.dpsT||0)-dt;if(G.dpsT<=0){G.dpsT=1;if(!G.arena&&!G.clear){(G.dpsS||(G.dpsS=[])).push(G.dmgTot||0);if(G.dpsS.length>31)G.dpsS.shift()}}
   G.tlT-=dt;if(G.tlT<=0){G.tlT=30;G.timeline.push({t:Math.round(G.time),kills:G.kills,threat:G.threat,lv:G.level,alive:E.length,hp:Math.round(P.hp)+'/'+P.max,fps:G.fpsWin.length>=30?curFps():null})}
   // ---- level ups
   G.lvCD-=dt;
@@ -3531,28 +3599,30 @@ function render(){
   // enemies
   for(const e of E){
     const white=e.flash>0||(e.fuse>0&&Math.floor(e.fuse*14)%2===0)||(e.tele&&Math.floor(G.time*18)%2===0);
-    const s=enemySprite(e.spr||e.type,e.shift,white);
-    const bob=e.spd>0&&!(e.frozen>0)&&e.type!=='boss'&&((G.time*7+(e.uid||0)*.37)|0)%2?1:0;   // a little step as they walk
-    const x=RK(e.x-ox-s.width/2),y=RK(e.y-oy-s.height/2)-bob;
-    if(x<-20||y<-20||x>LW+20||y>LH+20)continue;
+    const s=enemySprite(e.spr||e.type,e.shift,white),zs=e.sz||1;
+    const sw=zs>1?Math.round(s.width*zs):s.width,sh=zs>1?Math.round(s.height*zs):s.height;   // big ones: the same pixel art, drawn larger
+    const bob=e.spd>0&&!(e.frozen>0)&&e.type!=='boss'&&((G.time*7+(e.uid||0)*.37)|0)%2?Math.round(zs):0;   // a little step as they walk
+    const x=RK(e.x-ox-sw/2),y=RK(e.y-oy-sh/2)-bob;
+    if(x<-20-sw||y<-20-sh||x>LW+20||y>LH+20)continue;
     if(e.sub){if(e.ai==='burrow'){ctx.fillStyle='#5a4632';ctx.fillRect(RK(e.x-ox-3),RK(e.y-oy+1),7,2);ctx.fillStyle='#8a6a4a';ctx.fillRect(RK(e.x-ox-2),RK(e.y-oy),5,1);if(e.pop>0)tele(e.x-ox,e.y-oy,16,1-e.pop/.55,true)}continue}   // submerged: only the ripples show
     if(e.type==='ufo'){drawUfo(e,ox,oy);continue}
-    if(!(isTouch&&E.length>70))ctx.fillStyle='rgba(0,0,0,.3)',ctx.fillRect(x+1,y+s.height-1,s.width-2,2);
-    if(e.elite){ctx.globalAlpha=.55+.45*Math.sin(G.time*8+e.t);ctx.drawImage(enemySprite(e.spr||e.type,e.shift,false,true),x-1,y-1);ctx.globalAlpha=1}
+    if(!(isTouch&&E.length>70))ctx.fillStyle='rgba(0,0,0,.3)',ctx.fillRect(x+1,y+sh-1,sw-2,zs>1?Math.round(2*zs):2);
+    if(e.elite){ctx.globalAlpha=.55+.45*Math.sin(G.time*8+e.t);const os=enemySprite(e.spr||e.type,e.shift,false,true);if(zs>1)ctx.drawImage(os,x-zs,y-zs,Math.round(os.width*zs),Math.round(os.height*zs));else ctx.drawImage(os,x-1,y-1);ctx.globalAlpha=1}
     if(e.champ){ctx.globalAlpha=.35+.25*Math.sin(G.time*6);ring(e.x-ox,e.y-oy,e.r+4,e.col);ctx.globalAlpha=1}
-    if(e.phase>0){ctx.globalAlpha=.25+.1*Math.sin(G.time*20);ctx.drawImage(s,x,y);ctx.globalAlpha=1}else ctx.drawImage(s,x,y);
-    if(e.champ){const cx=x+(s.width>>1);ctx.fillStyle='#ffd84a';ctx.fillRect(cx-2,y-5,5,1);ctx.fillRect(cx-2,y-6,1,1);ctx.fillRect(cx,y-7,1,2);ctx.fillRect(cx+2,y-6,1,1)}
+    if(e.phase>0)ctx.globalAlpha=.25+.1*Math.sin(G.time*20);
+    if(zs>1)ctx.drawImage(s,x,y,sw,sh);else ctx.drawImage(s,x,y);ctx.globalAlpha=1;
+    if(e.champ){const cx=x+(sw>>1);ctx.fillStyle='#ffd84a';ctx.fillRect(cx-2,y-5,5,1);ctx.fillRect(cx-2,y-6,1,1);ctx.fillRect(cx,y-7,1,2);ctx.fillRect(cx+2,y-6,1,1)}
     if(e.guardT>G.time){ctx.globalAlpha=.5;ring(e.x-ox,e.y-oy,e.r+2,'#6be0ff');ctx.globalAlpha=1}
     if(e.ai==='shielder'){ctx.globalAlpha=.12+.06*Math.sin(G.time*4);ring(e.x-ox,e.y-oy,48,'#6be0ff');ctx.globalAlpha=1}
     if(e.beam&&e.beam.t>0){ctx.fillStyle='#9be15d';const bx=e.beam.x-e.x,by=e.beam.y-e.y,n=Math.ceil(Math.hypot(bx,by)/3);for(let k=0;k<n;k++)ctx.fillRect(RK(e.x-ox+bx*k/n),RK(e.y-oy+by*k/n),1,1)}
-    if(e.tele){const cx=x+(s.width>>1);ctx.fillStyle='#ff3b5c';ctx.fillRect(cx,y-7,1,3);ctx.fillRect(cx,y-3,1,1);
+    if(e.tele){const cx=x+(sw>>1);ctx.fillStyle='#ff3b5c';ctx.fillRect(cx,y-7,1,3);ctx.fillRect(cx,y-3,1,1);
       if(e.type==='boss'&&e.wind>0){ctx.fillStyle='rgba(255,59,92,.8)';for(let k=2;k<34;k++)ctx.fillRect(RK(e.x-ox+Math.cos(e.aimA)*k*5),RK(e.y-oy+Math.sin(e.aimA)*k*5),1,1)}
       else if(e.ai==='shooter'||e.ai==='frost'||e.ai==='sniper'){const a=Math.atan2(P.y-e.y,P.x-e.x);ctx.fillStyle='rgba(255,59,92,.7)';for(let k=2;k<(e.ai==='sniper'?40:6);k++)ctx.fillRect(RK(e.x-ox+Math.cos(a)*k*4),RK(e.y-oy+Math.sin(a)*k*4),1,1)}}
     if(e.buff>0&&Math.random()<.3)PT.push({x:e.x+rnd(-4,4),y:e.y+rnd(-4,4),vx:0,vy:-10,life:.25,max:.25,c:'#6fd16a',s:1});
-    if(e.slow>0){ctx.fillStyle='#a6f0ff';ctx.fillRect(x-1,y,1,1);ctx.fillRect(x+s.width,y+3,1,1);ctx.fillRect(x+2,y-1,1,1)}
-    if(e.hp<e.max&&(e.elite||e.r>5)&&e.type!=='boss'){const w=s.width;ctx.fillStyle='#000';ctx.fillRect(x,y-3,w,1);ctx.fillStyle='#ff4d6d';ctx.fillRect(x,y-3,Math.max(1,RK(w*e.hp/e.max)),1)}
+    if(e.slow>0){ctx.fillStyle='#a6f0ff';ctx.fillRect(x-1,y,1,1);ctx.fillRect(x+sw,y+3,1,1);ctx.fillRect(x+2,y-1,1,1)}
+    if(e.hp<e.max&&(e.elite||e.r>5)&&e.type!=='boss'){const w=sw;ctx.fillStyle='#000';ctx.fillRect(x,y-3,w,1);ctx.fillStyle='#ff4d6d';ctx.fillRect(x,y-3,Math.max(1,RK(w*e.hp/e.max)),1)}
   }
-  for(const d of DEAD){const x=RK(d.x-ox-d.spr.width/2),y=RK(d.y-oy-d.spr.height/2);ctx.globalAlpha=1-d.t/.1;ctx.drawImage(d.spr,x,y);ctx.globalAlpha=1}
+  for(const d of DEAD){const z=d.sz||1,w=Math.round(d.spr.width*z),h=Math.round(d.spr.height*z),x=RK(d.x-ox-w/2),y=RK(d.y-oy-h/2);ctx.globalAlpha=1-d.t/.1;ctx.drawImage(d.spr,x,y,w,h);ctx.globalAlpha=1}
   for(const z of Z)if(z.kind==='hole'||z.kind==='fhole')drawZone(z,ox,oy);
   drawArenaPillars(ox,oy);
   // player
@@ -3684,7 +3754,7 @@ function buildReport(){
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
     mode:G.daily?'daily '+G.seedStr:'normal',difficulty:DIFF[G.diff||'normal'].name,seed:G.seedCode+(G.customSeed?' (chosen)':''),dailyMutations:G.dmods,achievementsThisRun:G.achNew||[],champions:{seen:G.champSeen||0,killed:G.champKills||0},character:CHARS[G.char].name,startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.victory?'won':G.won?(G.state==='over'?'won, then died in endless':'won, in endless'):G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
-      bossesKilled:G.bossKills,bossFights:G.bossLog,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,curios:G.curioN||{},trophies:G.trophies,relicCombos:G.combos||[],reactions:G.rx,pet:!!G.pet,novice:!!G.novice,rank:RANKS[G.rank||0].name,closestCall:G.lowHp!==undefined?Math.round(G.lowHp*100)+'%':null,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),allies:{joined:G.alliesJoined||0,lost:G.alliesLost||0,now:G.allies.map(a=>ALLY[a.kind].name+' '+Math.ceil(a.hp)+'/'+a.max)},checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
+      bossesKilled:G.bossKills,bossFights:G.bossLog.concat(G.bossLost?[G.bossLost]:[]),enemyBodies:G.bodies||0,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,curios:G.curioN||{},trophies:G.trophies,relicCombos:G.combos||[],reactions:G.rx,pet:!!G.pet,novice:!!G.novice,rank:RANKS[G.rank||0].name,closestCall:G.lowHp!==undefined?Math.round(G.lowHp*100)+'%':null,beacons:G.lullLog,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),allies:{joined:G.alliesJoined||0,lost:G.alliesLost||0,now:G.allies.map(a=>ALLY[a.kind].name+' Lv '+(a.lvl||1)+' '+Math.ceil(a.hp)+'/'+a.max)},checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     ability:{name:abil().name,uses:(G.ab&&G.ab.uses)||0},
     weapons:W.map(w=>WDEF[w.id].name+' Lv '+w.lvl+(w.evo?' (evolved: '+EVO[w.id].name+')':'')),rerollsUsed:G.rerollsUsed,shotsBlocked:G.blocked||0,powerSurges:G.surges,levelsCashedOut:G.cashedOut,autoPicked:G.autoPicked,notes:G.notes,
     modifiedStats:Object.fromEntries(statKeys.map(k=>[k,Math.round(S[k]*100)/100])),
@@ -3701,7 +3771,7 @@ function buildReport(){
     `Start: ${r.startWeapon}${r.relics.length?' + '+r.relics.join(', '):''}. Weapons now: ${r.weapons.join(', ')}.`,
     `Damage: ${top||'none'}. Best streak ${G.bestStreak}. Avg ${r.perf.avgFps} fps, worst ${r.perf.worstFps}, peak ${G.peakE} enemies.`,
     `Hurt by: ${Object.entries(r.damageTakenFrom).slice(0,4).map(([k,v])=>k+' '+v).join(', ')||'nothing'}.`,
-    `Bosses: ${G.bossLog.map(b=>`${b.boss} (threat ${b.threat}, ${b.fightSeconds}s, ${b.hpLeft} HP left)`).join(', ')||(G.arena?'died in the arena':'none')}.`,
+    `Bosses: ${G.bossLog.map(b=>`${b.boss} (threat ${b.threat}, ${b.fightSeconds}s, ${b.hpLeft} HP left)`).concat(G.bossLost?[`lost to ${G.bossLost.boss} (threat ${G.bossLost.threat}, ${G.bossLost.fightSeconds}s, it had ${G.bossLost.bossHpLeft} left)`]:[]).join(', ')||(G.arena?'died in the arena':'none')}.`,
     `Picks: ${G.log.map(l=>l.pick).join(' > ')||'none'}`,
     '',
     'Notes: '+(G.notes.trim()||'(none)'),
@@ -3783,6 +3853,8 @@ function start(daily,seed){
 }
 function gameOver(){
   if(G.state==='over')return;
+  if(G.arena&&G.boss&&!G.boss.dead&&G.arena.fightStart){const b=G.boss,B=bossOf(b);   // a lost boss fight goes in the report too
+    G.bossLost=({boss:B.name,fight:G.arena.fmt,lost:true,phase2:!!b.p2,threat:G.threat,fightSeconds:Math.round(G.time-G.arena.fightStart),bossHpLeft:Math.round(b.hp/b.max*100)+'%',bossHp:Math.round(b.max),hordeDps:b.hordeDps,size:b.sz,hitsTaken:Math.round(G.bossHurt||0)})}
   endMode();G.state='over';snd('over');G.stop=0;joy.on=false;applyControls();burst(P.x,P.y,'#2ec4b6',40,90,.8,2);G.flash=.6;
   checkAch(true);
   meta.runs++;meta.totalKills+=G.kills;meta.lmTotal=(meta.lmTotal||0)+(G.lmClaimed||0);
