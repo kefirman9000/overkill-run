@@ -200,9 +200,13 @@ Open the GitHub Pages link in Chrome and tap **Install app** on the title screen
 
 Pause or die, type any thoughts into the notes box, then press **Copy run report**. It copies a summary of the run (picks, damage by source, a 30-second timeline, frame rate, device, and for each boss fight its HP, size, your horde damage per second going in and the damage you took, including a fight you lost) that you can paste into a chat for balance review. **Save report file** downloads the same thing as a .txt.
 
+## Continue a run
+
+The game saves your run whenever it pauses, including when you switch apps or the phone locks. If the browser closes the tab in the background, **CONTINUE** on the title screen picks up where you left off (it shows the threat and time). Starting a new run, quitting to the title or dying clears the save.
+
 ## Run history
 
-**Run History** on the title screen keeps your last 40 runs in this browser: deaths, wins, and quits after the first minute. It shows totals (runs, wins, best threat, longest run), what kills you most, your most used weapons and each boss's record and average fight time, then every run with its result, threat, time, kills, level and weapons. The newest 10 keep their full run report, with a button to copy it.
+**Run History** on the title screen keeps your last 40 runs in this browser: deaths, wins, and quits after the first minute. It shows totals (runs, wins, best threat, longest run), what kills you most, your most used weapons and each boss's record and average fight time, then every run with its result, threat, time, kills, level and weapons. The newest 10 keep their full run report, with a button to copy it. **COPY FOR REVIEW** copies one summary of all of them: how often each card was offered and taken (and which are never taken), super modes, how often each system came up, and every run with its picks.
 
 ## Updates
 

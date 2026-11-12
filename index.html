@@ -276,7 +276,7 @@ details.story .dim{opacity:.45}
 <div class="ov" id="title">
   <div class="card">
     <h1>OVERKILL<br><span>RUN</span></h1>
-    <div class="btns tStart"><button class="go" id="startBtn">START RUN</button><button id="dailyBtn">DAILY RUN</button></div>
+    <div class="btns tStart"><button class="go" id="contBtn" hidden>CONTINUE RUN</button><button class="go" id="startBtn">START RUN</button><button id="dailyBtn">DAILY RUN</button></div>
     <div class="loadout">
       <button class="lo" data-sheet="cSheet"><small>CHARACTER</small><b id="loC"></b></button>
       <button class="lo" data-sheet="wSheet"><small>WEAPON</small><b id="loW"></b></button>
@@ -315,7 +315,7 @@ details.story .dim{opacity:.45}
   <div class="card wide">
     <h2>RUN HISTORY</h2>
     <div id="histBody"></div>
-    <div class="btns"><button class="go" id="histClose">BACK</button><button id="histClear">CLEAR HISTORY</button></div>
+    <div class="btns"><button class="go" id="histClose">BACK</button><button id="histReview">COPY FOR REVIEW</button><button id="histClear">CLEAR HISTORY</button></div>
   </div>
 </div>
 <div class="ov" id="achOv" hidden>
@@ -415,7 +415,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.31.0';
+const VERSION='1.32.0';
 const REPO='kefirman9000/overkill-run';
 const $EL={},$=id=>{const e=$EL[id];if(e&&e.isConnected)return e;return $EL[id]=document.getElementById(id)};
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -3877,7 +3877,7 @@ function buildReport(){
     `Start: ${r.startWeapon}${r.relics.length?' + '+r.relics.join(', '):''}. Weapons now: ${r.weapons.join(', ')}.`,
     `Damage: ${top||'none'}. Best streak ${G.bestStreak}. Avg ${r.perf.avgFps} fps, worst ${r.perf.worstFps}, peak ${G.peakE} enemies.`,
     `Hurt by: ${Object.entries(r.damageTakenFrom).slice(0,4).map(([k,v])=>k+' '+v).join(', ')||'nothing'}.`,
-    `Bosses: ${G.bossLog.map(b=>`${b.boss} (threat ${b.threat}, ${b.fightSeconds}s, ${b.hpLeft} HP left)`).concat(G.bossLost?[`lost to ${G.bossLost.boss} (threat ${G.bossLost.threat}, ${G.bossLost.fightSeconds}s, it had ${G.bossLost.bossHpLeft} left)`]:[]).join(', ')||(G.arena?'died in the arena':'none')}.`,
+    `Bosses: ${G.bossLog.map(b=>`${b.boss} (threat ${b.threat}, ${b.fightSeconds}s, ${b.hpLeft} HP left)`).concat(G.bossLost?[`lost to ${G.bossLost.boss} (threat ${G.bossLost.threat}, ${G.bossLost.fightSeconds}s, it had ${G.bossLost.bossHpLeft} left)`]:[]).join(', ')||(G.arena?(G.state==='over'?'died in the arena':'fighting '+(G.boss&&!G.boss.dead?bossOf(G.boss).name:'a boss')+' now'):'none')}.`,
     `Picks: ${G.log.map(l=>l.pick).join(' > ')||'none'}`,
     '',
     'Notes: '+(G.notes.trim()||'(none)'),
@@ -3913,6 +3913,7 @@ $('repSelect').onclick=()=>{const b=$('reportBox');b.focus();b.select()};
 /* ================= flow ================= */
 function bestLine(){if(!meta.bestKills)return 'No runs yet.';const bb=meta.bestBy&&meta.bestBy[chosenD];const d=chosenD==='normal'?'':` · ${DIFF[chosenD].name} best: ${bb?bb.kills+' kills, threat '+bb.threat:'none yet'}`;return `Best: ${meta.bestKills} kills · threat ${meta.bestThreat} · ${meta.totalKills.toLocaleString()} lifetime kills`+d}
 function buildTitle(){
+  try{showContinue()}catch(_){}
   $('bestTitle').textContent=bestLine();
   $('skinPick').innerHTML=Object.entries(SKINS).map(([k,v])=>{const ok=skinOk(k),src=ACH.find(a=>a[4]&&a[4].skin===k);return `<button data-skin="${k}" class="${(meta.skin||'base')===k?'on':''}" ${ok?'':'disabled'} title="${esc(v.name+(ok?'':' · '+(src?src[2]:'')))}"><i style="background:${v.a||CHAR_COL[chosenC].a};--d:${v.d||CHAR_COL[chosenC].d}"></i></button>`}).join('');
   const dt=new Date().toLocaleDateString('en-CA');$('dailyBtn').title='Today: '+dailyMuts(dt).map(k=>DAILY_MUTS[k].name+' ('+DAILY_MUTS[k].desc+')').join(', ');
@@ -3945,6 +3946,7 @@ function closeSheets(){['cSheet','wSheet','rSheet'].forEach(k=>$(k).hidden=true)
 document.querySelector('#rSheet .sheetDone').addEventListener('click',closeSheets);
 $('rPick').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(b&&!b.disabled){const id=b.dataset.r;if(chosenR.has(id))chosenR.delete(id);else{if(chosenR.size>=RELIC_MAX)chosenR.delete([...chosenR][0]);chosenR.add(id)}buildTitle()}});
 function start(daily,seed){
+  clearSave();
   try{$('eventBar').hidden=true}catch(_){}
   initAudio();if(AC&&AC.state==='suspended')AC.resume();
   VIEW=CFG.autoZoom?VIEW_IN:VIEW_FIXED;setZoom(VIEW);applyView(true);
@@ -3961,7 +3963,7 @@ function gameOver(){
   if(G.state==='over')return;
   if(G.arena&&G.boss&&!G.boss.dead&&G.arena.fightStart){const b=G.boss,B=bossOf(b);   // a lost boss fight goes in the report too
     G.bossLost=({boss:B.name,fight:G.arena.fmt,lost:true,phase2:!!b.p2,threat:G.threat,fightSeconds:Math.round(G.time-G.arena.fightStart),bossHpLeft:Math.round(b.hp/b.max*100)+'%',bossHp:Math.round(b.max),hordeDps:b.hordeDps,size:b.sz,hitsTaken:Math.round(G.bossHurt||0)})}
-  endMode();G.state='over';recordRun(G.victory?'won':'died');snd('over');G.stop=0;joy.on=false;applyControls();burst(P.x,P.y,'#2ec4b6',40,90,.8,2);G.flash=.6;
+  endMode();clearSave();G.state='over';recordRun(G.victory?'won':'died');snd('over');G.stop=0;joy.on=false;applyControls();burst(P.x,P.y,'#2ec4b6',40,90,.8,2);G.flash=.6;
   checkAch(true);
   meta.runs++;meta.totalKills+=G.kills;meta.lmTotal=(meta.lmTotal||0)+(G.lmClaimed||0);
   document.querySelector('#over h2').textContent=G.victory?'VICTORY':'OVERRUN';
@@ -3983,6 +3985,7 @@ function gameOver(){
 function setPause(on){
   if(G.state!=='play'&&G.state!=='pause')return;
   G.state=on?'pause':'play';$('pause').hidden=!on;
+  if(on)saveRun();
   joy.on=false;joy.dx=joy.dy=joy.kx=joy.ky=0;applyControls();
   if(on){
     const rows=[['Seed',G.daily?'daily '+G.seedStr:G.seedCode],...(G.dmods.length?[['Today',G.dmods.map(k=>DAILY_MUTS[k].name).join(', ')]]:[]),['HP',Math.ceil(P.hp)+' / '+P.max],['Level',G.level],['Threat',G.threat+' · '+landName(G.threat)],...W.map(w=>[w.evo?EVO[w.id].name:WDEF[w.id].name,w.evo?'evolved':'Lv '+w.lvl])];
@@ -3994,7 +3997,7 @@ function setPause(on){
     document.querySelectorAll('.repNote').forEach(n=>n.textContent='');
   }
 }
-function toTitle(){G={state:'title'};['over','win','pause','lvl','repOv','hud','opts'].forEach(id=>$(id).hidden=true);$('title').hidden=false;buildTitle();applyControls()}
+function toTitle(){clearSave();G={state:'title'};['over','win','pause','lvl','repOv','hud','opts'].forEach(id=>$(id).hidden=true);$('title').hidden=false;buildTitle();applyControls()}
 $('loDiff').onclick=()=>{chosenD=DIFF_ORDER[(DIFF_ORDER.indexOf(chosenD)+1)%3];try{localStorage.setItem('overkill-run-diff',chosenD)}catch(_){}buildTitle();toast(chosenD==='nightmare'?3:chosenD==='easy'?1:0,DIFF[chosenD].name+': '+DIFF[chosenD].desc)};
 $('startBtn').onclick=()=>start(false);
 $('skinPick').addEventListener('click',e=>{const b=e.target.closest('button[data-skin]');if(!b||b.disabled)return;meta.skin=b.dataset.skin;saveMeta();buildTitle()});
@@ -4011,7 +4014,11 @@ function recordRun(how){
   const e={at:Date.now(),v:VERSION,how,daily:!!G.daily,diff:G.diff||'normal',char:G.char,time:Math.round(G.time),threat:G.threat,level:G.level,kills:G.kills,land:landName(G.threat),
     killedBy:how==='died'?(G.lastHit||'something'):null,weapons:W.map(w=>w.evo?EVO[w.id].name:WDEF[w.id].name),
     top:Object.entries(G.dmgBy||{}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>[k,Math.round(v/sumD*100)]),
-    bosses:(G.bossLog||[]).map(b=>({n:b.boss,s:b.fightSeconds})).concat(G.bossLost?[{n:G.bossLost.boss,s:G.bossLost.fightSeconds,lost:1}]:[]),report:txt};
+    bosses:(G.bossLog||[]).map(b=>({n:b.boss,s:b.fightSeconds})).concat(G.bossLost?[{n:G.bossLost.boss,s:G.bossLost.fightSeconds,lost:1}]:[]),report:txt,
+    picks:(G.log||[]).map(l=>l.pick),offered:(G.log||[]).flatMap(l=>l.offered||[]),modes:(G.modesUsed||[]).map(m=>m.mode+' ('+m.from+')'),
+    sys:{surges:G.surges||0,autoPicked:G.autoPicked||0,rerolls:G.rerollsUsed||0,cashedOut:G.cashedOut||0,beacons:(G.lullLog||[]).length,checkpointsUsed:G.checksUsed||0,abductions:G.abductions||0,
+      thieves:(G.thieves||0)+'/'+(G.thiefSeen||0),landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),curios:Object.values(G.curioN||{}).reduce((a,b)=>a+(+b||0),0),champions:(G.champKills||0)+'/'+(G.champSeen||0),
+      reactions:Object.values(G.rx||{}).reduce((a,b)=>a+(+b||0),0),relicCombos:(G.combos||[]).length,pet:G.pet?1:0,abilityUses:(G.ab&&G.ab.uses)||0,resumed:G.resumed||0}};
   const h=loadHist();h.unshift(e);if(h.length>HIST_MAX)h.length=HIST_MAX;h.forEach((r,i)=>{if(i>=HIST_FULL)delete r.report});saveHist(h);
 }
 function histHTML(){
@@ -4038,6 +4045,35 @@ function histHTML(){
 function openHist(){$('histBody').innerHTML=histHTML();$('histClear').textContent='CLEAR HISTORY';$('title').hidden=true;$('histOv').hidden=false;$('histOv').scrollTop=0}
 $('histBtn').onclick=openHist;
 $('histClose').onclick=()=>{$('histOv').hidden=true;$('title').hidden=false};
+function reviewText(){
+  const h=loadHist();if(!h.length)return 'No runs in history yet.';
+  // older runs only kept their stats inside the saved report, so read those back where they exist
+  const runs=h.map(r=>{let picks=r.picks,offered=r.offered,modes=r.modes,sys=r.sys;
+    if(!picks&&r.report){try{const j=JSON.parse(r.report.split('```json')[1].split('```')[0]);picks=(j.upgrades||[]).map(l=>l.pick);offered=(j.upgrades||[]).flatMap(l=>l.offered||[]);modes=(j.superModes||[]).map(m=>m.mode+' ('+m.from+')');
+      sys={surges:j.powerSurges||0,autoPicked:j.autoPicked||0,rerolls:j.rerollsUsed||0,beacons:((j.result||{}).beacons||[]).length,abductions:(j.result||{}).abductions||0,thieves:(j.result||{}).soulThieves,landmarks:(j.result||{}).landmarks,champions:j.champions?j.champions.killed+'/'+j.champions.seen:undefined,abilityUses:j.ability&&j.ability.uses}}catch(_){}}
+    return Object.assign({},r,{picks,offered,modes,sys})});
+  const withPicks=runs.filter(r=>r.picks);
+  const cnt={};const bump=(k,f)=>{const c=cnt[k]||(cnt[k]={o:0,p:0});c[f]++};
+  for(const r of withPicks){for(const o of (r.offered||[]).filter(o=>!/^\(/.test(o)))bump(o.replace(/ \([A-Z]\)$/,'').replace(/ Lv \d+$/,' (level up)'),'o');for(const p of r.picks||[])bump(p.replace(/ Lv \d+$/,' (level up)'),'p')}
+  const cards=Object.entries(cnt).sort((a,b)=>b[1].o-a[1].o);
+  const never=cards.filter(([k,c])=>c.o>=3&&c.p===0).map(([k,c])=>k+' (offered '+c.o+'x)');
+  const rare=cards.filter(([k,c])=>c.o>=4&&c.p>0&&c.p/c.o<.15).map(([k,c])=>k+' ('+c.p+'/'+c.o+')');
+  const modeCnt={};for(const r of runs)for(const m of r.modes||[])modeCnt[m]=(modeCnt[m]||0)+1;
+  const sysTot={};for(const r of runs){if(!r.sys)continue;for(const [k,v] of Object.entries(r.sys)){if(v===undefined)continue;const n=typeof v==='string'?+v.split('/')[0]:+v;if(!isFinite(n))continue;const o=sysTot[k]||(sysTot[k]={sum:0,runs:0,zero:0});o.sum+=n;o.runs++;if(!n)o.zero++}}
+  const lines=['OVERKILL RUN HISTORY FOR REVIEW (v'+VERSION+')',
+    runs.length+' runs kept, '+withPicks.length+' with upgrade data. Versions: '+[...new Set(runs.map(r=>r.v))].join(', '),
+    'Results: '+runs.map(r=>(r.how==='won'?'W':r.how==='quit'?'Q':'D')+r.threat+'/'+fmtT(r.time)).join(' '),
+    '','Cards offered 3+ times and never taken: '+(never.join(', ')||'none'),
+    'Cards rarely taken (<15%): '+(rare.join(', ')||'none'),
+    '','Card offers and picks (offered/picked):',...cards.map(([k,c])=>'  '+k+': '+c.o+'/'+c.p),
+    '','Super modes (count): '+(Object.entries(modeCnt).sort((a,b)=>b[1]-a[1]).map(([k,n])=>k+' '+n).join(', ')||'none'),
+    '','Systems per run (average; runs where it never happened):',...Object.entries(sysTot).map(([k,o])=>'  '+k+': avg '+(o.sum/o.runs).toFixed(1)+'; zero in '+o.zero+'/'+o.runs),
+    '','Runs:',...runs.map(r=>'  '+new Date(r.at).toISOString().slice(0,16)+' v'+r.v+' '+(r.how||'?')+' threat '+r.threat+' '+fmtT(r.time)+' Lv '+r.level+' '+(r.killedBy?'killed by '+r.killedBy+' ':'')+'| '+(r.weapons||[]).join(', ')+(r.picks?' | picks: '+r.picks.join(' > '):''))];
+  return lines.join('\n');
+}
+$('histReview').onclick=()=>{const b=$('histReview'),txt=reviewText();
+  const ok=()=>{b.textContent='COPIED'},bad=()=>{b.textContent='COPY BLOCKED'};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(ok).catch(bad);else bad()};
 $('histClear').onclick=()=>{const b=$('histClear');if(b.textContent!=='TAP AGAIN TO CLEAR'){b.textContent='TAP AGAIN TO CLEAR';return}try{localStorage.removeItem(HIST_KEY)}catch(_){}openHist()};
 $('histBody').addEventListener('click',ev=>{const b=ev.target.closest('button[data-hi]');if(!b)return;const r=loadHist()[+b.dataset.hi];if(!r||!r.report)return;
   const ok=()=>{b.textContent='COPIED'},bad=()=>{b.textContent='COPY BLOCKED'};
@@ -4189,7 +4225,8 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;joy.on=false;if(G.state==='play')setPause(true)});
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.state==='play')setPause(true)});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)return;if(G.state==='play')setPause(true);else if(G.state==='levelup')saveRun()});
+addEventListener('pagehide',()=>{if(G.state==='play'||G.state==='pause'||G.state==='levelup')saveRun()});
 
 /* title backdrop */
 function titleDemo(t){
@@ -4213,6 +4250,95 @@ function frame(now){
   }
   requestAnimationFrame(frame);
 }
+/* ================= save and resume ================= */
+// A snapshot of the run goes to this browser's storage whenever the game pauses or the tab is hidden,
+// so a run survives the phone closing the tab in the background. Shared references (G.boss is one of E,
+// an ally's target, Maps of landmarks) are kept as references; game tables and sprites are stored by name.
+const SAVE_KEY='overkill-run-save';
+let STATIC=null;
+function staticReg(){
+  if(STATIC)return STATIC;
+  const byObj=new Map(),byName=new Map();
+  const tables={ET,NAMES,ICONS,WICON,ICON_SPR,BIOMES,WDEF,EVO,CARDS,UNLOCK,RELICS,MODES,PICKUPS,FX,CAMP_KINDS,CHARS,ALLY,ALLY_PERKS,FLAVOR,STORY,RANKS,CURIOS,BOSS_P2,TROPHY,COMBOS,BOSS_MODS,DIFF,CHAMP_MODS,SKINS,PERKS,ACH,DAILY_MUTS,ABIL,FMT,BOSSES,ARENA_G,SPR_P,PPAL};
+  const walk=(v,name,depth)=>{
+    if(v===null||typeof v!=='object'||byObj.has(v))return;
+    byObj.set(v,name);byName.set(name,v);
+    if(depth>=4||v instanceof HTMLCanvasElement||ArrayBuffer.isView(v))return;
+    if(v instanceof Map){let i=0;for(const x of v.values())walk(x,name+'#'+(i++),depth+1);return}
+    for(const k of Object.keys(v))walk(v[k],name+'.'+k,depth+1);
+  };
+  for(const [n,t] of Object.entries(tables)){try{walk(t,n,0)}catch(_){}}
+  for(const [cn,c] of [['sprCache',sprCache],['ICON_COL',ICON_COL],['GEMS',GEMS],['SHAPE',SHAPE]])for(const [k,x] of c)if(x&&typeof x==='object'&&!byObj.has(x)){byObj.set(x,cn+'@'+k);byName.set(cn+'@'+k,x)}
+  return STATIC={byObj,byName};
+}
+function packRun(root){
+  const reg=staticReg().byObj,ids=new Map();let next=0;
+  const enc=v=>{
+    if(typeof v==='function'||typeof v==='symbol'||v===undefined)return undefined;
+    if(typeof v==='number')return isFinite(v)?v:{$n:String(v)};
+    if(v===null||typeof v!=='object')return v;
+    const sn=reg.get(v);if(sn!==undefined)return {$k:sn};
+    if(ids.has(v))return {$r:ids.get(v)};
+    if((typeof Node!=='undefined'&&v instanceof Node)||(typeof CanvasRenderingContext2D!=='undefined'&&v instanceof CanvasRenderingContext2D)||(typeof AudioNode!=='undefined'&&v instanceof AudioNode))return null;
+    const id=next++;ids.set(v,id);
+    if(v instanceof Map)return {$i:id,$m:[...v].map(([k,x])=>[enc(k),enc(x)])};
+    if(v instanceof Set)return {$i:id,$s:[...v].map(enc)};
+    if(ArrayBuffer.isView(v))return {$i:id,$t:v.constructor.name,d:Array.from(v)};
+    if(Array.isArray(v))return {$i:id,$a:v.map(x=>{const e=enc(x);return e===undefined?null:e})};
+    const o={};for(const k of Object.keys(v)){const e=enc(v[k]);if(e!==undefined)o[k]=e}
+    return {$i:id,$o:o};
+  };
+  return enc(root);
+}
+function unpackRun(data){
+  const reg=staticReg().byName,ids=new Map();
+  const dec=v=>{
+    if(v===null||typeof v!=='object')return v;
+    if('$n' in v)return Number(v.$n);
+    if('$k' in v){const x=reg.get(v.$k);if(x===undefined)throw new Error('missing '+v.$k);return x}
+    if('$r' in v){if(!ids.has(v.$r))throw new Error('bad ref');return ids.get(v.$r)}
+    if('$m' in v){const m=new Map();ids.set(v.$i,m);for(const [k,x] of v.$m)m.set(dec(k),dec(x));return m}
+    if('$s' in v){const st=new Set();ids.set(v.$i,st);for(const x of v.$s)st.add(dec(x));return st}
+    if('$t' in v){const C=window[v.$t]||Array;const t=C.from?C.from(v.d):v.d;ids.set(v.$i,t);return t}
+    if('$a' in v){const a=[];ids.set(v.$i,a);for(const x of v.$a)a.push(dec(x));return a}
+    if('$o' in v){const o={};ids.set(v.$i,o);for(const k of Object.keys(v.$o))o[k]=dec(v.$o[k]);return o}
+    return v;
+  };
+  return dec(data);
+}
+function saveRun(){
+  try{
+    if(!G||!G.time||G.state==='over'||G.state==='title'||G.state==='win')return;
+    const was=G.state;if(was==='levelup')G.state='pause';
+    const root={G,P,S,W,E,PU,Z,SHRINES,TURRETS,cam,UID,VIEW};
+    const txt=JSON.stringify({v:VERSION,at:Date.now(),threat:G.threat,time:G.time,level:G.level,land:landName(G.threat),char:G.char,data:packRun(root)});
+    G.state=was;
+    localStorage.setItem(SAVE_KEY,txt);
+  }catch(e){try{if(G&&G.state==='pause'&&!G.saveWarned){G.saveWarned=1;toast(0,'Could not save this run for later: '+(e&&e.name||'storage full'))}}catch(_){}}
+}
+function clearSave(){try{localStorage.removeItem(SAVE_KEY)}catch(_){}}
+function peekSave(){try{const t=localStorage.getItem(SAVE_KEY);if(!t)return null;const s=JSON.parse(t);return s&&s.data?s:null}catch(_){return null}}
+function showContinue(){
+  const s=peekSave(),b=$('contBtn');if(!b)return;
+  b.hidden=!s;if(s)b.textContent='CONTINUE · THREAT '+s.threat+' · '+fmtT(s.time);
+}
+function resumeRun(){
+  const s=peekSave();if(!s){showContinue();return}
+  let st;try{st=unpackRun(s.data)}catch(e){clearSave();showContinue();toast&&toast(0,'That saved run could not be loaded.');return}
+  initAudio();if(AC&&AC.state==='suspended')AC.resume();
+  ({G,P,S,W,E,PU,Z,SHRINES,TURRETS,cam}=st);UID=Math.max(st.UID||0,...E.map(e=>e.uid||0));
+  PB=[];EB=[];PT=[];RINGS=[];ARCS=[];DECALS=[];DEAD=[];AMB=[];GHOSTS=[];BOOMQ=[];BEAMS=[];
+  cardRand=mulberry32(((G.seedN||1)^Math.imul(G.level+1,2654435761))>>>0);
+  for(const e of E)if(e.type==='boss'&&!e.spr)try{e.spr=bossOf(e).spr}catch(_){}
+  G.fpsWin=[];G.stop=0;G.hudDirty=true;G.saveWarned=0;G.resumed=(G.resumed||0)+1;
+  for(const k in keys)keys[k]=false;dashQueued=false;
+  VIEW=st.VIEW||VIEW;setZoom(VIEW);applyView(true);
+  ['title','over','win','pause','lvl','repOv','opts','histOv'].forEach(id=>{const el=$(id);if(el)el.hidden=true});$('hud').hidden=false;
+  G.state='play';applyControls();updateHud();setPause(true);
+  toast(1,'Run restored. Resume when ready.');
+}
+$('contBtn').onclick=resumeRun;
+
 let installEvt=null;
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;$('installBtn').style.display='inline-block'});
 $('installBtn').onclick=async()=>{if(!installEvt)return;installEvt.prompt();try{await installEvt.userChoice}catch(_){}installEvt=null;$('installBtn').style.display='none'};
