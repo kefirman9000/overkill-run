@@ -415,7 +415,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.30.0';
+const VERSION='1.31.0';
 const REPO='kefirman9000/overkill-run';
 const $EL={},$=id=>{const e=$EL[id];if(e&&e.isConnected)return e;return $EL[id]=document.getElementById(id)};
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -2463,8 +2463,19 @@ function drawBossMarks(ox,oy){
 }
 
 /* ---- boss attacks ---- */
-function bShot(e,a,spd,dmgK,o){dmgK*=BOSS_DMG*bossEarly();const B=bossOf(e);EB.push(Object.assign({x:e.x,y:e.y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:4,dmg:e.dmg*dmgK,from:B.name,col:B.bul},o||{}))}
-function bRing(e,n,spd,dmgK,o){const off=R();for(let i=0;i<n;i++)bShot(e,(i/n+off)*TAU,spd,dmgK,o)}
+function bShot(e,a,spd,dmgK,o){if(EB.length>170)return;dmgK*=BOSS_DMG*bossEarly();   // a hard cap so patterns never stack into a wall
+  const B=bossOf(e);EB.push(Object.assign({x:e.x,y:e.y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:4,dmg:e.dmg*dmgK,from:B.name,col:B.bul},o||{}))}
+/* 1.31: boss bullets come in patterns you can read, like a bullet hell, instead of random sprays:
+   - rings never have gaps narrower than RING_GAP (at 40 px out), so there is always a lane you fit through
+   - rings line up on you and alternate: one has a lane pointing straight at you, the next a bullet, so a small
+     sidestep takes you through each (no more random rotation)
+   - the Tempest's gusts no longer blow the bullets about, and its fans and lightning come in fixed shapes */
+const RING_GAP=15,ringCap=()=>Math.floor(TAU*40/RING_GAP);              // 16 bullets per ring at most
+function bRing(e,n,spd,dmgK,o){
+  n=Math.max(4,Math.min(n,ringCap()));e.ringK=(e.ringK||0)+1;
+  const aim=Math.atan2(P.y-e.y,P.x-e.x),half=e.ringK%2?.5:0;          // odd rings: lane on you; even rings: bullet on you
+  for(let i=0;i<n;i++)bShot(e,aim+(i+half)/n*TAU,spd,dmgK,o);
+}
 function bLater(e,t,fn){e.q.push({t,fn})}
 function bShell(e,x,y,r,after,k){addZone('shell',x,y,r,1.1,{boom:{r,dmg:0,pd:e.dmg*(k||1.1)*BOSS_DMG*bossEarly(),col:bossOf(e).col,src:'boss',hostile:true,cause:bossOf(e).name,after}})}
 const REST_T=2.6;
@@ -2504,7 +2515,7 @@ function bossThink(e,dt,dx,dy,d){
     e.spiral-=dt;e.sp2=(e.sp2||0)+dt;
     if(e.sp2>.09){e.sp2=0;const base=e.t*(e.spinK||4);const arms=e.arms||3;
       for(let k=0;k<arms;k++)bShot(e,base+k*TAU/arms,60,.4);
-      if(e.twin)for(let k=0;k<arms;k++)bShot(e,-base+k*TAU/arms+.3,52,.4)}
+      if(e.twin)for(let k=0;k<arms;k++)bShot(e,-base+k*TAU/arms,60,.4)}   // counter-rotating at the same speed: a regular diamond lattice
   }
   // the Hollow, unseen: closes in fast, then shows itself next to you
   if(e.stalk>0){
@@ -2552,13 +2563,13 @@ function bossThink(e,dt,dx,dy,d){
         RINGS.push({x:tx,y:ty,r:0,max:30,life:.35,t:0,c:'#9ad13c',noFill:1});bRing(e,12+T,50,.45);addZone('ppuddle',tx,ty,14,6,{pd:8*(1+T*.06)})})}break;
     case 'spores':e.cd=2.2*f;{const n=4+Math.floor(T/5);for(let i=0;i<n;i++){const a=R()*TAU,r=i?rnd(16,48):0;
       bShell(e,P.x+P.vx*.7+Math.cos(a)*r,P.y+P.vy*.7+Math.sin(a)*r,14,q=>addZone('ppuddle',q.x,q.y,12,8,{pd:8*(1+T*.06)}))}}break;
-    case 'gasring':e.cd=2.4*f;{const n=22+T,gap=Math.atan2(P.y-e.y,P.x-e.x)+rnd(-1.2,1.2);  // one gap somewhere near your side
+    case 'gasring':e.cd=2.4*f;{const n=Math.min(26,22+T),gap=Math.atan2(P.y-e.y,P.x-e.x)+rnd(-1.2,1.2);  // one gap somewhere near your side
       for(let i=0;i<n;i++){const a=i/n*TAU;if(Math.abs(Math.atan2(Math.sin(a-gap),Math.cos(a-gap)))<.42)continue;bShot(e,a,38,.5,{life:5})}
       for(let i=0;i<2;i++){const z=addZone('poison',e.x,e.y,20,9,{pd:5*(1+T*.06)});const va=R()*TAU;z.vx=Math.cos(va)*14;z.vy=Math.sin(va)*14}}break;
     // --- Prism Colossus (pylons): eruption lines toward you, double prism rings, eruptions under you
     case 'crystallines':e.cd=2.4*f;for(const off of [-.42,0,.42]){const a=aim+off;for(let k=1;k<=11;k++){const x=e.x+Math.cos(a)*k*13,y=e.y+Math.sin(a)*k*13;
       if(A&&A.wall>=.5&&Math.hypot(x-A.x,y-A.y)>A.r-6)break;addZone('spike',x,y,9,1.4+k*.07,{arm:.75+k*.07,pd:e.dmg*.9})}}break;
-    case 'prismburst':e.cd=2.6*f;{const n=16+T;bRing(e,n,52,.45);bLater(e,.35,()=>{for(let i=0;i<n;i++)bShot(e,(i+.5)/n*TAU+e.t,44,.45)})}break;
+    case 'prismburst':e.cd=2.6*f;bRing(e,16+T,52,.45);bLater(e,.35,()=>bRing(e,16+T,44,.45));break;
     case 'eruption':e.cd=2.2*f;{const n=5+Math.floor(T/6);for(let i=0;i<n;i++){const a=R()*TAU,r=i?rnd(14,34):0;addZone('spike',P.x+P.vx*.4+Math.cos(a)*r,P.y+P.vy*.4+Math.sin(a)*r,11,1.4,{arm:.85,pd:e.dmg*.9})}}break;
     // --- The Hollow (hunt): stalks unseen, black holes, counter-rotating spirals, blinks
     case 'stalk':e.cd=(2.2+2.8)*f;e.stalk=2.2;e.phase=99;burst(e.x,e.y,B.col,16,50,.4);break;
@@ -2566,7 +2577,7 @@ function bossThink(e,dt,dx,dy,d){
       bLater(e,.6,()=>{const a=R()*TAU;e.x=P.x+Math.cos(a)*52;e.y=P.y+Math.sin(a)*52;arenaClamp(e,e.r);e.phase=0;e.flash=.2;burst(e.x,e.y,B.col,16,60,.4);
         RINGS.push({x:e.x,y:e.y,r:0,max:30,life:.3,t:0,c:B.col,noFill:1});bLater(e,.35,()=>bRing(e,14+T,50,.45))});break;
     case 'singularity':e.cd=2.8*f;{const a=R()*TAU;addZone('hole',P.x+Math.cos(a)*30,P.y+Math.sin(a)*30,44,5.5,{pd:12*(1+T*.06)});e.spiral=1.6;e.arms=2;e.spinK=3;e.twin=0}break;
-    case 'twinspiral':e.cd=2.8*f;e.spiral=2;e.arms=3;e.spinK=3.5;e.twin=1;break;
+    case 'twinspiral':e.cd=2.8*f;e.spiral=2;e.arms=2;e.spinK=3;e.twin=1;break;
     // --- 1.30: huge bodies. A stomp (a ring around it) and, enraged, a sweep (a half-circle arc toward you that lands
     // one side to the other). Each leaves its core exposed for a moment: +50% damage taken, the core glows gold.
     case 'stomp':{if(e.sub||e.phase>0){e.cd=.3;break}e.cd=2.2*f;e.wind=.9;e.aimA=aim;const r=Math.round(e.r*2.3);
@@ -2578,15 +2589,17 @@ function bossThink(e,dt,dx,dy,d){
         addZone('fuse',x,y,zr,.8+i*.07,{boom:{x,y,r:zr,dmg:0,pd:e.dmg*.6*BOSS_DMG*bossEarly(),col:B.col,src:'boss',hostile:true,cause:B.name,after:i===n-1?()=>exposeCore(e):null}})}
       break}
     // --- phase-two attacks, one per boss
-    case 'gust':e.cd=2.2*f;G.gust={a:aim+Math.PI,warn:.75,t:1.4,s:42+T*.6};bLater(e,.6,()=>{for(let i=0;i<3;i++)bLater(e,i*.18,()=>{const n=7;for(let k=0;k<n;k++)bShot(e,aim+(k-(n-1)/2)*.16,48+i*8,.45)})});break;
-    case 'thunder':e.cd=2.5*f;{const n=3+Math.floor(T/8);for(let i=0;i<n;i++){const a=R()*TAU,r=i?rnd(18,46):0;bShell(e,P.x+P.vx*.5+Math.cos(a)*r,P.y+P.vy*.5+Math.sin(a)*r,13,null,.7)}}break;   // 1.29: fewer, lighter strikes (Tempest dealt 386 where the first two bosses dealt 69)
+    case 'gust':e.cd=2.2*f;G.gust={a:aim+(R()<.5?1:-1)*Math.PI/2,warn:.75,t:1.4,s:42+T*.6};   // pushes you sideways, across the fans, not into them
+      bLater(e,.6,()=>{for(let i=0;i<3;i++)bLater(e,i*.3,()=>{const n=i%2?4:5,a0=Math.atan2(P.y-e.y,P.x-e.x);for(let k=0;k<n;k++)bShot(e,a0+(k-(n-1)/2)*.32,50,.45)})});break;   // fans of 5 and 4 that interleave
+    case 'thunder':e.cd=2.5*f;{e.thK=(e.thK||0)+1;const cx=P.x+P.vx*.5,cy=P.y+P.vy*.5,rot=e.thK%2?0:Math.PI/4,arms=T>=20?2:1;   // a cross of strikes on where you're heading, + then x: step diagonally out of it
+      bShell(e,cx,cy,13,null,.7);for(let k=0;k<4;k++)for(let j=1;j<=arms;j++){const a=rot+k*Math.PI/2;bLater(e,.15*j,()=>bShell(e,cx+Math.cos(a)*28*j,cy+Math.sin(a)*28*j,13,null,.7))}}break;   // 1.29: fewer, lighter strikes (Tempest dealt 386 where the first two bosses dealt 69)
     case 'stormwall':e.cd=2.8*f;{const A=G.arena;if(A){const base=R()*TAU;for(let w=0;w<3;w++)bLater(e,w*.5,()=>{const n=28;for(let k=0;k<n;k++){const a=base+w*.4+k/n*TAU;if(k%7===0||k%7===1)continue;EB.push({x:A.x+Math.cos(a)*A.r*.95,y:A.y+Math.sin(a)*A.r*.95,vx:-Math.cos(a)*38,vy:-Math.sin(a)*38,life:A.r*1.9/38,dmg:e.dmg*.45*BOSS_DMG*bossEarly(),from:B.name,col:B.bul})}})}}break;
     case 'crossfire':e.cd=2.4*f;for(const off of [0,Math.PI/4])bLater(e,off?.55:0,()=>{for(let k=0;k<4;k++){const a=off+k*Math.PI/2;for(let i=0;i<6;i++)bShot(e,a,40+i*11,.45)}});break;
     case 'meteorfall':e.cd=2.8*f;{const Ar=A?A.r*.8:90,cx=A?A.x:P.x,cy=A?A.y:P.y;for(let i=0;i<10;i++){const a=R()*TAU,r=Math.sqrt(R())*Ar;bLater(e,i*.12,()=>bShell(e,cx+Math.cos(a)*r,cy+Math.sin(a)*r,16,q=>addZone('lava',q.x,q.y,10,5,{pd:10*(1+T*.06),ed:0})))}}break;
     case 'icewall':e.cd=2.8*f;for(let w=0;w<3;w++)bLater(e,w*.6,()=>{const n=30,gap=R()*TAU;for(let i=0;i<n;i++){const a=i/n*TAU;const dd=Math.abs(Math.atan2(Math.sin(a-gap),Math.cos(a-gap)));if(dd<.35||Math.abs(dd-Math.PI)<.35)continue;bShot(e,a,36,.45,{chill:1,life:5})}});break;
     case 'broodburst':e.cd=2.6*f;{for(let i=0;i<2;i++){const m=spawnEnemy('bloater',e.x+rnd(-10,10),e.y+rnd(-10,10),{elite:false,hpMul:.7});m.vx=rnd(-50,50);m.vy=rnd(-50,50)}for(let i=0;i<5;i++){const a=i/5*TAU;addZone('ppuddle',e.x+Math.cos(a)*26,e.y+Math.sin(a)*26,11,7,{pd:8*(1+T*.06)})}}break;
     case 'prismlaser':e.cd=2.6*f;for(const rot of [0,Math.PI/4])bLater(e,rot?.8:0,()=>{for(let k=0;k<4;k++){const a=aim+rot+k*Math.PI/2;for(let i=1;i<=10;i++){const x=e.x+Math.cos(a)*i*13,y=e.y+Math.sin(a)*i*13;if(A&&A.wall>=.5&&Math.hypot(x-A.x,y-A.y)>A.r-6)break;addZone('spike',x,y,8,1.3,{arm:.7,pd:e.dmg*.8})}}});break;
-    case 'eclipse':e.cd=3*f;{const a=R()*TAU;for(const s2 of [-1,1])addZone('hole',P.x+Math.cos(a)*40*s2,P.y+Math.sin(a)*40*s2,40,5,{pd:12*(1+T*.06)});e.spiral=1.8;e.arms=3;e.spinK=3;e.twin=1}break;
+    case 'eclipse':e.cd=3*f;{const a=R()*TAU;for(const s2 of [-1,1])addZone('hole',P.x+Math.cos(a)*40*s2,P.y+Math.sin(a)*40*s2,40,5,{pd:12*(1+T*.06)});e.spiral=1.8;e.arms=2;e.spinK=3;e.twin=1}break;
   }
   return bossMove(e,dx,dy,d);
 }
@@ -3098,7 +3111,7 @@ function update(dt){
     P.vx+=(mx*top-P.vx)*Math.min(1,acc*dt);P.vy+=(my*top-P.vy)*Math.min(1,acc*dt);
   }
   if(G.gust){const g=G.gust;if(g.warn>0){g.warn-=dt;if(!g.told){g.told=1;if(!G.hinted.gust){G.hinted.gust=1;toast(1,'A gust is coming: the streaks show which way it will push you.')}}}
-    else{g.t-=dt;const k=Math.min(1,g.t/.5),gx=Math.cos(g.a)*g.s*k,gy=Math.sin(g.a)*g.s*k;if(P.dashT<=0){P.x+=gx*dt;P.y+=gy*dt}for(const b of EB){b.x+=gx*.6*dt;b.y+=gy*.6*dt}if(g.t<=0)G.gust=null}}
+    else{g.t-=dt;const k=Math.min(1,g.t/.5),gx=Math.cos(g.a)*g.s*k,gy=Math.sin(g.a)*g.s*k;if(P.dashT<=0){P.x+=gx*dt;P.y+=gy*dt}if(g.t<=0)G.gust=null}}   // 1.31: bullets keep their line
   P.x+=P.vx*dt;P.y+=P.vy*dt;if(G.arena&&arenaClamp(P,4)&&P.dashT>0)P.dashT=0;
   P.moving=Math.hypot(P.vx,P.vy)>8;if(Math.abs(P.vx)>4)P.face=P.vx>0?1:-1;
   if(P.moving)G.walk+=dt*Math.hypot(P.vx,P.vy)/9;
