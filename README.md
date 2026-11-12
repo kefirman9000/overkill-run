@@ -21,6 +21,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
 - A **Soul Thief** turns up every minute or so. It runs from you dropping souls; catch it within 14 seconds for a burst of rare souls and a pickup (often a Heart Container).
 - The threat meter rises with kills and time. It drives spawn rate, enemy toughness and elite chance.
 - **Fewer, bigger enemies:** past threat 4 the horde grows in size rather than numbers. Big enemies are drawn larger, hit harder, move a little slower and shoulder small ones aside; one twice as wide counts as four small ones for souls, kills, threat, the Overkill meter and on-kill effects. Piercing shots drill through big bodies for extra damage instead of passing on. The number of bodies on screen is capped (80 on phones).
+- **Big enemies have moves** (size 1.75 and up): Tanks and Crystal Golems stop and **slam** the ground (a red ring grows around them first), Chasers stop, aim and **lunge**, big Spitters fire five shots and big Frostlings three, and big Exploders leave a **pool of fire**.
 - Seven lands, each with its own enemies and hazards: Grassy Ruins, Burning Forest (lava), Frozen Wastes (ice you slide on), Toxic Swamp (poison clouds), Crystal Caves (eruptions), Storm Peaks (gusts that shove you, with streaks showing the direction), The Void (black holes). After the Void, the cycle repeats harder.
 - Orbit Blades block enemy shots (evolved Saw Ring sends them back) and each Drone Minion can soak a shot every second.
 - Tougher enemies join as the threat climbs: Wraiths (turn ghostly, threat 9), Lancers (telegraphed charges, 11), Mortars (shell where you're heading, 13), Splitters (burst into shards, 15), Snipers (long aim line, 18) and Juggernauts (bullet-resistant, ring-of-shots stomp, 20).
@@ -34,6 +35,7 @@ A top-down pixel survival game where you only steer. Your weapons fire on their 
   - **The Hollow** (The Void): a hunt. It stalks you unseen and can only be hurt when it shows itself.
 - During every boss fight only the boss and whatever it summons are on the field.
 - Bosses are **huge**, over four times your width and bigger with each one you beat, and the camera pulls back for them. Their HP keeps up with strong builds (at least what your recent damage against the horde would need 16 seconds to get through), and right after enraging they take less damage for a moment so phase two is always seen.
+- Every boss also fights with its body: a **stomp** (a ring around it) and, once enraged, a **sweep** (an arc toward you that lands from one side to the other). Each leaves its **core exposed** for a moment: it glows gold, the boss bar turns gold, and it takes 50% more damage. The boss bar has a mark at half HP, where it enrages.
 - Later bosses fight in tighter arenas (down to 80% size of a larger base arena). Every boss stops to catch its breath after each full cycle of attacks: for a couple of seconds it takes extra damage and a heart drops near you.
 - At half HP every boss **enrages**: a shockwave pushes you back, it attacks faster, and it adds a new attack (Warden crossfire, Cinder King meteor fall, Glacial Maw ice walls, Bog Mother brood burst, Prism Colossus rotating lasers, Hollow eclipse).
 - Every boss drops its **trophy**, a power for the rest of the run, and the first win unlocks it as a starting relic.
@@ -151,7 +153,7 @@ Damage numbers are off by default; turn them on for big hits only or for every h
 
 ### Phones
 
-On touch screens the game caps itself at 60 fps (120 Hz phones otherwise do twice the work for no gain), keeps the canvas smaller, skips the glow when the screen is crowded, lets far-off enemies think less often, and draws the radar and damage numbers from cached images.
+On touch screens the game caps itself at 60 fps (120 Hz phones otherwise do twice the work for no gain), draws at most 2 canvas pixels per world pixel (drawing at 4 was about 6 times slower for a little extra smoothness), skips the glow when the screen is crowded, lets far-off enemies think less often, and draws the radar and damage numbers from cached images.
 
 ### Codex
 
@@ -165,7 +167,15 @@ Until you've reached threat 10 once, the game introduces its systems gradually: 
 
 Up to two allies follow you at once: the **Gunner** shoots whatever is closest, the **Field Medic** heals you and your other ally while close, and the **Knight** charges enemies near you and draws attackers off you onto itself. Allies have their own HP and heal slowly; if they go down, they're gone. They follow you into boss fights and catch up if you're teleported.
 
-Allies **level up** too, slower than you: every third upgrade you pick, each ally gains a level (up to 6, shown as gold pips over its head) for +25% damage, a faster weapon, more max HP and a heal. The Gunner fires three shots at Lv 3 and its shots pierce at Lv 5; the Field Medic shoots twice from Lv 4 and heals more at Lv 6; the Knight swings wider at Lv 3 and hits harder at Lv 5. Allies who join later arrive a level or two up.
+Allies **level up** too, slower than you: each level takes a few more of your upgrade picks than the last (3 picks for Lv 2 up to 7 for Lv 6), shown as gold pips over its head, for +25% damage, a faster weapon, more max HP and a heal. Allies who join later arrive a level or two up.
+
+At **Lv 3 and Lv 5 you choose a perk** for the ally: two perk cards take the place of two cards on your next level-up (auto-pick takes one too).
+
+| Ally | Lv 3 | Lv 5 |
+|---|---|---|
+| Gunner | Scattershot (three shots, wider) or Deadeye (pierce two more, +30% damage) | Rocketeer (every fourth volley adds a homing rocket) or Rapid Fire (40% faster) |
+| Field Medic | Triage (heals you twice as fast, from further) or Combat Medic (two shots, +40%, they slow) | Aegis (a shield that blocks one hit every 20 s) or Field Hospital (all allies heal 4x faster and take 30% less damage) |
+| Knight | Bulwark (draws enemies from twice as far, takes 40% less) or Bloodblade (swings heal you and it) | Whirlwind (spins every 3 s, hitting everything around it) or Cleaver (wider swings, +60%) |
 
 ### More pickups and cards
 
@@ -188,6 +198,10 @@ Open the GitHub Pages link in Chrome and tap **Install app** on the title screen
 ## Run reports
 
 Pause or die, type any thoughts into the notes box, then press **Copy run report**. It copies a summary of the run (picks, damage by source, a 30-second timeline, frame rate, device, and for each boss fight its HP, size, your horde damage per second going in and the damage you took, including a fight you lost) that you can paste into a chat for balance review. **Save report file** downloads the same thing as a .txt.
+
+## Run history
+
+**Run History** on the title screen keeps your last 40 runs in this browser: deaths, wins, and quits after the first minute. It shows totals (runs, wins, best threat, longest run), what kills you most, your most used weapons and each boss's record and average fight time, then every run with its result, threat, time, kills, level and weapons. The newest 10 keep their full run report, with a button to copy it.
 
 ## Updates
 
