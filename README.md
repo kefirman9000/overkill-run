@@ -109,6 +109,16 @@ The Hollow at the end of the first Void is the **final boss**. Beat it to win th
 
 In **endless mode** bosses come back changed. Each lap they get stranger colours (shifted, then neon, then a cycling rainbow) and one more random mutation, up to four: Swift, Armored, Volatile, Brooding, Regenerating, Chaotic (steals another boss's attack), Colossal and Vampiric. The boss card names them.
 
+### Modes, characters, chests and more (1.35)
+
+- **Modes** (title screen → MODE): Standard, **Boss Rush** (threat climbs 3x as fast, start with 3 levels), **Horde** (twice the enemies at half health), **Chaos** (events, strikes, altars, worms and formations twice as often and earlier; 10 passive slots), **Purist** (only your starting weapon, +60% damage) and **Glass** (max HP stuck at 40, double damage).
+- **New characters**, all available from the start: **Necromancer** (kills raise wisps that hunt for you; ability Mass Raise), **Juggernaut** (+100 HP, spiked hide, slower; dash is a ground slam; ability Earthquake), **Gambler** (much luckier, bigger and more frequent chests; ability All In opens a chest) and **Pyromancer** (starts with Fireball too, fire +50%, immune to lava and flames; ability Inferno).
+- **Treasure chests** drop from bosses, champions and sometimes elites. Opening one spins a reel and pays out 1, 3 or (rarely) 5 upgrades, evolutions first.
+- **Banish (B) and Skip (X)** on the level-up screen. Banish removes a card or weapon from the rest of the run (3 per run, +1 per boss). Skip takes nothing and heals 10%.
+- **Passive cap:** you can hold 8 different passive cards (Chaos: 10). After that you only get offers that stack what you have, plus weapons. When everything is full, **Limit Break** cards keep giving damage, fire rate or healing.
+- **New weapons:** Chain Whip (lash to the side you face → Bloody Tear with Lucky Shots), Holy Aura (burning halo → Soul Eater with Spiked Armor), Mine Layer (mines where you walk → Cluster Field with Shoulder Check) and Sentry Kit (plants turrets → Fortress with Barrier).
+- **New enemies:** Bombers (lob bombs at where you're heading, shown as red circles), Gunners (stop and spray a stream of shots), Watchers (charge a laser shown as a red line) and **Worms**: long chains of segments that weave toward you. Cut one in the middle and you get two worms.
+
 ### Events, danger and terrain (1.34)
 
 - **Rule-changing events** (one at a time, every minute or two from threat 2): **Siege** (a two-row wall of enemies from one side), **Ambush** (the field goes quiet, red marks appear around you, then they spawn), **Hunt** (a fleeing golden runner with a fortune: catch it in 22 s), **Hold the Line** (stand in a circle until it fills for a heal and 2 levels), **Stampede** (lanes of unstoppable beasts, warned by red lines), **Blackout** (only a circle of light; enemies show as eyes; souls worth 1.5x) and **Storm Front** (a wall that sweeps the map; stay ahead of it).
