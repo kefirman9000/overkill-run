@@ -109,6 +109,18 @@ The Hollow at the end of the first Void is the **final boss**. Beat it to win th
 
 In **endless mode** bosses come back changed. Each lap they get stranger colours (shifted, then neon, then a cycling rainbow) and one more random mutation, up to four: Swift, Armored, Volatile, Brooding, Regenerating, Chaotic (steals another boss's attack), Colossal and Vampiric. The boss card names them.
 
+### Events, danger and terrain (1.34)
+
+- **Rule-changing events** (one at a time, every minute or two from threat 2): **Siege** (a two-row wall of enemies from one side), **Ambush** (the field goes quiet, red marks appear around you, then they spawn), **Hunt** (a fleeing golden runner with a fortune: catch it in 22 s), **Hold the Line** (stand in a circle until it fills for a heal and 2 levels), **Stampede** (lanes of unstoppable beasts, warned by red lines), **Blackout** (only a circle of light; enemies show as eyes; souls worth 1.5x) and **Storm Front** (a wall that sweeps the map; stay ahead of it).
+- **Strikes** from threat 4: artillery circles, sweeping lasers and meteor showers, telegraphed in red. They hit for a share of your **max HP** and armour doesn't reduce them, so stacking health doesn't make you safe. They hurt enemies too.
+- **The Hunter** from threat 8: can't be killed, follows you for 30 s, and a touch takes a third of your max HP. Lose it without being touched for a free level.
+- **Formations:** shield walls that march in a line (go around the ends), packs that circle you and then rush, and columns that march through.
+- **Terrain:** every land has its own obstacles. Ruin walls and pillars, burnt trees, boulders, swamp streams with bridges (water slows everyone), crystal clusters and void rifts, plus breakable crates. Walls block enemy shots; your shots pass over them. Enemies stuck behind a wall for long squeeze through. Terrain clears itself around boss arenas, beacons, shrines and landmarks. Options: TERRAIN ON / OFF.
+- **Cursed altars** from threat 3: walk over one to read its bargain, stand on it to accept. Greed (a Legendary card, but half of new enemies are elite for 60 s), Hunger (3 levels, no healing until the next boss), Souls (double souls but faster enemies for 90 s), Blood (full heal and +25 max HP, threat +2) and Iron (+2 levels to your weakest weapon, and the Hunter comes).
+- **A fork in the road** after each boss: green gate for the safe road, red gate for the hard road (tougher enemies, more elites, better cards and +50% souls until the next boss).
+- **Auto-pick stops for Epic and up** so build-defining picks stay yours (Options: AUTO-PICK NEVER STOPS to turn that off).
+- Stacked defense now has diminishing returns: each extra Plating or Leech gives less, and extra Barrier charges recharge only a little faster.
+
 ### Pacing
 
 Only one special event runs at a time (shrine, supply crate, Soul Thief, vault guards, calm), with at least 20 seconds of plain fighting between them. Super modes come from shrines, obelisks and the Overkill meter, roughly one every couple of minutes. Heart Containers are capped at 10 per run.

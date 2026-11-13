@@ -1,1 +1,1 @@
-{"version":"1.33.0","notes":"Late runs stay busy: when the field is nearly empty, enemies refill faster. Bosses adjust 8 seconds into a fight so they last about 30-70 seconds instead of melting late or dragging early."}
+{"version":"1.34.0","notes":"Rule-changing events (siege, ambush, hunt, hold the line, stampede, blackout, storm front), strikes that hit for a share of max HP, the Hunter, terrain in every land, cursed altars, a safe/hard road after each boss, enemy formations, and auto-pick stops for Epic+."}
