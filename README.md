@@ -128,7 +128,7 @@ In **endless mode** bosses come back changed. Each lap they get stranger colours
 - **Terrain:** every land has its own obstacles. Ruin walls and pillars, burnt trees, boulders, swamp streams with bridges (water slows everyone), crystal clusters and void rifts, plus breakable crates. Walls block enemy shots; your shots pass over them. Enemies stuck behind a wall for long squeeze through. Terrain clears itself around boss arenas, beacons, shrines and landmarks. Options: TERRAIN ON / OFF.
 - **Cursed altars** from threat 3: walk over one to read its bargain, stand on it to accept. Greed (a Legendary card, but half of new enemies are elite for 60 s), Hunger (3 levels, no healing until the next boss), Souls (double souls but faster enemies for 90 s), Blood (full heal and +25 max HP, threat +2) and Iron (+2 levels to your weakest weapon, and the Hunter comes).
 - **A fork in the road** after each boss: green gate for the safe road, red gate for the hard road (tougher enemies, more elites, better cards and +50% souls until the next boss).
-- **Auto-pick stops for Epic and up** so build-defining picks stay yours (Options: AUTO-PICK NEVER STOPS to turn that off).
+- **Auto-pick can stop for Epic and up** so build-defining picks stay yours: Options → AUTO-PICK STOPS FOR EPIC+ (off by default).
 - Stacked defense now has diminishing returns: each extra Plating or Leech gives less, and extra Barrier charges recharge only a little faster.
 
 ### Pacing

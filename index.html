@@ -436,7 +436,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.35.0';
+const VERSION='1.35.1';
 const REPO='kefirman9000/overkill-run';
 const $EL={},$=id=>{const e=$EL[id];if(e&&e.isConnected)return e;return $EL[id]=document.getElementById(id)};
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -773,9 +773,9 @@ const RELICS={
 let chosenW='pea';const chosenR=new Set();
 
 /* ================= control settings ================= */
-const CFG_DEF={autoStop:1,terrain:1,autoAb:1,nums:1,radar:1,simple:1,smooth:1,colors:'clear',fx:1,autoPick:0,mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:.4,autoZoom:1,music:1,haptics:1,detail:0};
+const CFG_DEF={autoStop:0,terrain:1,autoAb:1,nums:1,radar:1,simple:1,smooth:1,colors:'clear',fx:1,autoPick:0,mode:'fixed',ui:'auto',jx:.2,jy:.74,jsize:1,dead:.1,dsize:1,dx:.84,dy:.74,op:.7,tapDash:1,shake:.4,autoZoom:1,music:1,haptics:1,detail:0};
 let CFG=Object.assign({},CFG_DEF);
-try{const c=JSON.parse(localStorage.getItem('overkill-run-controls')||'null');if(c)CFG=Object.assign(CFG,c);if(CFG.cfgV!==2){CFG.cfgV=2;if(!CFG.nums)CFG.nums=1}}catch(e){}
+try{const c=JSON.parse(localStorage.getItem('overkill-run-controls')||'null');if(c)CFG=Object.assign(CFG,c);if(CFG.cfgV!==2&&CFG.cfgV!==3){CFG.cfgV=2;if(!CFG.nums)CFG.nums=1}if(CFG.cfgV===2){CFG.cfgV=3;CFG.autoStop=0}}catch(e){}
 function saveCfg(){try{localStorage.setItem('overkill-run-controls',JSON.stringify(CFG))}catch(e){}}
 
 /* ================= state ================= */
@@ -3583,7 +3583,7 @@ function autoPickOne(){
 }
 function autoPickAlways(){
   if(G.state!=='levelup')return;
-  CFG.autoPick=1;saveCfg();
+  CFG.autoPick=1;CFG.autoStop=0;saveCfg();
   $('lvl').hidden=true;$('lvl').classList.remove('surge');G.state='play';surge=false;applyControls();
   autoPickAll();toast(1,'Auto-pick is on for every level. Turn it off in Options.');
 }
@@ -3622,7 +3622,7 @@ function autoPickAll(){
     takeCard(c,o.map(x=>x.name+' ('+RN[x.r][0]+')').concat(['(auto)']),true);G.pendingLv--;G.autoPicked++;names.push(c.name);
   }
   if(names.length){toast(2,(names.length===1?'Auto-picked ':'Auto-picked '+names.length+': ')+names.slice(0,4).join(', ')+(names.length>4?'…':''));snd('pick',2)}
-  if(held){surge=false;G.state='levelup';offers=held;lvSel=0;lvOpenT=performance.now();renderOffers();return}
+  if(held){surge=false;G.state='levelup';offers=held;lvSel=0;lvOpenT=performance.now();renderOffers();if(!G.hinted.autoStop){G.hinted.autoStop=1;toast(1,'Auto-pick paused for an Epic+ card. Options: AUTO-PICK NEVER STOPS to skip these.')}return}
   G.pendingLv=0;G.lvCD=LV_GAP;
 }
 
