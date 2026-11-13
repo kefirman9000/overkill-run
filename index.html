@@ -415,7 +415,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.32.0';
+const VERSION='1.33.0';
 const REPO='kefirman9000/overkill-run';
 const $EL={},$=id=>{const e=$EL[id];if(e&&e.isConnected)return e;return $EL[id]=document.getElementById(id)};
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -1109,7 +1109,11 @@ function aliveMass(){let m=0,b=0;for(const e of E)if(!e.dead&&e.type!=='ufo'&&e.
 /* regular spawning, in squads: the rate (in enemy mass) is unchanged, it just arrives in groups */
 function spawnTick(dt,mult,cap){
   if(isMode('timestop'))return;
-  const sq=squadSize();G.spawnAcc=Math.min(sq+2,G.spawnAcc+dt*spawnRate()*mult);
+  const sq=squadSize();
+  // 1.33: a strong build clears the field as fast as it fills; when it's nearly empty, refill faster
+  let press=1;if(G.threat>=3&&!G.arena){const fill=aliveMass()[0]/Math.max(1,cap);if(fill<.3)press=1+(PHONE?.8:1.6)*(1-fill/.3)}
+  G.press=press;
+  G.spawnAcc=Math.min(sq*2+2,G.spawnAcc+dt*spawnRate()*mult*press);
   if(G.spawnAcc<sq)return;
   let [m,b]=aliveMass();const bc=maxBodies()*(cap<maxAlive()?.7:1);
   while(G.spawnAcc>=sq&&m<cap&&b<bc){G.spawnAcc-=sq;spawnSquad(sq);[m,b]=aliveMass()}
@@ -2343,7 +2347,7 @@ function arenaWon(e){
   const A=G.arena,B=bossOf(e),F=FMT[A.fmt];if(!A)return;
   A.phase='out';A.t=0;A.won=true;
   giveTrophy(B);
-  G.bossLog.push({boss:B.name,fight:A.fmt,phase2:!!e.p2,mods:(e.mods||[]).join(',')||undefined,threat:G.threat,fightSeconds:Math.round(G.time-A.fightStart),hpLeft:Math.ceil(P.hp)+'/'+P.max,bossHp:Math.round(e.max),hordeDps:e.hordeDps,size:e.sz,hitsTaken:Math.round(G.bossHurt||0)});
+  G.bossLog.push({boss:B.name,fight:A.fmt,phase2:!!e.p2,mods:(e.mods||[]).join(',')||undefined,threat:G.threat,fightSeconds:Math.round(G.time-A.fightStart),hpLeft:Math.ceil(P.hp)+'/'+P.max,bossHp:Math.round(e.max),hordeDps:e.hordeDps,tuned:e.tune,size:e.sz,hitsTaken:Math.round(G.bossHurt||0)});
   // in a walled fight everything the boss brought goes with it; in the open the horde stays
   for(const o of E)if(!o.dead&&o!==e){o.dead=true;burst(o.x,o.y,o.col,4,40,.3)}
   EB.length=0;Z=Z.filter(z=>{const k=ZK[z.kind];return k&&(k.friendly&&!k.hostile)});
@@ -2368,6 +2372,11 @@ function updateArena(dt){
     if(F.walls)A.wall=Math.min(1,A.t/1.2);A.fireA=Math.min(1,A.t/1.2);
     if(A.t>=(F.walls?1.9:1.3)){A.phase='fight';A.t=0;A.fightStart=G.time;spawnBoss()}
   }else if(A.phase==='fight'){
+    // 1.33: 8 s in (or sooner if it's already at half), look at how fast the boss is really dropping and aim the fight at 24-60 s
+    const tb=G.boss;
+    if(tb&&!tb.dead&&!tb.tuned&&A.fightStart&&(G.time-A.fightStart>=8||G.time-A.fightStart>=2&&tb.hp<tb.max*.55)){tb.tuned=1;const rate=(tb.max-tb.hp)/(G.time-A.fightStart);
+      if(rate>0){const left=tb.hp/rate;let k=1;if(left<24)k=Math.min(2.2,24*rate/tb.hp);else if(left>70)k=Math.max(.6,60*rate/tb.hp);
+        if(k!==1){tb.hp*=k;tb.max*=k;tb.tune=Math.round(k*100)/100;if(k>1){toast(2,bossOf(tb).name+' digs in');}}}}
     if(F.walls)A.wall=1;
     if(!G.boss||G.boss.dead){A.phase='out';A.t=0}
   }else if(A.phase==='out'){

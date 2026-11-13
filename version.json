@@ -1,1 +1,1 @@
-{"version":"1.32.0","notes":"Runs save when paused or the app is switched away: CONTINUE on the title screen picks up where you left off. Run History adds COPY FOR REVIEW. Mid-fight reports no longer say you died in the arena."}
+{"version":"1.33.0","notes":"Late runs stay busy: when the field is nearly empty, enemies refill faster. Bosses adjust 8 seconds into a fight so they last about 30-70 seconds instead of melting late or dragging early."}
