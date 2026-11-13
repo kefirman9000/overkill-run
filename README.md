@@ -109,6 +109,12 @@ The Hollow at the end of the first Void is the **final boss**. Beat it to win th
 
 In **endless mode** bosses come back changed. Each lap they get stranger colours (shifted, then neon, then a cycling rainbow) and one more random mutation, up to four: Swift, Armored, Volatile, Brooding, Regenerating, Chaotic (steals another boss's attack), Colossal and Vampiric. The boss card names them.
 
+### Start land, looks and the character select (1.36)
+
+- The title screen shows every runner as a portrait card with their role, ability and HP / speed / damage bars. Tap one to pick it.
+- **START LAND:** begin in any land you've already reached. The lands then come in order from there, and the Void is always last.
+- **LOOK:** colours, plus unlockable **hats** (Cap, Bandana, Wizard Hat, Party Hat, Horns, Knight Helm, Gold Crown, Halo) and **trails** (Sparks, Embers, Frost, Souls, Stardust, Rainbow). Each locked one shows how to unlock it: play runs, play different characters and modes, reach lands, win runs, rack up kills.
+
 ### Modes, characters, chests and more (1.35)
 
 - **Modes** (title screen → MODE): Standard, **Boss Rush** (threat climbs 3x as fast, start with 3 levels), **Horde** (twice the enemies at half health), **Chaos** (events, strikes, altars, worms and formations twice as often and earlier; 10 passive slots), **Purist** (only your starting weapon, +60% damage) and **Glass** (max HP stuck at 40, double damage).

@@ -162,7 +162,32 @@ details.story .dim{opacity:.45}
 .achl{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}.ach{border:2px solid #2a2440;padding:6px 8px;opacity:.55}.ach.got{opacity:1;border-color:#ffb627}.ach b{display:block;font-family:var(--font-d);font-size:11px}.ach span{display:block;font-size:15px;color:var(--dim)}.ach em{display:block;font-style:normal;font-size:14px;color:#ffb627}
 .skinH{margin:16px 0 6px;clear:both}.skins{display:flex;flex-wrap:wrap;gap:6px}.skins button{width:34px;height:34px;padding:0;display:grid;place-items:center}.skins button.on{outline:2px solid #ffb627;outline-offset:1px}.skins button:disabled{opacity:.35}.skins i{display:block;width:16px;height:16px;border:3px solid var(--d)}
 .seedBox .btns{align-items:stretch}#seedIn{font-family:var(--font-d);font-size:13px;text-transform:uppercase;width:9em;padding:6px 8px;background:#0d0b14;color:var(--ink);border:2px solid #3a3150}
-.loadout{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+.loadout{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.selH{margin:4px 0 6px;font-size:10px;color:var(--dim);letter-spacing:.08em}
+.charGrid{display:grid;grid-auto-flow:column;grid-auto-columns:84px;gap:8px;overflow-x:auto;padding:3px 3px 8px;scroll-snap-type:x proximity}
+.charGrid .cc{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 7px;scroll-snap-align:start;min-width:0}
+.charGrid .cc img{width:42px;height:48px;image-rendering:pixelated}
+.charGrid .cc b{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.charGrid .cc small{font-size:8px;color:var(--dim)}
+.charGrid .cc.sel{box-shadow:0 0 0 3px var(--threat),3px 3px 0 #000}
+.charGrid .cc[aria-disabled]{opacity:.55}
+.charInfo{background:#1a1628;border:2px solid #2a2440;padding:8px 10px;margin-bottom:10px}
+.charInfo .ciTop{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.charInfo .ciTop b{font-family:var(--font-d);font-size:13px;color:var(--threat)}
+.charInfo .ciTop span{font-family:var(--font-d);font-size:9px;color:var(--dim)}
+.charInfo p{margin:4px 0;font-size:16px;line-height:1.05}
+.charInfo p.ab{color:var(--xp)}
+.stats3{display:grid;grid-template-columns:auto repeat(5,12px);gap:3px 4px;align-items:center;font-family:var(--font-d);font-size:8px;color:var(--dim);margin-top:4px;width:max-content}
+.stats3 .pip{display:block;width:12px;height:5px;background:#000;box-shadow:0 0 0 1px var(--edge)}
+.stats3 .pip.on{background:var(--threat)}
+.lands button{display:flex;gap:8px;align-items:center;text-align:left}
+.lands .sw{display:inline-block;width:22px;height:22px;flex:0 0 22px;box-shadow:0 0 0 2px #000}
+.lands button div{display:flex;flex-direction:column;gap:2px}
+.lands button div span{font-size:9px;color:var(--dim)}
+.pickrow.looks{flex-direction:row;flex-wrap:wrap}
+.pickrow.looks button{font-size:10px;padding:7px 9px;width:auto;flex:0 0 auto}
+#cSheet .skinH{margin:12px 0 8px}
+.looks button.on{box-shadow:0 0 0 2px var(--threat),3px 3px 0 #000;color:var(--threat)}
 .loadout .lo{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:8px 10px;text-align:left;min-width:0}
 .loadout .lo small{font-size:9px;color:var(--dim)}
 .loadout .lo b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -286,15 +311,20 @@ details.story .dim{opacity:.45}
   <div class="card">
     <h1>OVERKILL<br><span>RUN</span></h1>
     <div class="btns tStart"><button class="go" id="contBtn" hidden>CONTINUE RUN</button><button class="go" id="startBtn">START RUN</button><button id="dailyBtn">DAILY RUN</button></div>
+    <h3 class="selH">CHOOSE YOUR RUNNER</h3>
+    <div class="charGrid" id="charGrid"></div>
+    <div class="charInfo" id="charInfo"></div>
     <div class="loadout">
       <button class="lo" data-sheet="mSheet"><small>MODE</small><b id="loM"></b></button>
-      <button class="lo" data-sheet="cSheet"><small>CHARACTER</small><b id="loC"></b></button>
+      <button class="lo" data-sheet="lSheet"><small>START LAND</small><b id="loL"></b></button>
+      <button class="lo" data-sheet="cSheet"><small>LOOK</small><b id="loC"></b></button>
       <button class="lo" data-sheet="wSheet"><small>WEAPON</small><b id="loW"></b></button>
       <button class="lo" data-sheet="rSheet"><small>RELICS</small><b id="loR"></b></button>
       <button class="lo" id="loDiff"><small>DIFFICULTY</small><b id="loD"></b></button>
     </div>
     <div class="sheet" id="mSheet" hidden><div class="pickrow" id="mPick"></div></div>
-    <div class="sheet" id="cSheet" hidden><div class="pickrow" id="cPick"></div><h3 class="skinH">LOOK</h3><div class="skins" id="skinPick"></div></div>
+    <div class="sheet" id="lSheet" hidden><div class="pickrow lands" id="lPick"></div></div>
+    <div class="sheet" id="cSheet" hidden><div class="pickrow" id="cPick" hidden></div><h3 class="skinH">COLOURS</h3><div class="skins" id="skinPick"></div><h3 class="skinH">HAT</h3><div class="pickrow looks" id="hatPick"></div><h3 class="skinH">TRAIL</h3><div class="pickrow looks" id="trailPick"></div><button class="sheetDone" id="lookDone">DONE</button></div>
     <div class="sheet" id="wSheet" hidden><div class="pickrow" id="wPick"></div></div>
     <div class="sheet" id="rSheet" hidden><div class="note">Pick up to 2. <span id="comboNote"></span></div><div class="pickrow" id="rPick"></div><button class="sheetDone">DONE</button></div>
     <div class="note" id="bestTitle"></div>
@@ -436,7 +466,7 @@ details.story .dim{opacity:.45}
 
 <script>
 'use strict';
-const VERSION='1.35.1';
+const VERSION='1.36.0';
 const REPO='kefirman9000/overkill-run';
 const $EL={},$=id=>{const e=$EL[id];if(e&&e.isConnected)return e;return $EL[id]=document.getElementById(id)};
 const cv=$('game'),ctx=cv.getContext('2d');
@@ -638,7 +668,7 @@ const BIOMES=[
     hint:'Black holes drag you in. Stalkers blink right next to you.'},
 ];
 const ROMAN=['','II','III','IV','V','VI','VII','VIII','IX','X'];
-function biomeOf(threat){const i=Math.floor(threat/3);return{i,b:BIOMES[i%BIOMES.length],lap:Math.floor(i/BIOMES.length)}}
+function biomeOf(threat){const i0=Math.floor(threat/3),n=BIOMES.length,lap=Math.floor(i0/n),k=i0%n,o=G&&G.landOrder,li=o?o[k]:k;return{i:lap*n+li,b:BIOMES[li],lap}}
 function landName(threat){const {b,lap}=biomeOf(threat);return b.name+(lap?' '+(ROMAN[lap]||lap+1):'')}
 
 /* ================= weapons & cards ================= */
@@ -1383,7 +1413,7 @@ function applyChar(){
    The boss at the end of the first Void is the final boss. Beat it and the run is won: end there, or keep going
    in endless mode (the run report records both). */
 function showWin(){
-  G.won=true;meta.wins=(meta.wins||0)+1;saveMeta();
+  G.won=true;meta.wins=(meta.wins||0)+1;meta.winChars=meta.winChars||[];if(!meta.winChars.includes(G.char))meta.winChars.push(G.char);saveMeta();
   G.state='win';joy.on=false;applyControls();G.lvCD=Math.max(G.lvCD,1);
   $('winStats').innerHTML=[['Time',fmtT(G.time)],['Kills',G.kills],['Level',G.level],['Character',CHARS[G.char].name],['Weapons',W.map(w=>w.evo?EVO[w.id].name:WDEF[w.id].name+' '+w.lvl).join(', ')]]
     .map(([a,b])=>`<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('');
@@ -2118,7 +2148,7 @@ function updateVariety(dt){
   if(V.curse){const c=V.curse;if(c.k==='noheal'){c.cap=Math.min(c.cap??P.hp,P.hp);if(P.hp>c.cap)P.hp=c.cap}else{c.t-=dt;if(c.t<=0){toast(0,'The curse lifts.');V.curse=null}}}
   if(V.bless){V.bless.t-=dt;if(V.bless.t<=0)V.bless=null}
   if(gm('glass')&&P.max>40){P.max=40;P.hp=Math.min(P.hp,40)}
-  updateRev(dt,quiet);updateStrikes(dt,quiet);updateHunter(dt,quiet);updateForms(dt,quiet);updateAltar(dt,quiet);updateFork(dt);charTick(dt);updateGadgets(dt);updateWorms(dt,quiet);
+  updateRev(dt,quiet);updateStrikes(dt,quiet);updateHunter(dt,quiet);updateForms(dt,quiet);updateAltar(dt,quiet);updateFork(dt);charTick(dt);updateGadgets(dt);updateWorms(dt,quiet);trailTick(dt);
 }
 /* ---------- rule-changing events ---------- */
 const REV={
@@ -2595,6 +2625,76 @@ function drawChestPU(x,y,p){
   const gl=.3+.2*Math.sin(p.t*5);ctx.globalAlpha=gl;ctx.fillStyle='#ffd84a';ctx.fillRect(x-1,y-24,3,20);ctx.globalAlpha=1;
   ctx.fillStyle='rgba(0,0,0,.4)';ctx.fillRect(x-5,y+4,11,2);ctx.fillStyle='#7a4a1e';ctx.fillRect(x-5,y-3,11,7);ctx.fillStyle='#a8682a';ctx.fillRect(x-5,y-5,11,3);
   ctx.fillStyle='#ffd84a';ctx.fillRect(x-5,y-2,11,1);ctx.fillRect(x,y-3,1,3);if(Math.floor(p.t*4)%3===0){ctx.fillStyle='#ffffff';ctx.fillRect(x+3,y-6,1,1)}
+}
+
+/* ================= starting land, looks and the character select (1.36) ================= */
+// Start in any land you've reached. The lands then come in order from there, and the Void is always last.
+let chosenL=0;try{const l=+localStorage.getItem('overkill-run-land');if(l>=0&&l<BIOMES.length-1)chosenL=l}catch(_){}
+const landOk=k=>k===0||(meta.bestThreat||0)>=k*3;
+function landOrder(s){const n=BIOMES.length-1,o=[];for(let k=0;k<n;k++)o.push((s+k)%n);o.push(n);return o}
+// hats: drawn in the player's local space (origin at the feet, facing right, head top at y=-8)
+const HATS={
+  none:{name:'No hat',ok:()=>true,req:''},
+  cap:{name:'Cap',ok:()=>true,req:'',d:c=>{c.fillStyle='#ff4d6d';c.fillRect(-2,-10,4,2);c.fillRect(2,-9,2,1)}},
+  bandana:{name:'Bandana',ok:()=>(meta.runs||0)>=5,req:'play 5 runs',d:c=>{c.fillStyle='#ff3b5c';c.fillRect(-2,-9,4,1);c.fillRect(-4,-8,2,1);c.fillRect(-5,-7,1,1)}},
+  wizard:{name:'Wizard Hat',ok:()=>(meta.charsPlayed||[]).length>=5,req:'play as 5 different characters',d:c=>{c.fillStyle='#6a3ab8';c.fillRect(-3,-9,6,1);c.fillRect(-2,-10,4,1);c.fillRect(-1,-11,3,1);c.fillRect(0,-12,2,1);c.fillRect(1,-13,1,1);c.fillStyle='#ffd84a';c.fillRect(0,-11,1,1)}},
+  party:{name:'Party Hat',ok:()=>(meta.modesPlayed||[]).length>=Object.keys(GMODES).length,req:'play every mode once',d:c=>{c.fillStyle='#4fa3ff';c.fillRect(-2,-9,4,1);c.fillStyle='#ffd84a';c.fillRect(-1,-10,3,1);c.fillStyle='#ff4d6d';c.fillRect(0,-11,2,1);c.fillStyle='#ffffff';c.fillRect(0,-12,1,1)}},
+  horns:{name:'Horns',ok:()=>(meta.bestThreat||0)>=15,req:'reach threat 15',d:c=>{c.fillStyle='#e6e0d0';c.fillRect(-3,-10,1,2);c.fillRect(-4,-11,1,1);c.fillRect(2,-10,1,2);c.fillRect(3,-11,1,1)}},
+  helm:{name:'Knight Helm',ok:()=>(meta.winChars||[]).length>=2,req:'win with 2 different characters',d:c=>{c.fillStyle='#9aa4b2';c.fillRect(-2,-10,4,2);c.fillRect(-3,-9,1,3);c.fillRect(2,-9,1,3);c.fillStyle='#ff4d6d';c.fillRect(-1,-12,2,2)}},
+  crown:{name:'Gold Crown',ok:()=>(meta.wins||0)>=1,req:'win a run',d:c=>{c.fillStyle='#ffd84a';c.fillRect(-2,-10,4,1);c.fillRect(-2,-11,1,1);c.fillRect(0,-12,1,2);c.fillRect(1,-11,1,1);c.fillStyle='#ff4d6d';c.fillRect(0,-12,1,1)}},
+  halo:{name:'Halo',ok:()=>(meta.totalKills||0)>=50000,req:'50,000 lifetime kills',d:c=>{c.fillStyle='#fff2a8';c.fillRect(-2,-12,4,1);c.fillRect(-3,-11,1,1);c.fillRect(2,-11,1,1)}},
+};
+const TRAILS={
+  none:{name:'No trail',ok:()=>true,req:''},
+  sparks:{name:'Sparks',ok:()=>true,req:'',c:()=>pick(['#ffe066','#fff0b8'])},
+  embers:{name:'Embers',ok:()=>(meta.bestThreat||0)>=3,req:'reach the Burning Forest',c:()=>pick(['#ff7a2a','#ffd166','#ff5e5b']),up:1},
+  frost:{name:'Frost',ok:()=>(meta.bestThreat||0)>=6,req:'reach the Frozen Wastes',c:()=>pick(['#a6f0ff','#ffffff'])},
+  souls:{name:'Souls',ok:()=>(meta.totalKills||0)>=20000,req:'20,000 lifetime kills',c:()=>pick(['#6be0ff','#4fa3ff']),up:1},
+  stars:{name:'Stardust',ok:()=>(meta.wins||0)>=2,req:'win 2 runs',c:()=>pick(['#ffffff','#ffd84a','#c792ea'])},
+  rainbow:{name:'Rainbow',ok:()=>(meta.charsPlayed||[]).length>=Object.keys(CHARS).length,req:'play as every character',c:()=>`hsl(${(G.time*240)%360},90%,62%)`},
+};
+const hatOn=()=>HATS[meta.hat]&&HATS[meta.hat].ok()&&HATS[meta.hat].d?meta.hat:null;
+function drawHat(c){const h=hatOn();if(!h)return false;HATS[h].d(c);return true}
+function trailTick(dt){
+  const T=TRAILS[meta.trail];if(!T||!T.c||!T.ok()||!P.moving)return;
+  G.trT=(G.trT||0)-dt;if(G.trT>0)return;G.trT=.05;
+  if(PT.length<600)PT.push({x:P.x+rnd(-2,2),y:P.y+3+rnd(-1,1),vx:rnd(-6,6),vy:T.up?-14:rnd(-4,4),life:.5,max:.5,c:T.c(),s:1});
+}
+// character portraits for the select screen
+const CHAR_INFO={
+  wanderer:{role:'All-rounder',hp:3,spd:3,dmg:3},medic:{role:'Sustain',hp:3,spd:3,dmg:2},berserker:{role:'Risk and reward',hp:2,spd:3,dmg:5},
+  scout:{role:'Speed',hp:2,spd:5,dmg:3},tinker:{role:'Extra weapon',hp:3,spd:3,dmg:3},necro:{role:'Summoner',hp:3,spd:3,dmg:2},
+  jugg:{role:'Tank',hp:5,spd:1,dmg:3},gambler:{role:'Luck',hp:2,spd:3,dmg:3},pyro:{role:'Fire',hp:3,spd:3,dmg:4},
+};
+const portCache={};
+function portrait(ch,locked){
+  const key=ch+'|'+(meta.skin||'')+'|'+(hatOn()||'')+'|'+(locked?1:0);if(portCache[key])return portCache[key];
+  const PS=playerSprites(ch,0),cv2=document.createElement('canvas');cv2.width=14;cv2.height=16;const c=cv2.getContext('2d');
+  c.translate(7,14);c.drawImage(PS.o,-5,-9);c.drawImage(PS.f[0],-4,-8);drawHat(c);
+  if(locked){c.globalCompositeOperation='source-atop';c.fillStyle='rgba(13,11,20,.75)';c.fillRect(-7,-14,14,16)}
+  return portCache[key]=cv2.toDataURL();
+}
+const pips=n=>'<i class="pip on"></i>'.repeat(n)+'<i class="pip"></i>'.repeat(5-n);
+function buildCharSelect(){
+  const g=$('charGrid');if(!g)return;
+  g.innerHTML=Object.keys(CHARS).map(id=>{const c=CHARS[id],ok=c.ok(),inf=CHAR_INFO[id]||{role:''};
+    return `<button class="cc${id===chosenC?' sel':''}" data-cc="${id}" ${ok?'':'aria-disabled="true"'} title="${esc(ok?c.desc:'Locked: '+c.req)}"><img alt="" src="${portrait(id,!ok)}"><b>${esc(c.name)}</b><small>${ok?esc(inf.role):'Locked'}</small></button>`}).join('');
+  const c=CHARS[chosenC],inf=CHAR_INFO[chosenC]||{hp:3,spd:3,dmg:3,role:''},A=ABIL[chosenC];
+  $('charInfo').innerHTML=`<div class="ciTop"><b>${esc(c.name)}</b><span>${esc(inf.role)}</span></div><p>${esc(c.desc)}</p>`+
+    (A?`<p class="ab"><b>${esc(A.name)}:</b> ${esc(A.desc)}</p>`:'')+
+    `<div class="stats3"><span>HP</span>${pips(inf.hp)}<span>SPEED</span>${pips(inf.spd)}<span>DAMAGE</span>${pips(inf.dmg)}</div>`;
+  const sel=g.querySelector('.sel');if(sel&&g.scrollWidth>g.clientWidth)try{sel.scrollIntoView({block:'nearest',inline:'nearest'})}catch(_){}
+}
+function lookName(){const s=SKINS[meta.skin]&&skinOk(meta.skin)?SKINS[meta.skin].name:'Default',h=hatOn();return s+(h?' · '+HATS[h].name:'')}
+function buildLooks(){
+  const row=(obj,cur,attr)=>Object.entries(obj).map(([k,v])=>{const ok=v.ok();return `<button data-${attr}="${k}" class="${(cur||'none')===k?'on':''}" ${ok?'':'disabled'} title="${esc(v.name+(ok?'':' · '+v.req))}">${esc(ok?v.name:'🔒 '+v.req)}</button>`}).join('');
+  $('hatPick').innerHTML=row(HATS,meta.hat,'hat');$('trailPick').innerHTML=row(TRAILS,meta.trail,'trail');
+  $('lPick').innerHTML=BIOMES.slice(0,BIOMES.length-1).map((b,k)=>{const ok=landOk(k);return `<button data-land="${k}" class="${k===chosenL?'sel':''}" ${ok?'':'disabled'}><span class="sw" style="background:linear-gradient(90deg,${b.g[0]} 0 50%,${b.d[1]} 50%)"></span><div><b>${esc(b.name)}</b><span>${ok?(k===0?'The usual start':'Start here; the rest follow, the Void is still last'):'Locked: reach it first'}</span></div></button>`}).join('');
+  $('loL').textContent=BIOMES[chosenL].name;$('loC').textContent=lookName();
+}
+function noteRunStart(){
+  const add=(k,v)=>{meta[k]=meta[k]||[];if(!meta[k].includes(v))meta[k].push(v)};
+  add('charsPlayed',G.char);add('modesPlayed',G.gm||'normal');saveMeta();
 }
 
 /* ================= landmarks =================
@@ -4342,7 +4442,7 @@ function render(){
       else{let sx=1,sy=1;                                            // stretch along a dash, squash as it ends
         if(P.dashT>0){P.sqT=.12;if(Math.abs(P.vx)>=Math.abs(P.vy)){sx=1.25;sy=.8}else{sx=.8;sy=1.25}}
         else if(P.sqT>0){P.sqT-=G.rdt||.016;sx=1.15;sy=.87}
-        ctx.translate(x+4,y+8);ctx.scale((P.face<0?-1:1)*sx,sy);drawPlayerGear(rk,PS.acc);ctx.drawImage(OUT,-5,-9);ctx.drawImage(spr,-4,-8);drawPlayerCrown(rk)}
+        ctx.translate(x+4,y+8);ctx.scale((P.face<0?-1:1)*sx,sy);drawPlayerGear(rk,PS.acc);ctx.drawImage(OUT,-5,-9);ctx.drawImage(spr,-4,-8);if(!drawHat(ctx))drawPlayerCrown(rk)}
       ctx.restore();
       if(isMode('storm')){const cx=RK(P.x-ox),cy=RK(P.y-oy)-28;ctx.fillStyle='#5a5a70';ctx.fillRect(cx-9,cy-2,18,5);ctx.fillRect(cx-6,cy-5,12,4);ctx.fillStyle='#8a8aa0';ctx.fillRect(cx-5,cy-5,8,2);
         if(Math.floor(G.time*10)%3===0){ctx.fillStyle='#7df9ff';ctx.fillRect(cx+rnd(-6,6)|0,cy+3,1,3)}}
@@ -4462,7 +4562,7 @@ function buildReport(){
   const statKeys=Object.keys(S).filter(k=>{const d={dmg:1,rate:1,move:1,area:1,magnet:44,pspeed:1,dashMax:1}[k]??0;return Math.abs(S[k]-d)>1e-6});
   const r={
     game:'Overkill Run',version:VERSION,reportedAt:new Date().toISOString(),
-    mode:G.daily?'daily '+G.seedStr:'normal',gameMode:GMODES[G.gm||'normal'].name,banished:G.banished||[],chests:(G.vr&&G.vr.chests)||0,passives:passiveN()+'/'+passCap(),difficulty:DIFF[G.diff||'normal'].name,seed:G.seedCode+(G.customSeed?' (chosen)':''),dailyMutations:G.dmods,achievementsThisRun:G.achNew||[],champions:{seen:G.champSeen||0,killed:G.champKills||0},character:CHARS[G.char].name,startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
+    mode:G.daily?'daily '+G.seedStr:'normal',gameMode:GMODES[G.gm||'normal'].name,startLand:G.startLand||'Grassy Ruins',banished:G.banished||[],chests:(G.vr&&G.vr.chests)||0,passives:passiveN()+'/'+passCap(),difficulty:DIFF[G.diff||'normal'].name,seed:G.seedCode+(G.customSeed?' (chosen)':''),dailyMutations:G.dmods,achievementsThisRun:G.achNew||[],champions:{seen:G.champSeen||0,killed:G.champKills||0},character:CHARS[G.char].name,startWeapon:WDEF[G.startW].name,relics:G.relics.map(k=>RELICS[k].name),
     result:{status:G.victory?'won':G.won?(G.state==='over'?'won, then died in endless':'won, in endless'):G.state==='over'?'died':'in progress',time:fmtT(G.time),seconds:Math.round(G.time),kills:G.kills,level:G.level,threat:G.threat,land:landName(G.threat),
       bossesKilled:G.bossKills,bossFights:G.bossLog.concat(G.bossLost?[G.bossLost]:[]),enemyBodies:G.bodies||0,heartContainers:G.hearts||0,soulThieves:(G.thieves||0)+'/'+(G.thiefSeen||0),abductions:G.abductions||0,curios:G.curioN||{},trophies:G.trophies,relicCombos:G.combos||[],reactions:G.rx,pet:!!G.pet,novice:!!G.novice,rank:RANKS[G.rank||0].name,closestCall:G.lowHp!==undefined?Math.round(G.lowHp*100)+'%':null,beacons:G.lullLog,variety:G.vr?{events:G.vr.revLog,strikes:{fired:G.vr.strikeN,hitYou:G.vr.strikeHits},hunter:{came:G.vr.hunterN,caughtYou:G.vr.hunterCaught||0},altars:G.vr.altarLog,roads:G.vr.roadLog,formations:G.vr.formN}:null,landmarks:(G.lmClaimed||0)+'/'+(G.lmSeen||0),allies:{joined:G.alliesJoined||0,lost:G.alliesLost||0,now:G.allies.map(a=>ALLY[a.kind].name+' Lv '+(a.lvl||1)+((a.perks||[]).length?' ('+a.perks.join(', ')+')':'')+' '+Math.ceil(a.hp)+'/'+a.max)},checkpointsUsed:G.checksUsed||0,standingStillThreats:G.campSeen||{},bestStreak:G.bestStreak,killedBy:G.state==='over'?G.lastHit:null,hp:Math.ceil(P.hp)+'/'+P.max},
     ability:{name:abil().name,uses:(G.ab&&G.ab.uses)||0},
@@ -4532,7 +4632,7 @@ function buildTitle(){
     return `<button data-c="${id}" class="${id===chosenC?'sel':''}" ${ok?'':'disabled'}><div><b>${esc(c.name)}</b><span>${ok?esc(c.desc+CHARS_AB(id)):'Locked: '+esc(c.req)}</span></div></button>`}).join('');
   $('mPick').innerHTML=Object.keys(GMODES).map(id=>`<button data-m="${id}" class="${id===chosenM?'sel':''}"><div><b>${esc(GMODES[id].name)}</b><span>${esc(GMODES[id].desc)}</span></div></button>`).join('');
   $('loM').textContent=GMODES[chosenM].name;
-  $('loC').textContent=CHARS[chosenC].name;$('loW').textContent=WDEF[chosenW].name;$('loR').textContent=chosenR.size?[...chosenR].map(r=>RELICS[r].name).join(' + '):'None';
+  buildCharSelect();buildLooks();$('loW').textContent=WDEF[chosenW].name;$('loR').textContent=chosenR.size?[...chosenR].map(r=>RELICS[r].name).join(' + '):'None';
   $('rPick').innerHTML=Object.keys(RELICS).map(id=>{const r=RELICS[id],ok=r.ok();if(!ok)chosenR.delete(id);
     return `<button data-r="${id}" class="${chosenR.has(id)?'sel':''}" ${ok?'':'disabled'}>${ok?esc(r.name)+': '+esc(r.desc):'Locked: '+esc(r.req)}</button>`}).join('');
   const today=new Date().toLocaleDateString('en-CA');
@@ -4550,9 +4650,15 @@ $('mPick').addEventListener('click',e=>{const b=e.target.closest('button[data-m]
 $('chestDone').addEventListener('click',closeChest);
 $('banBtn').addEventListener('click',toggleBan);
 $('skipBtn').addEventListener('click',skipCard);
+$('charGrid').addEventListener('click',e=>{const b=e.target.closest('button[data-cc]');if(!b)return;const id=b.dataset.cc;if(!CHARS[id].ok()){toast&&$('charInfo')&&($('charInfo').innerHTML='<div class="ciTop"><b>'+esc(CHARS[id].name)+'</b><span>Locked</span></div><p>'+esc('Unlock: '+CHARS[id].req)+'</p>');return}
+  chosenC=id;try{localStorage.setItem('overkill-run-char',chosenC)}catch(_){}buildTitle()});
+$('lPick').addEventListener('click',e=>{const b=e.target.closest('button[data-land]');if(!b||b.disabled)return;chosenL=+b.dataset.land;try{localStorage.setItem('overkill-run-land',chosenL)}catch(_){}buildTitle();closeSheets()});
+$('hatPick').addEventListener('click',e=>{const b=e.target.closest('button[data-hat]');if(!b||b.disabled)return;meta.hat=b.dataset.hat;saveMeta();buildTitle()});
+$('trailPick').addEventListener('click',e=>{const b=e.target.closest('button[data-trail]');if(!b||b.disabled)return;meta.trail=b.dataset.trail;saveMeta();buildTitle()});
+$('lookDone').addEventListener('click',closeSheets);
 $('cPick').addEventListener('click',e=>{const b=e.target.closest('button[data-c]');if(b&&!b.disabled){chosenC=b.dataset.c;try{localStorage.setItem('overkill-run-char',chosenC)}catch(_){}buildTitle();closeSheets()}});
-document.querySelectorAll('#title .lo[data-sheet]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.sheet,open=$(id).hidden;['mSheet','cSheet','wSheet','rSheet'].forEach(k=>$(k).hidden=true);document.querySelectorAll('#title .lo').forEach(x=>x.classList.remove('open'));if(open){$(id).hidden=false;b.classList.add('open')}}));
-function closeSheets(){['mSheet','cSheet','wSheet','rSheet'].forEach(k=>$(k).hidden=true);document.querySelectorAll('#title .lo').forEach(x=>x.classList.remove('open'))}
+document.querySelectorAll('#title .lo[data-sheet]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.sheet,open=$(id).hidden;['mSheet','lSheet','cSheet','wSheet','rSheet'].forEach(k=>$(k).hidden=true);document.querySelectorAll('#title .lo').forEach(x=>x.classList.remove('open'));if(open){$(id).hidden=false;b.classList.add('open')}}));
+function closeSheets(){['mSheet','lSheet','cSheet','wSheet','rSheet'].forEach(k=>$(k).hidden=true);document.querySelectorAll('#title .lo').forEach(x=>x.classList.remove('open'))}
 document.querySelector('#rSheet .sheetDone').addEventListener('click',closeSheets);
 $('rPick').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(b&&!b.disabled){const id=b.dataset.r;if(chosenR.has(id))chosenR.delete(id);else{if(chosenR.size>=RELIC_MAX)chosenR.delete([...chosenR][0]);chosenR.add(id)}buildTitle()}});
 function start(daily,seed){
@@ -4563,11 +4669,13 @@ function start(daily,seed){
   if(daily)reset({daily:true,weapon:'pea',relics:[],char:'wanderer'});else reset({daily:false,weapon:chosenW,relics:chosenR,char:chosenC,seed});
   G.diff=daily?'normal':chosenD;
   applyMode();
+  if(!daily&&chosenL>0){G.landOrder=landOrder(chosenL);G.biomeI=biomeOf(0).i;G.biomePrev=G.biomeI;G.startLand=BIOMES[chosenL].name}
+  noteRunStart();
   if(!daily){if(hasPerk('reroll'))G.rerolls++;if(hasPerk('magnet'))S.magnet*=1.2;if(hasPerk('vigor')){P.max+=10;P.hp+=10}}
   if(G.dmods.length)setTimeout(()=>{if(G.state==='play')toast(3,'Today: '+G.dmods.map(k=>DAILY_MUTS[k].name+' ('+DAILY_MUTS[k].desc+')').join(' · '))},1800);
   ['title','over','win','pause','lvl','repOv','opts','chestOv'].forEach(id=>$(id).hidden=true);$('hud').hidden=false;
   applyControls();
-  {const st=daily?null:storyBeat(0);banner(daily?'DAILY RUN':st?'GRASSY RUINS':'THREAT 0',daily?'Same upgrade offers for everyone today':st||'Entering '+landName(0),true)}
+  {const st=daily||G.landOrder?null:storyBeat(0);banner(daily?'DAILY RUN':st?'GRASSY RUINS':G.landOrder?landName(0).toUpperCase():'THREAT 0',daily?'Same upgrade offers for everyone today':st||'Entering '+landName(0),true)}
   updateHud();
 }
 function gameOver(){
